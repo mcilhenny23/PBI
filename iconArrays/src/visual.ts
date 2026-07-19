@@ -11,7 +11,7 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
-import IColorPalette = powerbi.extensibility.IColorPalette;
+import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -77,7 +77,7 @@ const pctFmt = d3.format(".1~f");
 export class Visual implements IVisual {
     private events: IVisualEventService;
     private host: powerbi.extensibility.visual.IVisualHost;
-    private colorPalette: IColorPalette;
+    private colorPalette: ISandboxExtendedColorPalette;
     private tooltipService: ITooltipService;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -148,8 +148,18 @@ export class Visual implements IVisual {
             }
             this.landing.selectAll("*").remove();
 
-            const highlightColor = look.highlightColor.value.value;
-            const baseColor = look.baseColor.value.value;
+            // High-contrast: draw with foreground/background only, and outline
+            // icons so shapes stay visible. Segment colors collapse to the
+            // foreground (2-color palette can't encode categories) — the legend
+            // still lists names + counts so the breakdown survives.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
+            const hcBg = this.colorPalette.background?.value || "#ffffff";
+
+            const highlightColor = hc ? hcFg : look.highlightColor.value.value;
+            const baseColor = hc ? hcBg : look.baseColor.value.value;
+            const captionColor = hc ? hcFg : "#333333";
+            const legendTextColor = hc ? hcFg : "#444444";
             const valueName = vals[valueIdx].source.displayName || "Value";
 
             // ── 4. Compute highlighted icons ───────────────────────
@@ -178,7 +188,7 @@ export class Visual implements IVisual {
                     const raw = denominator > 0 ? (v / denominator) * gridSize : 0;
                     const count = Math.min(remaining, Math.round(raw));
                     remaining -= count;
-                    const color = this.colorPalette.getColor(String(c)).value;
+                    const color = hc ? hcFg : this.colorPalette.getColor(String(c)).value;
                     segments.push({
                         name: String(c), value: v, color,
                         count, start: 0, end: 0
@@ -290,6 +300,12 @@ export class Visual implements IVisual {
                 .attr("transform", d => `translate(${d.x},${d.y}) scale(${scale})`)
                 .attr("fill", d => d.fill)
                 .attr("fill-rule", "nonzero")
+                // In high contrast, outline every icon so background-filled
+                // (un-highlighted) icons remain visible. Inline styles beat the
+                // `stroke: none` CSS rule; non-scaling keeps width in screen px.
+                .style("stroke", hc ? hcFg : null)
+                .style("stroke-width", hc ? 1 : null)
+                .style("vector-effect", hc ? "non-scaling-stroke" : null)
                 .on("mousemove", (event: MouseEvent, d: IconDatum) => {
                     const [px, py] = d3.pointer(event, this.svg.node());
                     this.tooltipService.show({
@@ -304,7 +320,7 @@ export class Visual implements IVisual {
             if (look.showLabel.value) {
                 const captionY = offsetY + gridH + captionH * 0.6;
                 if (hasCategory && segments.length > 1) {
-                    this.renderLegend(segments, width / 2, captionY, look.labelFontSize.value, plotW);
+                    this.renderLegend(segments, width / 2, captionY, look.labelFontSize.value, plotW, legendTextColor, hc);
                 } else {
                     this.container.append("text")
                         .classed("caption", true)
@@ -313,7 +329,7 @@ export class Visual implements IVisual {
                         .attr("text-anchor", "middle")
                         .attr("font-size", `${look.labelFontSize.value}px`)
                         .attr("font-weight", 600)
-                        .attr("fill", "#333")
+                        .attr("fill", captionColor)
                         .text(captionText);
                 }
             }
@@ -375,7 +391,8 @@ export class Visual implements IVisual {
 
     /** Compact horizontal legend for segmented (multi-category) mode. */
     private renderLegend(
-        segments: Segment[], centerX: number, y: number, fontSize: number, maxWidth: number
+        segments: Segment[], centerX: number, y: number, fontSize: number, maxWidth: number,
+        textColor: string, highContrast: boolean
     ): void {
         const g = this.container.append("g").classed("legend", true);
         const swatch = fontSize * 0.85;
@@ -407,11 +424,15 @@ export class Visual implements IVisual {
             item.append("rect")
                 .attr("x", 0).attr("y", -swatch * 0.85)
                 .attr("width", swatch).attr("height", swatch).attr("rx", 2)
-                .attr("fill", it.s.color);
+                .attr("fill", it.s.color)
+                // Swatches all share the foreground color in high contrast, so
+                // outline them with the background to keep edges readable.
+                .attr("stroke", highContrast ? (this.colorPalette.background?.value || "#fff") : "none")
+                .attr("stroke-width", highContrast ? 1 : 0);
             item.append("text")
                 .attr("x", swatch + gap).attr("y", 0)
                 .attr("font-size", `${fontSize}px`)
-                .attr("fill", "#444")
+                .attr("fill", textColor)
                 .text(it.label);
             x += it.w + itemGap;
         }
@@ -427,6 +448,15 @@ export class Visual implements IVisual {
 
         const g = this.landing.attr("transform", `translate(${width / 2}, ${height / 2})`);
 
+        const hc = this.colorPalette.isHighContrast === true;
+        const fg = this.colorPalette.foreground?.value || "#000000";
+        const bg = this.colorPalette.background?.value || "#ffffff";
+        const hiColor = hc ? fg : "#E74C3C";
+        const baseGlyph = hc ? bg : "#E0E0E0";
+        const titleColor = hc ? fg : "#333333";
+        const subColor = hc ? fg : "#666666";
+        const subColor2 = hc ? fg : "#999999";
+
         // Small icon-array glyph: a 5×2 mini grid, 3 highlighted.
         const glyph = g.append("g").attr("transform", "translate(-50, -86)");
         const r = 7, step = 22;
@@ -434,25 +464,28 @@ export class Visual implements IVisual {
             const col = i % 5, row = Math.floor(i / 5);
             glyph.append("circle")
                 .attr("cx", col * step).attr("cy", row * step).attr("r", r)
-                .attr("fill", i < 3 ? "#E74C3C" : "#E0E0E0");
+                .attr("fill", i < 3 ? hiColor : baseGlyph)
+                // Outline the pale/background base dots in high contrast.
+                .attr("stroke", hc && i >= 3 ? fg : "none")
+                .attr("stroke-width", hc && i >= 3 ? 1 : 0);
         }
 
         g.append("text")
             .attr("text-anchor", "middle").attr("y", -18)
             .attr("font-family", "Segoe UI, sans-serif")
-            .attr("font-size", "16px").attr("font-weight", 600).attr("fill", "#333")
+            .attr("font-size", "16px").attr("font-weight", 600).attr("fill", titleColor)
             .text("Icon Array");
 
         g.append("text")
             .attr("text-anchor", "middle").attr("y", 8)
             .attr("font-family", "Segoe UI, sans-serif")
-            .attr("font-size", "12px").attr("fill", "#666")
+            .attr("font-size", "12px").attr("fill", subColor)
             .text("Add a Value  (a count or a 0–1 proportion) to begin.");
 
         g.append("text")
             .attr("text-anchor", "middle").attr("y", 30)
             .attr("font-family", "Segoe UI, sans-serif")
-            .attr("font-size", "11px").attr("fill", "#999")
+            .attr("font-size", "11px").attr("fill", subColor2)
             .text("Optional: add Total for the denominator, or Category for colored segments.");
     }
 
