@@ -1,0 +1,13 @@
+Sample,TextureClass,Sand,Silt,Clay,pH,OrganicMatter
+Field N1,Sandy loam,65,25,10,6.2,2.1
+Field N2,Loam,40,40,20,6.8,3.4
+Field N3,Clay,20,25,55,7.4,4.8
+Field N4,Silt loam,20,65,15,6.5,2.9
+Field N5,Clay loam,33,33,34,7.1,4.1
+Field N6,Sandy clay,52,6,42,7.8,3.0
+Field N7,Silty clay,6,47,47,7.6,5.5
+Field N8,Loamy sand,82,12,6,5.4,1.2
+Field N9,Silt,8,86,6,6.0,2.4
+Field N10,Sandy clay loam,58,15,27,7.2,2.6
+Field N11,Silty clay loam,10,56,34,7.0,4.4
+Field N12,Clay (heavy),15,20,65,7.9,6.2

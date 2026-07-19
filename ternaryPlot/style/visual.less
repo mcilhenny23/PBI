@@ -1,0 +1,24 @@
+.ternary-plot {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.ternary-plot-container {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.ternary-plot-container .gridlines line,
+.ternary-plot-container .ticks text {
+    pointer-events: none;
+}
+
+.ternary-plot-container .point {
+    cursor: pointer;
+    transition: fill-opacity 120ms ease;
+}
+
+.ternary-plot-landing {
+    user-select: none;
+    pointer-events: none;
+}

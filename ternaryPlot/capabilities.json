@@ -1,0 +1,96 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Component A (top)",
+            "name": "componentA",
+            "kind": "Measure",
+            "description": "First component — mapped to the top vertex"
+        },
+        {
+            "displayName": "Component B (bottom-left)",
+            "name": "componentB",
+            "kind": "Measure",
+            "description": "Second component — mapped to the bottom-left vertex"
+        },
+        {
+            "displayName": "Component C (bottom-right)",
+            "name": "componentC",
+            "kind": "Measure",
+            "description": "Third component — mapped to the bottom-right vertex (optional; derived as 1 − A − B when Normalize is on)"
+        },
+        {
+            "displayName": "Point Label",
+            "name": "pointLabel",
+            "kind": "Grouping",
+            "description": "One point per label. Without a label, the components aggregate to a single point."
+        },
+        {
+            "displayName": "Color Value",
+            "name": "colorBy",
+            "kind": "Measure",
+            "description": "Optional — continuous value mapped to point color"
+        },
+        {
+            "displayName": "Size Value",
+            "name": "sizeBy",
+            "kind": "Measure",
+            "description": "Optional — continuous value mapped to point radius"
+        }
+    ],
+    "objects": {
+        "triangle": {
+            "properties": {
+                "showGridlines": { "type": { "bool": true } },
+                "gridlineCount": { "type": { "numeric": true } },
+                "normalizeValues": { "type": { "bool": true } },
+                "axisLabelA": { "type": { "text": true } },
+                "axisLabelB": { "type": { "text": true } },
+                "axisLabelC": { "type": { "text": true } }
+            }
+        },
+        "points": {
+            "properties": {
+                "pointRadius": { "type": { "numeric": true } },
+                "pointColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "pointOpacity": { "type": { "numeric": true } },
+                "showLabels": { "type": { "bool": true } },
+                "labelFontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        },
+        "colorScale": {
+            "properties": {
+                "colorScaleLow": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorScaleHigh": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "for": { "in": "pointLabel" },
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "componentA" } },
+                        { "for": { "in": "componentB" } },
+                        { "for": { "in": "componentC" } },
+                        { "for": { "in": "colorBy" } },
+                        { "for": { "in": "sizeBy" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

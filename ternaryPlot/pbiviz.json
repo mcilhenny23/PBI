@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "ternaryPlot",
+        "displayName": "Ternary Plot",
+        "guid": "ternaryPlot7C781177257F006B6FD4AA4A1A643EE2",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Plots three-component composition data (A+B+C) inside an equilateral triangle. Standard in geology, materials science, soil science and chemistry. Bind three measures for the components, an optional label, and optional color/size encodings.",
+        "supportUrl": "https://github.com/jeffs-visuals/ternary-plot",
+        "gitHubUrl": "https://github.com/jeffs-visuals/ternary-plot"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

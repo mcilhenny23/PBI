@@ -1,0 +1,73 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Sample Values",
+            "name": "samples",
+            "kind": "Measure",
+            "description": "The value to build the distribution from. Bind one measure for a single dotplot, or several measures for side-by-side dotplots (one per measure)."
+        },
+        {
+            "displayName": "Observation Key",
+            "name": "category",
+            "kind": "Grouping",
+            "description": "One row per observation (e.g. simulation run, sample ID, date). The visual pools these rows into a distribution, then draws its quantiles as dots."
+        }
+    ],
+    "objects": {
+        "dotplot": {
+            "properties": {
+                "dotCount": { "type": { "numeric": true } },
+                "dotRadius": { "type": { "numeric": true } },
+                "dotColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "dotOpacity": { "type": { "numeric": true } },
+                "orientation": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "horizontal", "displayName": "Horizontal" },
+                            { "value": "vertical", "displayName": "Vertical" }
+                        ]
+                    }
+                }
+            }
+        },
+        "threshold": {
+            "properties": {
+                "showThreshold": { "type": { "bool": true } },
+                "thresholdValue": { "type": { "numeric": true } },
+                "thresholdColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showCountAnnotation": { "type": { "bool": true } }
+            }
+        },
+        "axis": {
+            "properties": {
+                "showAxis": { "type": { "bool": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "for": { "in": "category" },
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "samples" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
