@@ -1,0 +1,101 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "Count or proportion to highlight (e.g. 17, or 0.17). If a proportion (0–1) and no Total is bound, it is read as a share of the grid."
+        },
+        {
+            "displayName": "Total",
+            "name": "total",
+            "kind": "Measure",
+            "description": "Denominator for the proportion (optional — defaults to the grid size, or 100)."
+        },
+        {
+            "displayName": "Category",
+            "name": "category",
+            "kind": "Grouping",
+            "description": "Optional — splits the highlighted icons into colored segments (each category gets its own color)."
+        }
+    ],
+    "objects": {
+        "layout": {
+            "properties": {
+                "gridColumns": {
+                    "type": { "numeric": true }
+                },
+                "gridRows": {
+                    "type": { "numeric": true }
+                },
+                "fillOrder": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "row", "displayName": "Row by row" },
+                            { "value": "column", "displayName": "Column by column" },
+                            { "value": "random", "displayName": "Random" }
+                        ]
+                    }
+                },
+                "iconShape": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "person", "displayName": "Person" },
+                            { "value": "circle", "displayName": "Circle" },
+                            { "value": "square", "displayName": "Square" },
+                            { "value": "heart", "displayName": "Heart" }
+                        ]
+                    }
+                }
+            }
+        },
+        "appearance": {
+            "properties": {
+                "highlightColor": {
+                    "type": { "fill": { "solid": { "color": true } } }
+                },
+                "baseColor": {
+                    "type": { "fill": { "solid": { "color": true } } }
+                },
+                "iconSize": {
+                    "type": { "numeric": true }
+                },
+                "iconSpacing": {
+                    "type": { "numeric": true }
+                },
+                "showLabel": {
+                    "type": { "bool": true }
+                },
+                "labelFontSize": {
+                    "type": { "formatting": { "fontSize": true } }
+                }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "for": { "in": "category" },
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 1000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "value" } },
+                        { "for": { "in": "total" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

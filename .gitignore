@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.tmp/
+
+# Build reports / analyzer output
+webpack.statistics.prod.html
+
+# pbiviz-generated certificates
+*.pfx
+
+# Temp / preview files
+_preview_tmp.html
+
+# OS / editor
+.DS_Store
+Thumbs.db

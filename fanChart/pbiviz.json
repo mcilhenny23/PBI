@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "fanChart",
+        "displayName": "Fan Chart",
+        "guid": "fanChart3314268DDD014890A69A992FC8851AB5",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Forecast uncertainty fan chart with nested prediction bands. Drag quantile pairs (e.g. p10/p90) to visualize prediction intervals as gradient bands around a central estimate.",
+        "supportUrl": "https://github.com/jeffs-visuals/fan-chart",
+        "gitHubUrl": "https://github.com/jeffs-visuals/fan-chart"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}
