@@ -1,0 +1,14 @@
+Source,Target,Handoffs
+Intake,Triage,420
+Triage,Review,380
+Triage,Support,90
+Review,Approve,340
+Review,Triage,70
+Approve,Fulfil,300
+Approve,Review,55
+Fulfil,Billing,290
+Fulfil,Support,60
+Billing,Closure,270
+Support,Review,80
+Support,Closure,110
+Closure,Intake,25

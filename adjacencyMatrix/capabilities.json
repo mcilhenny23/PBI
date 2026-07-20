@@ -1,0 +1,112 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Source Node",
+            "name": "source",
+            "kind": "Grouping",
+            "description": "Edge source — becomes a matrix row/column"
+        },
+        {
+            "displayName": "Target Node",
+            "name": "target",
+            "kind": "Grouping",
+            "description": "Edge target — becomes a matrix row/column"
+        },
+        {
+            "displayName": "Weight",
+            "name": "weight",
+            "kind": "Measure",
+            "description": "Edge weight / intensity. Omit to treat every edge as weight 1."
+        }
+    ],
+    "objects": {
+        "matrix": {
+            "properties": {
+                "seriation": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "cluster", "displayName": "Cluster (hierarchical)" },
+                            { "value": "degree", "displayName": "Degree" },
+                            { "value": "alphabetical", "displayName": "Alphabetical" },
+                            { "value": "none", "displayName": "None (data order)" }
+                        ]
+                    }
+                },
+                "symmetric": { "type": { "bool": true } },
+                "cellShape": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "square", "displayName": "Square" },
+                            { "value": "circle", "displayName": "Circle" }
+                        ]
+                    }
+                },
+                "showDiagonal": { "type": { "bool": true } }
+            }
+        },
+        "color": {
+            "properties": {
+                "colorRampLow": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorRampHigh": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorScale": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "linear", "displayName": "Linear" },
+                            { "value": "log", "displayName": "Log" },
+                            { "value": "sqrt", "displayName": "Square root" }
+                        ]
+                    }
+                }
+            }
+        },
+        "labels": {
+            "properties": {
+                "showLabels": { "type": { "bool": true } },
+                "labelFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "maxLabelLength": { "type": { "numeric": true } },
+                "labelPosition": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "outside", "displayName": "Outside" },
+                            { "value": "inside", "displayName": "Inside" }
+                        ]
+                    }
+                }
+            }
+        },
+        "clusters": {
+            "properties": {
+                "showClusterBoundaries": { "type": { "bool": true } },
+                "clusterBoundaryColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "source" } },
+                        { "for": { "in": "target" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "weight" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
