@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "hops",
+        "displayName": "Hypothetical Outcome Plots",
+        "guid": "hopsE994ACC4D84AC43E19056CD64C722896",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Animates independent draws from an ensemble so uncertainty is shown as motion (HOPs). Instead of a static interval, plausible outcome lines flicker frame-by-frame. Bind several sample-draw measures (model runs / simulations) over a shared axis, with optional actuals.",
+        "supportUrl": "https://github.com/jeffs-visuals/hops",
+        "gitHubUrl": "https://github.com/jeffs-visuals/hops"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

@@ -1,0 +1,86 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Axis",
+            "name": "axis",
+            "kind": "Grouping",
+            "description": "X axis — time or ordered category"
+        },
+        {
+            "displayName": "Sample Draws",
+            "name": "samples",
+            "kind": "Measure",
+            "description": "Ensemble members. Bind several measures (model runs / simulation draws); each frame flickers to a different draw. One measure renders a single static line."
+        },
+        {
+            "displayName": "Actuals",
+            "name": "actuals",
+            "kind": "Measure",
+            "description": "Optional historical actuals line, drawn solid where non-null."
+        }
+    ],
+    "objects": {
+        "animation": {
+            "properties": {
+                "frameRate": { "type": { "numeric": true } },
+                "frameCount": { "type": { "numeric": true } },
+                "pauseOnHover": { "type": { "bool": true } },
+                "showTrail": { "type": { "bool": true } },
+                "trailCount": { "type": { "numeric": true } },
+                "trailOpacity": { "type": { "numeric": true } }
+            }
+        },
+        "lines": {
+            "properties": {
+                "outcomeColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "outcomeWidth": { "type": { "numeric": true } },
+                "actualsColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "actualsWidth": { "type": { "numeric": true } },
+                "curveType": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "linear", "displayName": "Linear" },
+                            { "value": "monotone", "displayName": "Smooth (monotone)" },
+                            { "value": "basis", "displayName": "Smooth (basis)" },
+                            { "value": "step", "displayName": "Step" }
+                        ]
+                    }
+                }
+            }
+        },
+        "axes": {
+            "properties": {
+                "showXAxis": { "type": { "bool": true } },
+                "showYAxis": { "type": { "bool": true } },
+                "showGridlines": { "type": { "bool": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "for": { "in": "axis" },
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "samples" } },
+                        { "for": { "in": "actuals" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
