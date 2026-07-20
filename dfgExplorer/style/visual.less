@@ -1,0 +1,140 @@
+.dfg-root {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dfg-map {
+    position: relative;
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+
+.dfg-svg {
+    display: block;
+}
+
+.dfg-landing {
+    user-select: none;
+    pointer-events: none;
+}
+
+.dfg-plot {
+    .nodes g { cursor: default; }
+    .edges text { pointer-events: none; user-select: none; }
+    .nodes text { pointer-events: none; user-select: none; }
+}
+
+// ── Variant panel ──────────────────────────────────────────────
+
+.dfg-panel {
+    flex: 0 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-left: 1px solid #eaeaea;
+    box-sizing: border-box;
+    padding: 8px 10px 10px;
+    background: #fcfcfc;
+}
+
+.vp-header {
+    margin-bottom: 8px;
+
+    .vp-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .vp-sub {
+        font-size: 10.5px;
+        color: #999;
+        margin-top: 1px;
+    }
+
+    .vp-clear {
+        margin-top: 6px;
+        font-size: 10.5px;
+        font-family: inherit;
+        color: #444;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+
+        &:hover { background: #f2f2f2; }
+    }
+}
+
+.vp-row {
+    padding: 6px 6px 7px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+
+    &:hover { background: #f2f5f8; }
+
+    &.selected {
+        background: #eef4fa;
+        border-color: #c8dcee;
+    }
+}
+
+.vp-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+
+    .vp-rank {
+        font-size: 11px;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .vp-count {
+        font-size: 10.5px;
+        color: #888;
+    }
+}
+
+.vp-bar {
+    height: 3px;
+    background: #eee;
+    border-radius: 2px;
+    margin: 4px 0 5px;
+    overflow: hidden;
+
+    .vp-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        opacity: 0.75;
+    }
+}
+
+.vp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+
+    .vp-chip {
+        font-size: 10px;
+        color: #243b53;
+        border-radius: 3px;
+        padding: 1px 5px;
+        white-space: nowrap;
+    }
+
+    .vp-arrow {
+        font-size: 10px;
+        color: #b0b0b0;
+    }
+
+    .vp-more {
+        font-size: 10px;
+        color: #999;
+    }
+}

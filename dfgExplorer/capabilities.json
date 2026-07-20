@@ -1,0 +1,108 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Case ID",
+            "name": "caseId",
+            "kind": "Grouping",
+            "description": "The case / instance identifier — one process run"
+        },
+        {
+            "displayName": "Activity",
+            "name": "activity",
+            "kind": "Grouping",
+            "description": "The event or step name — becomes a node in the map"
+        },
+        {
+            "displayName": "Timestamp",
+            "name": "timestamp",
+            "kind": "Grouping",
+            "description": "Orders events within a case. Set to Don't summarize."
+        },
+        {
+            "displayName": "Resource",
+            "name": "resource",
+            "kind": "Grouping",
+            "description": "Optional — who performed the activity"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "Optional — cost or duration used to weight edges"
+        }
+    ],
+    "objects": {
+        "dfg": {
+            "properties": {
+                "edgeMetric": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "frequency", "displayName": "Frequency" },
+                            { "value": "mean-duration", "displayName": "Mean duration" },
+                            { "value": "total-value", "displayName": "Total value" }
+                        ]
+                    }
+                },
+                "frequencyThreshold": { "type": { "numeric": true } },
+                "layoutDirection": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "LR", "displayName": "Left to right" },
+                            { "value": "TB", "displayName": "Top to bottom" }
+                        ]
+                    }
+                },
+                "showLoops": { "type": { "bool": true } }
+            }
+        },
+        "variants": {
+            "properties": {
+                "showVariants": { "type": { "bool": true } },
+                "variantCount": { "type": { "numeric": true } },
+                "variantPanelWidth": { "type": { "numeric": true } }
+            }
+        },
+        "nodes": {
+            "properties": {
+                "nodeColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "nodeMinWidth": { "type": { "numeric": true } },
+                "nodeFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "showFrequencyLabel": { "type": { "bool": true } }
+            }
+        },
+        "edges": {
+            "properties": {
+                "edgeColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "edgeMinWidth": { "type": { "numeric": true } },
+                "edgeMaxWidth": { "type": { "numeric": true } },
+                "showEdgeLabel": { "type": { "bool": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "caseId" } },
+                        { "for": { "in": "activity" } },
+                        { "for": { "in": "timestamp" } },
+                        { "for": { "in": "resource" } },
+                        { "for": { "in": "value" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

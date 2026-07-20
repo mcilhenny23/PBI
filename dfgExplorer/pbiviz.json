@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "dfgExplorer",
+        "displayName": "Process Map & Variant Explorer",
+        "guid": "dfgExplorer1257BBAE8A60295D00642520AB84E815",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Process mining's core view. An event log becomes a directly-follows graph — activities as nodes, transitions weighted by frequency or duration — beside a ranked list of the distinct paths cases actually take. Click a variant to see exactly which route it follows through the map.",
+        "supportUrl": "https://github.com/jeffs-visuals/dfg-explorer",
+        "gitHubUrl": "https://github.com/jeffs-visuals/dfg-explorer"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}
