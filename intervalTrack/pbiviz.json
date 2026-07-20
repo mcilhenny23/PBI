@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "intervalTrack",
+        "displayName": "Interval Track Viewer",
+        "guid": "intervalTrack1AD6F44CA9FC1F939812F6BD7F556F3A",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Stacked horizontal tracks of intervals and point events on a shared zoomable time axis — the genome-browser idiom generalized. Machine states, shift schedules, outage windows, order lifecycles and log events. Handles tens of thousands of intervals via Canvas rendering and viewport virtualization.",
+        "supportUrl": "https://github.com/jeffs-visuals/interval-track",
+        "gitHubUrl": "https://github.com/jeffs-visuals/interval-track"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

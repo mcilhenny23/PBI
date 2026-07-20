@@ -1,0 +1,103 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Track / Lane",
+            "name": "track",
+            "kind": "Grouping",
+            "description": "Groups intervals into horizontal tracks (machine, resource, case…)"
+        },
+        {
+            "displayName": "Start",
+            "name": "start",
+            "kind": "Grouping",
+            "description": "Interval start — date/time or numeric. Set to Don't summarize."
+        },
+        {
+            "displayName": "End",
+            "name": "end",
+            "kind": "Grouping",
+            "description": "Interval end. Leave blank on a row to render it as a point event."
+        },
+        {
+            "displayName": "Label",
+            "name": "label",
+            "kind": "Grouping",
+            "description": "Optional text drawn inside the interval bar"
+        },
+        {
+            "displayName": "Category",
+            "name": "category",
+            "kind": "Grouping",
+            "description": "Optional color category (state, status, severity…)"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "Optional numeric — modulates bar intensity"
+        }
+    ],
+    "objects": {
+        "tracks": {
+            "properties": {
+                "trackHeight": { "type": { "numeric": true } },
+                "trackGap": { "type": { "numeric": true } },
+                "trackLabelWidth": { "type": { "numeric": true } },
+                "trackLabelFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "packingMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "stack", "displayName": "Stack (collision-free lanes)" },
+                            { "value": "overlap", "displayName": "Overlap (single row)" },
+                            { "value": "collapse", "displayName": "Collapse (single row, clipped)" }
+                        ]
+                    }
+                }
+            }
+        },
+        "intervals": {
+            "properties": {
+                "intervalHeight": { "type": { "numeric": true } },
+                "intervalRadius": { "type": { "numeric": true } },
+                "intervalOpacity": { "type": { "numeric": true } },
+                "showLabels": { "type": { "bool": true } },
+                "labelFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "pointEventRadius": { "type": { "numeric": true } }
+            }
+        },
+        "axis": {
+            "properties": {
+                "showAxis": { "type": { "bool": true } },
+                "axisFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "enableZoom": { "type": { "bool": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "track" } },
+                        { "for": { "in": "start" } },
+                        { "for": { "in": "end" } },
+                        { "for": { "in": "label" } },
+                        { "for": { "in": "category" } },
+                        { "for": { "in": "value" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

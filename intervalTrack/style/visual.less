@@ -1,0 +1,30 @@
+.itv-root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+// Canvas draws the interval bars; SVG carries axis, labels and hit-testing.
+.itv-canvas,
+.itv-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.itv-overlay .hit {
+    cursor: crosshair;
+}
+
+.itv-overlay .track-labels text,
+.itv-overlay .bar-labels text {
+    user-select: none;
+    pointer-events: none;
+}
+
+.itv-landing {
+    user-select: none;
+    pointer-events: none;
+}
