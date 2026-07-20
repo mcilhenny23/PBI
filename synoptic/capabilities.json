@@ -1,0 +1,89 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Element ID",
+            "name": "elementId",
+            "kind": "Grouping",
+            "description": "Matches an id or data-tag in the SVG template"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "Drives fill level, color, opacity, rotation or text"
+        },
+        {
+            "displayName": "State",
+            "name": "state",
+            "kind": "Grouping",
+            "description": "Optional discrete state (open/closed, running/stopped) shown in the tooltip"
+        },
+        {
+            "displayName": "SVG Template",
+            "name": "svgContent",
+            "kind": "Grouping",
+            "description": "The schematic as SVG text. Put it in one row; the visual reads the first non-blank value."
+        }
+    ],
+    "objects": {
+        "template": {
+            "properties": {
+                "defaultFillColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showElementIds": { "type": { "bool": true } },
+                "showRejectedNote": { "type": { "bool": true } }
+            }
+        },
+        "valueMapping": {
+            "properties": {
+                "valueLow": { "type": { "numeric": true } },
+                "valueHigh": { "type": { "numeric": true } },
+                "colorLow": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorHigh": { "type": { "fill": { "solid": { "color": true } } } },
+                "bindingMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "fill-level", "displayName": "Fill level" },
+                            { "value": "color", "displayName": "Color" },
+                            { "value": "opacity", "displayName": "Opacity" },
+                            { "value": "rotation", "displayName": "Rotation" },
+                            { "value": "text", "displayName": "Text" }
+                        ]
+                    }
+                }
+            }
+        },
+        "animation": {
+            "properties": {
+                "flowAnimation": { "type": { "bool": true } },
+                "flowSpeed": { "type": { "numeric": true } },
+                "blinkOnAlarm": { "type": { "bool": true } },
+                "alarmThreshold": { "type": { "numeric": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "elementId" } },
+                        { "for": { "in": "value" } },
+                        { "for": { "in": "state" } },
+                        { "for": { "in": "svgContent" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 5000 }
+                    }
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

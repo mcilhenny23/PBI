@@ -1,0 +1,102 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Case ID",
+            "name": "caseId",
+            "kind": "Grouping",
+            "description": "The case / journey identifier"
+        },
+        {
+            "displayName": "Event",
+            "name": "event",
+            "kind": "Grouping",
+            "description": "Event type / name"
+        },
+        {
+            "displayName": "Timestamp",
+            "name": "timestamp",
+            "kind": "Grouping",
+            "description": "Orders events within a case. Set to Don't summarize."
+        },
+        {
+            "displayName": "Event Category",
+            "name": "eventCategory",
+            "kind": "Grouping",
+            "description": "Optional — used when coloring by category"
+        }
+    ],
+    "objects": {
+        "aggregation": {
+            "properties": {
+                "minBundleSupport": { "type": { "numeric": true } },
+                "maxDepth": { "type": { "numeric": true } },
+                "alignmentAnchor": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "first-event", "displayName": "First event" },
+                            { "value": "last-event", "displayName": "Last event" },
+                            { "value": "selected", "displayName": "Selected event" }
+                        ]
+                    }
+                },
+                "anchorEvent": { "type": { "text": true } }
+            }
+        },
+        "appearance": {
+            "properties": {
+                "bundleOpacity": { "type": { "numeric": true } },
+                "minBandWidth": { "type": { "numeric": true } },
+                "maxBandWidth": { "type": { "numeric": true } },
+                "showCaseCounts": { "type": { "bool": true } },
+                "colorBy": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "event-type", "displayName": "Event type" },
+                            { "value": "event-category", "displayName": "Event category" },
+                            { "value": "uniform", "displayName": "Uniform" }
+                        ]
+                    }
+                }
+            }
+        },
+        "layout": {
+            "properties": {
+                "orientation": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "horizontal", "displayName": "Horizontal" },
+                            { "value": "vertical", "displayName": "Vertical" }
+                        ]
+                    }
+                },
+                "gapBetweenSteps": { "type": { "numeric": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "caseId" } },
+                        { "for": { "in": "event" } },
+                        { "for": { "in": "timestamp" } },
+                        { "for": { "in": "eventCategory" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
