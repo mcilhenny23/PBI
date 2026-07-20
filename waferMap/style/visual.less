@@ -1,0 +1,34 @@
+.wafer-map {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+// Canvas paints the dies; the SVG layer sits directly on top for vector chrome
+// and pointer hit-testing.
+.wafer-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.wafer-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.wafer-overlay .hit {
+    cursor: crosshair;
+}
+
+.wafer-overlay .legend text {
+    user-select: none;
+}
+
+.wafer-landing {
+    user-select: none;
+    pointer-events: none;
+}

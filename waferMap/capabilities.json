@@ -1,0 +1,120 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Die X",
+            "name": "dieX",
+            "kind": "Grouping",
+            "description": "Column index of the die on the wafer"
+        },
+        {
+            "displayName": "Die Y",
+            "name": "dieY",
+            "kind": "Grouping",
+            "description": "Row index of the die on the wafer"
+        },
+        {
+            "displayName": "Bin / Status",
+            "name": "binCode",
+            "kind": "Grouping",
+            "description": "Pass/fail, bin code or category — used in Categorical color mode"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "Optional continuous measure (yield, resistance…) — used in Continuous color mode"
+        },
+        {
+            "displayName": "Wafer ID",
+            "name": "waferID",
+            "kind": "Grouping",
+            "description": "Optional — renders small multiples, one mini wafer per ID"
+        }
+    ],
+    "objects": {
+        "wafer": {
+            "properties": {
+                "waferShape": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "circle", "displayName": "Circle" },
+                            { "value": "rectangle", "displayName": "Rectangle" }
+                        ]
+                    }
+                },
+                "notchPosition": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "bottom", "displayName": "Bottom" },
+                            { "value": "top", "displayName": "Top" },
+                            { "value": "left", "displayName": "Left" },
+                            { "value": "right", "displayName": "Right" }
+                        ]
+                    }
+                },
+                "edgeExclusion": { "type": { "numeric": true } },
+                "showNotch": { "type": { "bool": true } }
+            }
+        },
+        "dieAppearance": {
+            "properties": {
+                "dieGap": { "type": { "numeric": true } },
+                "dieBorderColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "dieBorderWidth": { "type": { "numeric": true } },
+                "colorMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "categorical", "displayName": "Categorical (bin)" },
+                            { "value": "continuous", "displayName": "Continuous (value)" }
+                        ]
+                    }
+                }
+            }
+        },
+        "colorScale": {
+            "properties": {
+                "colorScaleLow": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorScaleMid": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorScaleHigh": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "zones": {
+            "properties": {
+                "showZones": { "type": { "bool": true } },
+                "zoneCount": { "type": { "numeric": true } },
+                "zoneLineColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "zoneLineOpacity": { "type": { "numeric": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "dieX" } },
+                        { "for": { "in": "dieY" } },
+                        { "for": { "in": "binCode" } },
+                        { "for": { "in": "waferID" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "value" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
