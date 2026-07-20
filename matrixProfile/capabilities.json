@@ -1,0 +1,68 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Time / Index",
+            "name": "timeIndex",
+            "kind": "Grouping",
+            "description": "Ordered position — set to Don't summarize so every point arrives as its own row"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "description": "The series value at each position"
+        }
+    ],
+    "objects": {
+        "profile": {
+            "properties": {
+                "windowLength": { "type": { "numeric": true } },
+                "motifCount": { "type": { "numeric": true } },
+                "discordCount": { "type": { "numeric": true } },
+                "exclusionZone": { "type": { "numeric": true } }
+            }
+        },
+        "display": {
+            "properties": {
+                "profileHeight": { "type": { "numeric": true } },
+                "seriesColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "profileColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "motifColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "discordColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showMotifConnectors": { "type": { "bool": true } },
+                "highlightOpacity": { "type": { "numeric": true } }
+            }
+        },
+        "axis": {
+            "properties": {
+                "showAxis": { "type": { "bool": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "for": { "in": "timeIndex" },
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "value" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
