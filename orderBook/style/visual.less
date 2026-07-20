@@ -1,0 +1,32 @@
+.ob-root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+// Canvas carries the depth heatmap; SVG carries prints, reference lines and axes.
+.ob-canvas,
+.ob-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.ob-overlay .hit {
+    cursor: crosshair;
+}
+
+.ob-overlay .trades circle {
+    pointer-events: none;
+}
+
+.ob-overlay text {
+    user-select: none;
+}
+
+.ob-landing {
+    user-select: none;
+    pointer-events: none;
+}

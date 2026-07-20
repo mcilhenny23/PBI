@@ -1,0 +1,114 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Time",
+            "name": "time",
+            "kind": "Grouping",
+            "description": "Timestamp or time bucket — one heatmap column per distinct value. Set to Don't summarize."
+        },
+        {
+            "displayName": "Price Level",
+            "name": "priceLevel",
+            "kind": "Grouping",
+            "description": "Price or price bucket — one heatmap row per distinct value. Set to Don't summarize."
+        },
+        {
+            "displayName": "Size / Liquidity",
+            "name": "size",
+            "kind": "Measure",
+            "description": "Resting depth at this price and time. Sign convention: negative = bid side, positive = ask side (enables best bid/ask lines). Unsigned data still renders."
+        },
+        {
+            "displayName": "Trade Volume",
+            "name": "trades",
+            "kind": "Measure",
+            "description": "Optional — executed volume, drawn as overlaid circles sized by volume"
+        }
+    ],
+    "objects": {
+        "heatmap": {
+            "properties": {
+                "colorRamp": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "blues", "displayName": "Blues" },
+                            { "value": "viridis", "displayName": "Viridis" },
+                            { "value": "inferno", "displayName": "Inferno" },
+                            { "value": "greens", "displayName": "Greens" },
+                            { "value": "oranges", "displayName": "Oranges" }
+                        ]
+                    }
+                },
+                "intensityScale": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "log", "displayName": "Log" },
+                            { "value": "sqrt", "displayName": "Square root" },
+                            { "value": "linear", "displayName": "Linear" }
+                        ]
+                    }
+                },
+                "cellInterpolation": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "nearest", "displayName": "Nearest" },
+                            { "value": "bilinear", "displayName": "Bilinear" }
+                        ]
+                    }
+                }
+            }
+        },
+        "tradeOverlay": {
+            "properties": {
+                "showTrades": { "type": { "bool": true } },
+                "tradeColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "tradeMinRadius": { "type": { "numeric": true } },
+                "tradeMaxRadius": { "type": { "numeric": true } }
+            }
+        },
+        "referenceLines": {
+            "properties": {
+                "showBestBid": { "type": { "bool": true } },
+                "bestBidColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showBestAsk": { "type": { "bool": true } },
+                "bestAskColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "axes": {
+            "properties": {
+                "showTimeAxis": { "type": { "bool": true } },
+                "showPriceAxis": { "type": { "bool": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "time" } },
+                        { "for": { "in": "priceLevel" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "size" } },
+                        { "for": { "in": "trades" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

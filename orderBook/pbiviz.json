@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "orderBook",
+        "displayName": "Order Book Heatmap",
+        "guid": "orderBookD8FC5C686355A8E51364FB89E3318831",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Bookmap-style market-depth heatmap: resting liquidity at every price level over time, with executed trades overlaid and best bid/ask tracking the spread. Market microstructure for desks that already run their portfolio analytics in Power BI.",
+        "supportUrl": "https://github.com/jeffs-visuals/order-book",
+        "gitHubUrl": "https://github.com/jeffs-visuals/order-book"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}
