@@ -1,0 +1,28 @@
+.spec-root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+// Canvas carries the heatmap; SVG carries axes, alarm bands and hit-testing.
+.spec-canvas,
+.spec-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.spec-overlay .hit {
+    cursor: crosshair;
+}
+
+.spec-overlay text {
+    user-select: none;
+}
+
+.spec-landing {
+    user-select: none;
+    pointer-events: none;
+}

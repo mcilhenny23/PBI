@@ -1,0 +1,128 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Time / Sample Index",
+            "name": "timeIndex",
+            "kind": "Grouping",
+            "description": "Ordered sample position — set to Don't summarize so every sample arrives as its own row"
+        },
+        {
+            "displayName": "Amplitude",
+            "name": "amplitude",
+            "kind": "Measure",
+            "description": "Signal amplitude at each sample"
+        },
+        {
+            "displayName": "Sensor",
+            "name": "sensor",
+            "kind": "Grouping",
+            "description": "Optional — renders one stacked spectrogram per sensor"
+        }
+    ],
+    "objects": {
+        "fft": {
+            "properties": {
+                "windowSize": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "64", "displayName": "64" },
+                            { "value": "128", "displayName": "128" },
+                            { "value": "256", "displayName": "256" },
+                            { "value": "512", "displayName": "512" },
+                            { "value": "1024", "displayName": "1024" },
+                            { "value": "2048", "displayName": "2048" }
+                        ]
+                    }
+                },
+                "overlapPercent": { "type": { "numeric": true } },
+                "windowFunction": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "hann", "displayName": "Hann" },
+                            { "value": "hamming", "displayName": "Hamming" },
+                            { "value": "blackman", "displayName": "Blackman" },
+                            { "value": "rectangular", "displayName": "Rectangular" }
+                        ]
+                    }
+                }
+            }
+        },
+        "display": {
+            "properties": {
+                "frequencyScale": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "linear", "displayName": "Linear" },
+                            { "value": "log", "displayName": "Log" }
+                        ]
+                    }
+                },
+                "magnitudeScale": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "db", "displayName": "dB" },
+                            { "value": "linear", "displayName": "Linear" }
+                        ]
+                    }
+                },
+                "colorRamp": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "viridis", "displayName": "Viridis" },
+                            { "value": "inferno", "displayName": "Inferno" },
+                            { "value": "magma", "displayName": "Magma" },
+                            { "value": "plasma", "displayName": "Plasma" },
+                            { "value": "turbo", "displayName": "Turbo" }
+                        ]
+                    }
+                },
+                "minMagnitude": { "type": { "numeric": true } },
+                "maxMagnitude": { "type": { "numeric": true } }
+            }
+        },
+        "alarmBands": {
+            "properties": {
+                "showAlarmBands": { "type": { "bool": true } },
+                "alarmBand1Low": { "type": { "numeric": true } },
+                "alarmBand1High": { "type": { "numeric": true } },
+                "alarmBand1Color": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "axis": {
+            "properties": {
+                "showTimeAxis": { "type": { "bool": true } },
+                "showFreqAxis": { "type": { "bool": true } },
+                "sampleRate": { "type": { "numeric": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "timeIndex" } },
+                        { "for": { "in": "sensor" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "amplitude" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

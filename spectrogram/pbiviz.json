@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "spectrogram",
+        "displayName": "Spectrogram",
+        "guid": "spectrogramC745B05E4D590575FA952918BDAED1FE",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Turns a vibration or acoustic signal into a time × frequency × magnitude heatmap via sliding-window FFT. Built for predictive maintenance and condition monitoring — spot harmonics, sidebands and developing faults without leaving Power BI. Pure TypeScript radix-2 FFT, no external libraries.",
+        "supportUrl": "https://github.com/jeffs-visuals/spectrogram",
+        "gitHubUrl": "https://github.com/jeffs-visuals/spectrogram"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}
