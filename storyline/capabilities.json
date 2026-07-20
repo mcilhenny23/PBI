@@ -1,0 +1,88 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Entity",
+            "name": "entity",
+            "kind": "Grouping",
+            "description": "One line per entity (person, customer, account…)"
+        },
+        {
+            "displayName": "Time Step",
+            "name": "timeStep",
+            "kind": "Grouping",
+            "description": "Discrete time points — one column per value"
+        },
+        {
+            "displayName": "Group",
+            "name": "group",
+            "kind": "Grouping",
+            "description": "Which group the entity belongs to at that time step"
+        }
+    ],
+    "objects": {
+        "layout": {
+            "properties": {
+                "lineTension": { "type": { "numeric": true } },
+                "groupGap": { "type": { "numeric": true } },
+                "entityGap": { "type": { "numeric": true } },
+                "orderingStrategy": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "minimize-crossings", "displayName": "Minimize crossings" },
+                            { "value": "alphabetical", "displayName": "Alphabetical" },
+                            { "value": "group-size", "displayName": "Group size" }
+                        ]
+                    }
+                }
+            }
+        },
+        "appearance": {
+            "properties": {
+                "lineWidth": { "type": { "numeric": true } },
+                "lineOpacity": { "type": { "numeric": true } },
+                "highlightOnHover": { "type": { "bool": true } },
+                "highlightOpacity": { "type": { "numeric": true } },
+                "dimOpacity": { "type": { "numeric": true } },
+                "colorBy": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "entity", "displayName": "Entity" },
+                            { "value": "group", "displayName": "Group" }
+                        ]
+                    }
+                }
+            }
+        },
+        "labels": {
+            "properties": {
+                "showEntityLabels": { "type": { "bool": true } },
+                "showGroupLabels": { "type": { "bool": true } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "entity" } },
+                        { "for": { "in": "timeStep" } },
+                        { "for": { "in": "group" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

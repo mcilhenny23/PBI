@@ -1,0 +1,27 @@
+.sl-root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.sl-container {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.sl-container .lines path {
+    cursor: pointer;
+    transition: stroke-opacity 120ms ease;
+}
+
+.sl-container .bands path,
+.sl-container .bands text,
+.sl-container .entity-labels text,
+.sl-container .time-axis text {
+    pointer-events: none;
+    user-select: none;
+}
+
+.sl-landing {
+    user-select: none;
+    pointer-events: none;
+}
