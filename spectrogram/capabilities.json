@@ -104,6 +104,14 @@
         "alarmBands": {
             "properties": {
                 "showAlarmBands": { "type": { "bool": true } },
+                "alarmBand1Units": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "hz", "displayName": "Hz" },
+                            { "value": "orders", "displayName": "Orders" }
+                        ]
+                    }
+                },
                 "alarmBand1Low": { "type": { "numeric": true } },
                 "alarmBand1High": { "type": { "numeric": true } },
                 "alarmBand1Color": { "type": { "fill": { "solid": { "color": true } } } },

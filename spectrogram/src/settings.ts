@@ -175,15 +175,28 @@ class AlarmBandsCard extends FormattingSettingsCard {
         value: false
     });
 
+    // Units are stored explicitly so a Hz-defined band doesn't silently
+    // reinterpret as orders (or vice-versa) when the user flips the Y axis.
+    alarmBand1Units = new formattingSettings.ItemDropdown({
+        name: "alarmBand1Units",
+        displayName: "Band units",
+        description: "Interprets Low/High as Hz or orders. The band only renders when it matches the current Y axis.",
+        items: [
+            { value: "hz", displayName: "Hz" },
+            { value: "orders", displayName: "Orders" }
+        ],
+        value: { value: "hz", displayName: "Hz" }
+    });
+
     alarmBand1Low = new formattingSettings.NumUpDown({
         name: "alarmBand1Low",
-        displayName: "Band low (Hz)",
+        displayName: "Band low",
         value: 100
     });
 
     alarmBand1High = new formattingSettings.NumUpDown({
         name: "alarmBand1High",
-        displayName: "Band high (Hz)",
+        displayName: "Band high",
         value: 200
     });
 
@@ -228,6 +241,7 @@ class AlarmBandsCard extends FormattingSettingsCard {
     displayName: string = "Alarm Bands";
     slices: Array<FormattingSettingsSlice> = [
         this.showAlarmBands,
+        this.alarmBand1Units,
         this.alarmBand1Low,
         this.alarmBand1High,
         this.alarmBand1Color,

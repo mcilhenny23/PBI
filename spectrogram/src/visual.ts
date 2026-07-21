@@ -479,12 +479,14 @@ export class Visual implements IVisual {
                 }
 
                 // ── Alarm band ─────────────────────────────────────
-                if (A.showAlarmBands.value) {
+                // Only render when the band's declared units match the current Y
+                // axis. Silently reinterpreting Hz values as orders (or vice versa)
+                // on an axis flip would collapse the band to invisibility.
+                const bandUnits = String(A.alarmBand1Units.value?.value ?? "hz");
+                const unitsMatch = this.ordersMode ? bandUnits === "orders" : bandUnits === "hz";
+                if (A.showAlarmBands.value && unitsMatch) {
                     const lo = Math.min(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
                     const hi = Math.max(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
-                    // In orders mode the band's low/high are read as orders,
-                    // so the same "vibration above 3×" alarm follows the machine
-                    // through a run-up without being retuned.
                     const toY = (f: number): number => {
                         if (this.ordersMode) {
                             const clamped = Math.max(0, Math.min(this.maxOrder, f));
