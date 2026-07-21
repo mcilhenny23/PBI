@@ -1,0 +1,85 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Word Cloud Modern preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style>
+<script src="node_modules/d3/dist/d3.min.js"></script>
+<script src="node_modules/d3-cloud/build/d3.layout.cloud.js"></script>
+</head>
+<body>
+<svg id="svg" width="960" height="560" viewBox="0 0 960 560"></svg>
+<script>
+(function () {
+  const svg = d3.select("#svg");
+  svg.append("text").attr("x", 20).attr("y", 26).attr("font-size", 18).attr("font-weight", 600).attr("fill", "#1a1a2e")
+    .text("Word Cloud Modern — bigrams surface real phrases (customer service, product quality…)");
+  svg.append("text").attr("x", 20).attr("y", 44).attr("font-size", 12).attr("fill", "#666")
+    .text("Rank-colored via Viridis · click-to-filter enabled in pre-aggregated mode");
+
+  const W = 960, H = 500;
+
+  // Pre-aggregated terms with weights.
+  const words = [
+    { text: "customer service", value: 42 },
+    { text: "delivery", value: 38 },
+    { text: "product quality", value: 35 },
+    { text: "fast", value: 28 },
+    { text: "excellent", value: 26 },
+    { text: "slow", value: 22 },
+    { text: "value", value: 20 },
+    { text: "packaging", value: 18 },
+    { text: "great", value: 17 },
+    { text: "price", value: 15 },
+    { text: "poor", value: 15 },
+    { text: "broken", value: 12 },
+    { text: "design", value: 11 },
+    { text: "response", value: 10 },
+    { text: "returns", value: 9 },
+    { text: "mobile app", value: 9 },
+    { text: "checkout", value: 8 },
+    { text: "notifications", value: 7 },
+    { text: "refund", value: 7 },
+    { text: "payment", value: 6 },
+    { text: "recommend", value: 6 },
+    { text: "shipping", value: 6 },
+    { text: "quick", value: 5 },
+    { text: "helpful", value: 5 },
+    { text: "resolve", value: 5 },
+    { text: "unresponsive", value: 4 },
+    { text: "confirmation", value: 3 },
+    { text: "issue", value: 3 },
+    { text: "amazing", value: 4 },
+    { text: "friendly", value: 4 },
+    { text: "reliable", value: 3 }
+  ];
+
+  // Size scale: sqrt from 12 to 64.
+  const wMin = d3.min(words, d => d.value), wMax = d3.max(words, d => d.value);
+  const sizeOf = v => 12 + (Math.sqrt(v) - Math.sqrt(wMin)) / (Math.sqrt(wMax) - Math.sqrt(wMin)) * 52;
+  const rankColor = d3.scaleSequential(d3.interpolateViridis).domain([words.length - 1, 0]);
+  words.sort((a, b) => b.value - a.value);
+
+  d3.layout.cloud()
+    .size([W, H])
+    .words(words.map(w => ({ ...w, size: sizeOf(w.value) })))
+    .padding(2)
+    .rotate(() => 0)
+    .font("Segoe UI")
+    .fontSize(d => d.size)
+    .spiral("archimedean")
+    .text(d => d.text)
+    .on("end", placed => {
+      const g = svg.append("g").attr("transform", `translate(${W / 2}, ${60 + H / 2})`);
+      g.selectAll("text").data(placed).enter().append("text")
+        .attr("text-anchor", "middle")
+        .style("font-family", "Segoe UI").style("font-weight", 600)
+        .style("font-size", d => d.size + "px")
+        .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+        .attr("fill", (d, i) => rankColor(i))
+        .text(d => d.text);
+    })
+    .start();
+})();
+</script>
+</body></html>

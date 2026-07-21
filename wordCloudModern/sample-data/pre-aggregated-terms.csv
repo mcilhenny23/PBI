@@ -1,0 +1,21 @@
+Term,Count,Category
+customer service,42,Service
+delivery,38,Logistics
+product quality,35,Product
+fast,28,Logistics
+excellent,26,Sentiment
+slow,22,Sentiment
+value,20,Product
+packaging,18,Logistics
+great,17,Sentiment
+poor,15,Sentiment
+broken,12,Product
+design,11,Product
+response,10,Service
+returns,9,Service
+mobile app,9,Tech
+checkout,8,Tech
+notifications,7,Tech
+refund,7,Service
+payment,6,Tech
+price,15,Product
