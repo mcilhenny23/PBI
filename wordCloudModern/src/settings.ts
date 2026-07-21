@@ -92,10 +92,16 @@ class InteractionCard extends FormattingSettingsCard {
     clickToFilter = new formattingSettings.ToggleSwitch({
         name: "clickToFilter", displayName: "Click a word to cross-filter", value: true
     });
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected words fade to this opacity when a word is selected or another visual filters this cloud.",
+        value: 25
+    });
 
     name = "interaction";
     displayName = "Interaction";
-    slices: Array<FormattingSettingsSlice> = [this.clickToFilter];
+    slices: Array<FormattingSettingsSlice> = [this.clickToFilter, this.dimUnselectedOpacity];
 }
 
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {

@@ -91,9 +91,35 @@ export class Visual implements IVisual {
         this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
 
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
+
         this.svg = d3.select(options.element).append("svg").classed("word-cloud", true);
         this.landing = this.svg.append("g").classed("wc-landing", true);
         this.container = this.svg.append("g").classed("wc-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGTextElement, PlacedWord>("text.wc-word").each(function (d) {
+            const t = d3.select(this);
+            const isSel = !!d.selectionId && activeIds.some(a => eq(a, d.selectionId!));
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            t.attr("opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -277,10 +303,24 @@ export class Visual implements IVisual {
             })
             .text(d => d.text)
             .attr("cursor", d => (d.selectionId && s.interactionCard.clickToFilter.value) ? "pointer" : "default")
+            .attr("tabindex", d => (d.selectionId && s.interactionCard.clickToFilter.value) ? 0 : -1)
+            .attr("role", "button")
+            .attr("aria-label", d => `${d.text}, weight ${d.weight}`)
             .on("click", (event: MouseEvent, d: PlacedWord) => {
                 event.stopPropagation();
                 if (!d.selectionId || !s.interactionCard.clickToFilter.value) return;
-                this.selectionManager.select(d.selectionId, (event as MouseEvent).ctrlKey || (event as MouseEvent).metaKey);
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(d.selectionId, multi).then(() => this.applySelectionStyling());
+            })
+            .on("contextmenu", (event: MouseEvent, d: PlacedWord) => {
+                event.preventDefault(); event.stopPropagation();
+                this.selectionManager.showContextMenu(d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+            })
+            .on("keydown", (event: KeyboardEvent, d: PlacedWord) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                if (!d.selectionId || !s.interactionCard.clickToFilter.value) return;
+                this.selectionManager.select(d.selectionId, event.shiftKey).then(() => this.applySelectionStyling());
             })
             .on("mousemove", (event: MouseEvent, d: PlacedWord) => {
                 this.tooltipService.show({
@@ -308,6 +348,8 @@ export class Visual implements IVisual {
                 .attr("width", bb.width + 8).attr("height", bb.height + 4)
                 .attr("rx", 3).attr("fill", palette.background).attr("stroke", palette.axisLine);
         }
+
+        this.applySelectionStyling();
     }
 
     private resolvePalette(): RenderPalette {

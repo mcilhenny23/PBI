@@ -75,11 +75,14 @@
         },
         "interaction": {
             "properties": {
-                "clickToFilter": { "type": { "bool": true } }
+                "clickToFilter": { "type": { "bool": true } },
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
             }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

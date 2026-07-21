@@ -24,3 +24,14 @@ In this mode **Click a word** cross-filters the report by that term — the Sele
 - **Layout → Weight → size scale = Logarithmic** to compress big outliers.
 - **Layout → Rotations = ±45° and ±90°** for a busier, more decorative pack.
 - **Layout → Spiral = Rectangular** for a tighter block shape.
+
+## Interactions
+
+Requires the **pre-aggregated** mode (Weight bound) so rows have data-model identity.
+
+- **Click a word** to filter every other visual on the page by that term. Ctrl / Shift-click to add to the selection.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Tab / Enter / Space** for keyboard-driven selection.
+- **Interaction → Unselected opacity** controls how much non-selected words fade. The same dimming applies when *another* visual filters this cloud.
+- **Interaction → Click a word to cross-filter** toggles the whole feature off if you want a read-only cloud.
