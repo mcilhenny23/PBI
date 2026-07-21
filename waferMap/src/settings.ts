@@ -200,10 +200,23 @@ class ZonesCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When another visual filters this wafer map, non-highlighted dies fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     waferCard = new WaferCard();
     dieAppearanceCard = new DieAppearanceCard();
     colorScaleCard = new ColorScaleCard();
     zonesCard = new ZonesCard();
-    cards = [this.waferCard, this.dieAppearanceCard, this.colorScaleCard, this.zonesCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.waferCard, this.dieAppearanceCard, this.colorScaleCard, this.zonesCard, this.interactionsCard];
 }

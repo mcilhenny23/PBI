@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -28,6 +31,7 @@ interface Die {
     stackN?: number;
     /** Stacked mode: how many of those failed. */
     stackFail?: number;
+    selectionId?: ISelectionId;
 }
 
 /** Where one wafer got drawn — kept so the mouse can be mapped back to a die. */
@@ -67,9 +71,10 @@ const numFmt = d3.format(",.4~g");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private colorPalette: ISandboxExtendedColorPalette;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
@@ -88,7 +93,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.colorPalette = options.host.colorPalette;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         // Canvas draws the dies (thousands of them); SVG sits on top for
         // vector chrome — outline, zones, notch, labels and hit-testing.
@@ -97,6 +105,19 @@ export class Visual implements IVisual {
         this.svg = this.root.append("svg").classed("wafer-svg", true);
         this.landing = this.svg.append("g").classed("wafer-landing", true);
         this.overlay = this.svg.append("g").classed("wafer-overlay", true);
+    }
+
+    /**
+     * Wafer map dies are painted on Canvas — no DOM to fill-opacity. Dim the
+     * whole canvas layer when another visual filters this chart; users still
+     * see the wafer outline and zones on the SVG chrome layer.
+     */
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.canvas.style("opacity", hasSel ? String(dim) : "1");
     }
 
     public update(options: VisualUpdateOptions) {
@@ -146,16 +167,25 @@ export class Visual implements IVisual {
 
             // ── Build dies ─────────────────────────────────────────
             const n = cats[xIdx].values.length;
+            // Selection identity: use the first bound category column (X coord is always present).
+            const identityCat = cats[xIdx];
             let dies: Die[] = [];
             for (let i = 0; i < n; i++) {
                 const dx = safeNum(cats[xIdx].values[i]);
                 const dy = safeNum(cats[yIdx].values[i]);
                 if (dx == null || dy == null) continue;          // non-numeric coords → skip
+                let selectionId: ISelectionId | undefined;
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(identityCat, i)
+                        .createSelectionId();
+                } catch { /* skipped */ }
                 dies.push({
                     x: Math.round(dx), y: Math.round(dy),
                     bin: binIdx >= 0 ? String(cats[binIdx].values[i]) : null,
                     value: valIdx >= 0 ? safeNum(vals[valIdx].values[i]) : null,
-                    wafer: waferIdx >= 0 ? String(cats[waferIdx].values[i]) : ""
+                    wafer: waferIdx >= 0 ? String(cats[waferIdx].values[i]) : "",
+                    selectionId
                 });
             }
             if (dies.length === 0) {
@@ -454,7 +484,34 @@ export class Visual implements IVisual {
                 }
                 this.tooltipService.hide({ immediately: false, isTouchEvent: false });
             })
-            .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+            .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }))
+            .on("click", (event: MouseEvent) => {
+                const [mx, my] = d3.pointer(event, this.svg.node());
+                for (const L of this.layouts) {
+                    const gx = Math.floor((mx - L.originX) / L.cell);
+                    const gy = Math.floor((my - L.originY) / L.cell);
+                    const d = L.dieMap.get(`${gx},${gy}`);
+                    if (!d?.selectionId) continue;
+                    event.stopPropagation();
+                    const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                    this.selectionManager.select(d.selectionId, multi).then(() => this.applyExternalDim());
+                    return;
+                }
+                // Empty area click → clear.
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            })
+            .on("contextmenu", (event: MouseEvent) => {
+                event.preventDefault();
+                const [mx, my] = d3.pointer(event, this.svg.node());
+                for (const L of this.layouts) {
+                    const gx = Math.floor((mx - L.originX) / L.cell);
+                    const gy = Math.floor((my - L.originY) / L.cell);
+                    const d = L.dieMap.get(`${gx},${gy}`);
+                    if (!d?.selectionId) continue;
+                    this.selectionManager.showContextMenu(d.selectionId, { x: event.clientX, y: event.clientY });
+                    return;
+                }
+            });
     }
 
     private renderCategoricalLegend(
