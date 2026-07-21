@@ -303,6 +303,14 @@ export class Visual implements IVisual {
                 ? parseOrderMarkers(String(O.orderMarkerList.value ?? ""))
                 : [];
 
+            // ── Band-power trend layout ───────────────────────────
+            // When enabled, take a fixed slice off the bottom of each panel for
+            // the trend strip. Kept short (~28 px) because it is a supplementary
+            // strip — the spectrogram is still the primary reading.
+            const trendOn = A.showAlarmBands.value && A.showBandTrend.value;
+            const trendH = trendOn && panelH >= 60 ? Math.min(36, Math.floor(panelH * 0.28)) : 0;
+            const heatH = panelH - trendH;
+
             ctx.imageSmoothingEnabled = true;
 
             specs.forEach((s, pi) => {
@@ -320,14 +328,17 @@ export class Visual implements IVisual {
                             spec.windowSize, spec.hopSize, spec.numWindows);
                     }
                 }
-                this.panels.push({ name: s.name, spec, rpm: framedRpm, x: plotX, y: py, w: plotW, h: panelH });
+                // Panel hit rect covers only the heatmap. When the trend strip
+                // is on, hovering it shouldn't fire spectrogram tooltips whose
+                // frequency reading would be nonsense off the axis.
+                this.panels.push({ name: s.name, spec, rpm: framedRpm, x: plotX, y: py, w: plotW, h: heatH });
 
                 // Build the heatmap in an offscreen image at (numWindows × rows),
                 // then let drawImage scale it into the panel. Frequency remapping
                 // (linear Hz, log Hz, or Hz → orders via RPM) happens while
                 // filling the rows — the FFT itself is unchanged and stays
                 // cached, so any axis switch is instant.
-                const rows = Math.min(MAX_OUTPUT_ROWS, Math.max(2, Math.round(panelH)));
+                const rows = Math.min(MAX_OUTPUT_ROWS, Math.max(2, Math.round(heatH)));
                 const off = document.createElement("canvas");
                 off.width = spec.numWindows; off.height = rows;
                 const octx = off.getContext("2d")!;
@@ -404,7 +415,7 @@ export class Visual implements IVisual {
                     }
                 }
                 octx.putImageData(img, 0, 0);
-                ctx.drawImage(off, 0, 0, spec.numWindows, rows, plotX, py, plotW, panelH);
+                ctx.drawImage(off, 0, 0, spec.numWindows, rows, plotX, py, plotW, heatH);
 
                 // Panel label for small multiples.
                 if (specs.length > 1 && s.name) {
@@ -422,14 +433,14 @@ export class Visual implements IVisual {
                 if (X.showFreqAxis.value) {
                     let yScale: d3.ScaleContinuousNumeric<number, number>;
                     if (this.ordersMode) {
-                        yScale = d3.scaleLinear().domain([0, this.maxOrder]).range([py + panelH, py]);
+                        yScale = d3.scaleLinear().domain([0, this.maxOrder]).range([py + heatH, py]);
                     } else if (this.logFreq) {
-                        yScale = d3.scaleLog().domain([fLow, nyquist]).range([py + panelH, py]);
+                        yScale = d3.scaleLog().domain([fLow, nyquist]).range([py + heatH, py]);
                     } else {
-                        yScale = d3.scaleLinear().domain([0, nyquist]).range([py + panelH, py]);
+                        yScale = d3.scaleLinear().domain([0, nyquist]).range([py + heatH, py]);
                     }
                     const axis = d3.axisLeft(yScale as d3.ScaleLinear<number, number>)
-                        .ticks(Math.max(2, Math.floor(panelH / 34)))
+                        .ticks(Math.max(2, Math.floor(heatH / 34)))
                         .tickSize(3).tickPadding(3);
                     const g = this.overlay.append("g")
                         .attr("transform", `translate(${plotX},0)`)
@@ -448,7 +459,7 @@ export class Visual implements IVisual {
                 if (this.ordersMode && orderMarkers.length) {
                     for (const om of orderMarkers) {
                         if (om <= 0 || om > this.maxOrder) continue;
-                        const yy = py + panelH - (om / this.maxOrder) * panelH;
+                        const yy = py + heatH - (om / this.maxOrder) * heatH;
                         this.overlay.append("line")
                             .attr("x1", plotX).attr("x2", plotX + plotW)
                             .attr("y1", yy).attr("y2", yy)
@@ -473,20 +484,20 @@ export class Visual implements IVisual {
                     const toY = (f: number): number => {
                         if (this.ordersMode) {
                             const clamped = Math.max(0, Math.min(this.maxOrder, f));
-                            return py + panelH - (clamped / this.maxOrder) * panelH;
+                            return py + heatH - (clamped / this.maxOrder) * heatH;
                         }
                         if (this.logFreq) {
                             const c = Math.max(f, fLow);
-                            return py + panelH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * panelH;
+                            return py + heatH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * heatH;
                         }
-                        return py + panelH - (f / nyquist) * panelH;
+                        return py + heatH - (f / nyquist) * heatH;
                     };
                     const y1 = toY(hi), y2 = toY(lo);
                     if (Number.isFinite(y1) && Number.isFinite(y2) && y2 > y1) {
                         this.overlay.append("rect")
                             .attr("x", plotX).attr("y", Math.max(py, y1))
                             .attr("width", plotW)
-                            .attr("height", Math.max(1, Math.min(py + panelH, y2) - Math.max(py, y1)))
+                            .attr("height", Math.max(1, Math.min(py + heatH, y2) - Math.max(py, y1)))
                             .attr("fill", A.alarmBand1Color.value.value)
                             .attr("fill-opacity", 0.18)
                             .attr("stroke", A.alarmBand1Color.value.value)
@@ -509,9 +520,9 @@ export class Visual implements IVisual {
                     const toY = (f: number): number => {
                         if (this.logFreq) {
                             const c = Math.max(f, fLow);
-                            return py + panelH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * panelH;
+                            return py + heatH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * heatH;
                         }
-                        return py + panelH - (f / nyquist) * panelH;
+                        return py + heatH - (f / nyquist) * heatH;
                     };
                     for (let k = 1; k <= nH; k++) {
                         const f = f0 * k;
@@ -535,6 +546,148 @@ export class Visual implements IVisual {
                                 .text(k === 1 ? `${f0}×1 = ${f0.toFixed(1)} Hz` : `${k}× (${f.toFixed(1)} Hz)`);
                         }
                     }
+                }
+
+                // ── Band-power trend strip ─────────────────────────
+                // A single scalar per frame — sum, peak or RMS-dB over the bins
+                // inside the alarm band. Bins are recomputed per-frame in orders
+                // mode because the band's Hz endpoints move with RPM; in Hz mode
+                // they're constant and hoisted out of the loop.
+                if (trendOn && trendH > 8) {
+                    const lo = Math.min(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
+                    const hi = Math.max(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
+                    const stat = String(A.bandStat.value?.value ?? "rmsDb");
+                    const bandColor = A.alarmBand1Color.value.value;
+                    const trendY0 = py + heatH;
+                    const trendY1 = py + panelH;
+
+                    const bandVal = (w: number): number => {
+                        let b0: number, b1: number;
+                        if (this.ordersMode && framedRpm) {
+                            const rpm = framedRpm[w];
+                            if (!Number.isFinite(rpm) || rpm <= 0) return NaN;
+                            const fShaft = rpm / 60;
+                            b0 = Math.max(0, Math.round(lo * fShaft / hzPerBin));
+                            b1 = Math.min(binMax, Math.round(hi * fShaft / hzPerBin));
+                        } else if (hasRate) {
+                            b0 = Math.max(0, Math.round(lo / hzPerBin));
+                            b1 = Math.min(binMax, Math.round(hi / hzPerBin));
+                        } else {
+                            b0 = Math.max(0, Math.round(lo));
+                            b1 = Math.min(binMax, Math.round(hi));
+                        }
+                        if (b1 < b0) return NaN;
+                        const base = w * spec.numBins;
+                        if (stat === "peak") {
+                            let mx = 0;
+                            for (let b = b0; b <= b1; b++) if (spec.data[base + b] > mx) mx = spec.data[base + b];
+                            return mx;
+                        }
+                        if (stat === "sum") {
+                            let s = 0;
+                            for (let b = b0; b <= b1; b++) s += spec.data[base + b];
+                            return s;
+                        }
+                        // rmsDb: 20 log10(sqrt(mean(mag²)) / peakOfEntireSpectrogram)
+                        let s2 = 0;
+                        for (let b = b0; b <= b1; b++) s2 += spec.data[base + b] * spec.data[base + b];
+                        const rms = Math.sqrt(s2 / (b1 - b0 + 1));
+                        return 20 * Math.log10(Math.max(rms, 1e-12) / peak);
+                    };
+
+                    const values = new Float64Array(spec.numWindows);
+                    let vLo = Infinity, vHi = -Infinity;
+                    for (let w = 0; w < spec.numWindows; w++) {
+                        const v = bandVal(w);
+                        values[w] = v;
+                        if (Number.isFinite(v)) { if (v < vLo) vLo = v; if (v > vHi) vHi = v; }
+                    }
+                    if (!Number.isFinite(vLo)) { vLo = 0; vHi = 1; }
+                    // Anchor the RMS-dB range to a sensible floor (−80 dB, like
+                    // the heatmap default) so a quiet trace doesn't get scaled
+                    // to full height and read as louder than it is.
+                    if (stat === "rmsDb") {
+                        if (vLo > -80) vLo = -80;
+                        if (vHi < 0) vHi = 0;
+                    } else if (vHi - vLo < 1e-9) {
+                        vHi = vLo + 1;
+                    }
+                    const threshold = A.bandThreshold.value;
+                    const hasThreshold = threshold != null && Number.isFinite(threshold);
+                    if (hasThreshold) {
+                        // Ensure the threshold line is inside the visible range,
+                        // otherwise it prints off-strip and looks like a bug.
+                        if (threshold < vLo) vLo = threshold;
+                        if (threshold > vHi) vHi = threshold;
+                    }
+                    const toXf = (w: number): number => plotX + (spec.numWindows > 1 ? w / (spec.numWindows - 1) * plotW : plotW / 2);
+                    const toYt = (v: number): number => trendY1 - ((v - vLo) / (vHi - vLo || 1)) * (trendY1 - trendY0);
+
+                    // Background so the strip reads as a distinct panel and the
+                    // trend line has contrast on whatever heatmap sits above.
+                    this.overlay.append("rect")
+                        .attr("x", plotX).attr("y", trendY0)
+                        .attr("width", plotW).attr("height", trendH)
+                        .attr("fill", "#f6f6f6").attr("stroke", "#ddd").attr("stroke-width", 0.5);
+
+                    // Frame highlights: shaded columns where the band-power
+                    // crosses the threshold. These are what an alarm would fire
+                    // on; drawing them makes the numeric threshold visible on
+                    // the heatmap itself, not just the trend line.
+                    if (hasThreshold) {
+                        const w = plotW / spec.numWindows;
+                        for (let i = 0; i < spec.numWindows; i++) {
+                            if (values[i] >= (threshold as number)) {
+                                this.overlay.append("rect")
+                                    .attr("x", toXf(i) - w / 2)
+                                    .attr("y", py).attr("width", Math.max(1, w))
+                                    .attr("height", heatH)
+                                    .attr("fill", bandColor).attr("fill-opacity", 0.18)
+                                    .attr("pointer-events", "none");
+                            }
+                        }
+                    }
+
+                    // Trend line as a path.
+                    let d = "";
+                    let started = false;
+                    for (let w = 0; w < spec.numWindows; w++) {
+                        const v = values[w];
+                        if (!Number.isFinite(v)) { started = false; continue; }
+                        d += (started ? "L" : "M") + toXf(w).toFixed(2) + "," + toYt(v).toFixed(2);
+                        started = true;
+                    }
+                    this.overlay.append("path")
+                        .attr("d", d).attr("fill", "none")
+                        .attr("stroke", bandColor).attr("stroke-width", 1.2);
+
+                    // Threshold line + axis label.
+                    if (hasThreshold) {
+                        const ty = toYt(threshold as number);
+                        this.overlay.append("line")
+                            .attr("x1", plotX).attr("x2", plotX + plotW)
+                            .attr("y1", ty).attr("y2", ty)
+                            .attr("stroke", bandColor).attr("stroke-dasharray", "4 3")
+                            .attr("stroke-width", 1).attr("opacity", 0.8);
+                    }
+
+                    // Left-side label so the strip is legible without a legend.
+                    const statLabel = stat === "peak" ? "band peak"
+                        : stat === "sum" ? "band Σmag"
+                        : "band RMS (dB)";
+                    this.overlay.append("text")
+                        .attr("x", plotX + 4).attr("y", trendY0 + fs)
+                        .attr("font-size", `${Math.max(9, fs - 2)}px`)
+                        .attr("fill", "#555")
+                        .text(statLabel);
+                    this.overlay.append("text")
+                        .attr("x", plotX + plotW - 4).attr("y", trendY0 + fs)
+                        .attr("text-anchor", "end")
+                        .attr("font-size", `${Math.max(9, fs - 2)}px`)
+                        .attr("fill", "#888")
+                        .text(this.ordersMode
+                            ? `${lo.toFixed(1)}–${hi.toFixed(1)}×`
+                            : hasRate ? `${lo.toFixed(0)}–${hi.toFixed(0)} Hz` : `bins ${lo.toFixed(0)}–${hi.toFixed(0)}`);
                 }
             });
 

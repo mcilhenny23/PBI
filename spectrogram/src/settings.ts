@@ -193,13 +193,47 @@ class AlarmBandsCard extends FormattingSettingsCard {
         value: { value: "#ff0000" }
     });
 
+    // ── Band-power trend ─────────────────────────────────────────
+    // Turn the band into a time series: energy inside [low, high] per frame,
+    // drawn as a strip below the spectrogram. This is the number vibration
+    // alarms actually watch — the heatmap shows the fault, the trend line
+    // tells you when it crossed the limit.
+    showBandTrend = new formattingSettings.ToggleSwitch({
+        name: "showBandTrend",
+        displayName: "Show band-power trend",
+        description: "Adds a strip below the spectrogram plotting energy inside the band over time.",
+        value: false
+    });
+
+    bandStat = new formattingSettings.ItemDropdown({
+        name: "bandStat",
+        displayName: "Band-power statistic",
+        description: "RMS-dB is what condition-monitoring alarms use. Peak-in-band tracks the tallest single component; sum tracks total energy.",
+        items: [
+            { value: "rmsDb", displayName: "RMS (dB)" },
+            { value: "peak", displayName: "Peak magnitude in band" },
+            { value: "sum", displayName: "Sum of magnitudes" }
+        ],
+        value: { value: "rmsDb", displayName: "RMS (dB)" }
+    });
+
+    bandThreshold = new formattingSettings.NumUpDown({
+        name: "bandThreshold",
+        displayName: "Alarm threshold",
+        description: "Draws a horizontal line at this level and highlights frames whose band-power crosses it. Leave blank to disable.",
+        value: null
+    });
+
     name: string = "alarmBands";
     displayName: string = "Alarm Bands";
     slices: Array<FormattingSettingsSlice> = [
         this.showAlarmBands,
         this.alarmBand1Low,
         this.alarmBand1High,
-        this.alarmBand1Color
+        this.alarmBand1Color,
+        this.showBandTrend,
+        this.bandStat,
+        this.bandThreshold
     ];
 }
 

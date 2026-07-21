@@ -106,7 +106,18 @@
                 "showAlarmBands": { "type": { "bool": true } },
                 "alarmBand1Low": { "type": { "numeric": true } },
                 "alarmBand1High": { "type": { "numeric": true } },
-                "alarmBand1Color": { "type": { "fill": { "solid": { "color": true } } } }
+                "alarmBand1Color": { "type": { "fill": { "solid": { "color": true } } } },
+                "showBandTrend": { "type": { "bool": true } },
+                "bandStat": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "rmsDb", "displayName": "RMS (dB)" },
+                            { "value": "peak", "displayName": "Peak magnitude in band" },
+                            { "value": "sum", "displayName": "Sum of magnitudes" }
+                        ]
+                    }
+                },
+                "bandThreshold": { "type": { "numeric": true } }
             }
         },
         "harmonicCursors": {

@@ -43,6 +43,17 @@ line chart of raw amplitude completely hides.
 Then turn on **Alarm Bands** with low 380 / high 460 to flag the band the fault
 sweeps into.
 
+**Band-power trending — when did the fault actually cross the alarm?** On the
+same alarm-band settings, turn on **Show band-power trend**. A strip appears
+below the spectrogram plotting **band RMS (dB)** over time — this is the
+number vibration-monitoring systems alarm on. Verified on this file: the
+background level in the 380–460 Hz band sits at **−33 dB (± 1.3 σ)** through
+the first six seconds, then jumps to **−14 dB** as the fault sweeps in. A
+19 dB step is unmistakable. Set **Alarm threshold** to `−30` (background +
+3σ) and the frames where the fault crosses the alarm get shaded on the
+heatmap itself, not just the trend line — so the alarm criterion is visible
+where the fault lives.
+
 **Harmonic cursors — is the 240 Hz band really a harmonic?** Turn on
 **Harmonic Cursors → Show**, set **Fundamental (Hz)** to `120`, leave
 **Harmonics** at `5`. Dashed lines land on the 120 Hz fundamental and 240,

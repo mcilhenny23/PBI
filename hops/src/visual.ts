@@ -67,6 +67,7 @@ export class Visual implements IVisual {
     private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
+    private ensembleLayer: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
     private outcomeLayer: d3.Selection<SVGGElement, unknown, null, undefined>;
     private formattingSettings: VisualFormattingSettingsModel;
@@ -130,8 +131,11 @@ export class Visual implements IVisual {
         if (!s) return;
         const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
         const hasSel = this.selectionManager.getSelectionIds().length > 0;
-        this.container.attr("opacity", hasSel ? dim : 1);
-        this.outcomeLayer?.attr("opacity", 1);   // outcome overlay stays legible
+        // Dim the ensemble only — outcome is a sibling so it stays legible as the
+        // anchor line. SVG group opacity is multiplicative down the tree, so
+        // outcomeLayer has to be *outside* ensembleLayer for a bare opacity=1 to
+        // read as truly opaque.
+        this.ensembleLayer?.attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
@@ -209,9 +213,12 @@ export class Visual implements IVisual {
 
             // ── Static layer (redrawn each update) ─────────────────
             this.container.selectAll("*").remove();
+            // Ensemble (dimmable) and outcome (persistent anchor) live as siblings
+            // so outcomeLayer.opacity=1 isn't cancelled by ensembleLayer.opacity<1.
+            this.ensembleLayer = this.container.append("g").classed("ensemble", true);
 
             if (axes.showGridlines.value) {
-                const grid = this.container.append("g").classed("gridlines", true);
+                const grid = this.ensembleLayer.append("g").classed("gridlines", true);
                 grid.selectAll("line").data(yScale.ticks(6)).enter().append("line")
                     .attr("x1", 0).attr("x2", plotW)
                     .attr("y1", d => yScale(d)).attr("y2", d => yScale(d))
@@ -220,7 +227,7 @@ export class Visual implements IVisual {
             }
 
             // Trail ghosts (created before outcome so they sit beneath it).
-            const trailG = this.container.append("g").classed("trails", true);
+            const trailG = this.ensembleLayer.append("g").classed("trails", true);
             const showTrail = anim.showTrail.value;
             const trailCount = showTrail ? Math.max(1, Math.min(10, Math.round(anim.trailCount.value || 3))) : 0;
             this.trailBaseOpacity = Math.max(0, Math.min(1, anim.trailOpacity.value / 100));
@@ -240,7 +247,7 @@ export class Visual implements IVisual {
             if (actuals) {
                 const pts = axisCats.map((c, i) => ({ cx: xScale(c)!, v: actuals[i] }));
                 if (pts.some(p => p.v != null)) {
-                    this.container.append("path")
+                    this.ensembleLayer.append("path")
                         .datum(pts)
                         .attr("d", lineGen)
                         .attr("fill", "none")
@@ -264,7 +271,7 @@ export class Visual implements IVisual {
 
             // Axes.
             if (axes.showXAxis.value) {
-                const g = this.container.append("g")
+                const g = this.ensembleLayer.append("g")
                     .attr("transform", `translate(0,${plotH})`)
                     .call(d3.axisBottom(xScale).tickSize(0).tickPadding(8));
                 g.select(".domain").attr("stroke", "#999");
@@ -274,7 +281,7 @@ export class Visual implements IVisual {
                 if (every > 1) g.selectAll<SVGTextElement, string>("text").attr("opacity", (_, i) => i % every === 0 ? 1 : 0);
             }
             if (axes.showYAxis.value) {
-                const g = this.container.append("g")
+                const g = this.ensembleLayer.append("g")
                     .call(d3.axisLeft(yScale).ticks(6).tickSize(0).tickPadding(6));
                 g.select(".domain").attr("stroke", "#999");
                 g.selectAll("text").attr("font-size", `${axes.fontSize.value}px`).attr("fill", "#666");
