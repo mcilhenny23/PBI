@@ -478,7 +478,14 @@ export function panMatrixProfile(
 
         const med = medianOf(vals);
         const mad = medianOf(vals.map(v => Math.abs(v - med)));
-        const spread = Math.max(1.4826 * mad, 1e-9);
+        // MAD below this threshold means the distance distribution is uniform to
+        // floating-point rounding at this length — dividing by 1e-9 produced
+        // contrast values in the 1e8 range so whichever length rounded lowest
+        // won suggestedMotifLength by luck. Rejecting these lengths outright
+        // lets a length with real distributional shape win.
+        const MAD_FLOOR = 1e-4;
+        if (mad < MAD_FLOOR) continue;
+        const spread = 1.4826 * mad;
         let minNorm = Infinity, maxNorm = -Infinity;
         for (const v of vals) { if (v < minNorm) minNorm = v; if (v > maxNorm) maxNorm = v; }
 
