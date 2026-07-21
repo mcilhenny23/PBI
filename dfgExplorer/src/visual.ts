@@ -18,8 +18,9 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import {
-    EventRow, CaseTrace, Variant, Dfg, DfgEdge,
-    buildTraces, buildDfg, buildVariants, metricOf, edgeKey, variantEdgeKeys
+    EventRow, CaseTrace, Variant, Dfg, DfgEdge, ReferenceModel, ConformanceReport,
+    buildTraces, buildDfg, buildVariants, metricOf, edgeKey, variantEdgeKeys,
+    parseReference, referenceFromVariant, conformance
 } from "./processMining";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
@@ -113,20 +114,22 @@ export class Visual implements IVisual {
             }
         });
 
-        // Arrowhead marker, recolored per render.
+        // Arrowhead markers, one per role. Colours are patched at render time.
+        // Kept in userSpaceOnUse so marker size doesn't track stroke-width —
+        // otherwise the heaviest edges sprout arrowheads bigger than the nodes.
         const defs = this.svg.append("defs");
-        defs.append("marker")
-            .attr("id", "dfg-arrow")
-            .attr("viewBox", "0 0 10 10")
-            .attr("refX", 10).attr("refY", 5)
-            .attr("markerWidth", 9).attr("markerHeight", 9)
-            // Without this, marker size scales with stroke-width, so the
-            // heaviest edges sprout arrowheads bigger than the nodes.
-            .attr("markerUnits", "userSpaceOnUse")
-            .attr("orient", "auto-start-reverse")
-            .append("path")
-            .attr("d", "M 0 0 L 10 5 L 0 10 z")
-            .attr("fill", "#999");
+        for (const id of ["dfg-arrow", "dfg-arrow-conform", "dfg-arrow-violation", "dfg-arrow-missing"]) {
+            defs.append("marker")
+                .attr("id", id)
+                .attr("viewBox", "0 0 10 10")
+                .attr("refX", 10).attr("refY", 5)
+                .attr("markerWidth", 9).attr("markerHeight", 9)
+                .attr("markerUnits", "userSpaceOnUse")
+                .attr("orient", "auto-start-reverse")
+                .append("path")
+                .attr("d", "M 0 0 L 10 5 L 0 10 z")
+                .attr("fill", "#999");
+        }
     }
 
     private applyExternalDim(): void {
@@ -232,6 +235,25 @@ export class Visual implements IVisual {
         const showLoops = D.showLoops.value;
         const fs = Math.max(6, N.nodeFontSize.value);
 
+        // ── Conformance ──────────────────────────────────────────
+        // Compute the classification up-front so edge/node draw code can pull
+        // colours from it. Reference-only edges are held for a post-layout
+        // overlay pass — dagre never sees them, so toggling conformance on/off
+        // never disturbs the map layout.
+        const C = this.formattingSettings.conformanceCard;
+        const conformOn = C.showConformance.value && this.dfg != null;
+        let reference: ReferenceModel | null = null;
+        let report: ConformanceReport | null = null;
+        if (conformOn) {
+            const src = String(C.referenceSource.value?.value ?? "manual");
+            if (src === "top-variant" && this.variants.length) {
+                reference = referenceFromVariant(this.variants[0]);
+            } else {
+                reference = parseReference(String(C.referenceEdges.value ?? ""));
+            }
+            report = conformance(this.dfg!, this.traces, reference);
+        }
+
         // ── Prune ──────────────────────────────────────────────
         const kept: DfgEdge[] = [];
         for (const e of this.dfg.edges.values()) {
@@ -281,7 +303,7 @@ export class Visual implements IVisual {
 
         const gr = g.graph();
         const gw = Math.max(1, gr.width || 1), gh = Math.max(1, gr.height || 1);
-        const noteH = (this.truncated || this.ambiguous > 0) ? 20 : 0;
+        const noteH = (this.truncated || this.ambiguous > 0 || (conformOn && report)) ? 20 : 0;
         const availW = mapW - 12, availH = height - 12 - noteH;
         const scale = Math.min(availW / gw, availH / gh, 1.5);
         const tx = (mapW - gw * scale) / 2;
@@ -302,6 +324,28 @@ export class Visual implements IVisual {
             this.svg.selectAll("text.dfg-note").remove();
         }
 
+        // ── Conformance summary ───────────────────────────────
+        this.svg.selectAll("text.dfg-conform").remove();
+        if (conformOn && report && reference) {
+            const totalEdges = report.conformingEdges.size + report.violationEdges.size;
+            const edgePct = totalEdges ? Math.round(report.conformingEdges.size / totalEdges * 100) : 0;
+            const casePct = report.totalCases ? Math.round(report.conformingCases / report.totalCases * 100) : 0;
+            const parts: string[] = [
+                `${casePct}% of ${intFmt(report.totalCases)} cases fully conform`,
+                `${edgePct}% of ${intFmt(totalEdges)} distinct transitions`,
+                `${intFmt(report.violationEdges.size)} violation${report.violationEdges.size === 1 ? "" : "s"}`,
+                `${intFmt(report.missingEdges.size)} missing`
+            ];
+            if (report.unmappableEdgeCount) parts.push(`${intFmt(report.unmappableEdgeCount)} reference edge${report.unmappableEdgeCount === 1 ? "" : "s"} unmappable`);
+            if (reference.invalidLines.length) parts.push(`${reference.invalidLines.length} unparseable ref line${reference.invalidLines.length === 1 ? "" : "s"}`);
+            this.svg.append("text").classed("dfg-conform", true)
+                .attr("x", mapW - 8).attr("y", 14)
+                .attr("text-anchor", "end")
+                .attr("font-size", "11px").attr("fill", "#243b53")
+                .attr("font-weight", 600)
+                .text(`Conformance · ${parts.join(" · ")}`);
+        }
+
         // ── Metric scale ───────────────────────────────────────
         const metricVals = flowEdges.map(e => metricOf(e, metric));
         const maxMetric = metricVals.length ? Math.max(...metricVals) : 1;
@@ -320,7 +364,22 @@ export class Visual implements IVisual {
         const pathEdges = sel ? variantEdgeKeys(sel) : null;
         const pathNodes = sel ? new Set(sel.sequence) : null;
 
+        // Recolour arrowheads in place. Each marker paints in a distinct role
+        // colour so an edge only has to pick the right marker id — no
+        // per-edge marker defs needed.
         this.svg.select("#dfg-arrow path").attr("fill", E.edgeColor.value.value);
+        this.svg.select("#dfg-arrow-conform path").attr("fill", C.conformingColor.value.value);
+        this.svg.select("#dfg-arrow-violation path").attr("fill", C.violationColor.value.value);
+        this.svg.select("#dfg-arrow-missing path").attr("fill", C.missingColor.value.value);
+
+        // Pick the stroke and arrowhead for an edge. Non-conformance mode
+        // falls back to the plain edge colour. Reference-only "missing" edges
+        // never reach this function; they're overlaid separately below.
+        const edgeStyle = (k: string): { stroke: string; marker: string } => {
+            if (!conformOn || !report) return { stroke: E.edgeColor.value.value, marker: "url(#dfg-arrow)" };
+            if (report.conformingEdges.has(k)) return { stroke: C.conformingColor.value.value, marker: "url(#dfg-arrow-conform)" };
+            return { stroke: C.violationColor.value.value, marker: "url(#dfg-arrow-violation)" };
+        };
 
         // ── Edges ──────────────────────────────────────────────
         const edgeLayer = this.plot.append("g").classed("edges", true);
@@ -332,15 +391,16 @@ export class Visual implements IVisual {
             if (!ge || !ge.points) continue;
             const onPath = !pathEdges || pathEdges.has(edgeKey(e.source, e.target));
             const w = wScale(metricOf(e, metric));
+            const style = edgeStyle(edgeKey(e.source, e.target));
             edgeLayer.append("path")
                 .attr("d", lineGen(ge.points as { x: number; y: number }[]))
                 .attr("fill", "none")
-                .attr("stroke", E.edgeColor.value.value)
+                .attr("stroke", style.stroke)
                 .attr("stroke-width", onPath ? w : Math.min(w, 1.2))
                 .attr("stroke-opacity", onPath ? 0.9 : 0.12)
-                .attr("marker-end", "url(#dfg-arrow)")
+                .attr("marker-end", style.marker)
                 .style("cursor", "default")
-                .on("mousemove", (event: MouseEvent) => this.showEdgeTooltip(event, e, metric))
+                .on("mousemove", (event: MouseEvent) => this.showEdgeTooltip(event, e, metric, report))
                 .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
 
             if (E.showEdgeLabel.value && onPath) {
@@ -364,15 +424,50 @@ export class Visual implements IVisual {
             const onPath = !pathEdges || pathEdges.has(edgeKey(e.source, e.target));
             const r = nodeH * 0.55;
             const cx = nd.x + nd.width / 2 - 6, cy = nd.y - nd.height / 2;
+            const style = edgeStyle(edgeKey(e.source, e.target));
             edgeLayer.append("path")
                 .attr("d", `M ${cx - 8} ${cy} C ${cx - 6} ${cy - r * 1.7}, ${cx + r} ${cy - r * 1.7}, ${cx + 2} ${cy}`)
                 .attr("fill", "none")
-                .attr("stroke", E.edgeColor.value.value)
+                .attr("stroke", style.stroke)
                 .attr("stroke-width", onPath ? wScale(metricOf(e, metric)) : 1)
                 .attr("stroke-opacity", onPath ? 0.9 : 0.12)
-                .attr("marker-end", "url(#dfg-arrow)")
-                .on("mousemove", (event: MouseEvent) => this.showEdgeTooltip(event, e, metric))
+                .attr("marker-end", style.marker)
+                .on("mousemove", (event: MouseEvent) => this.showEdgeTooltip(event, e, metric, report))
                 .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+        }
+
+        // ── Missing edges overlay ──────────────────────────────
+        // Reference edges the log never took. Drawn as dashed straight lines
+        // between node centres because they weren't in dagre's layout — so
+        // toggling conformance on/off never disturbs the map.
+        if (conformOn && report && C.showMissing.value && report.missingEdges.size) {
+            const missingLayer = this.plot.append("g").classed("missing-edges", true);
+            const missingColor = C.missingColor.value.value;
+            for (const k of report.missingEdges) {
+                const sp = k.indexOf(" ");
+                const s = k.slice(0, sp), t = k.slice(sp + 1);
+                const nA = g.node(s), nB = g.node(t);
+                if (!nA || !nB) continue;
+                missingLayer.append("path")
+                    .attr("d", `M ${nA.x} ${nA.y} L ${nB.x} ${nB.y}`)
+                    .attr("fill", "none")
+                    .attr("stroke", missingColor)
+                    .attr("stroke-width", 1.4)
+                    .attr("stroke-opacity", 0.75)
+                    .attr("stroke-dasharray", "5 4")
+                    .attr("marker-end", "url(#dfg-arrow-missing)")
+                    .on("mousemove", (event: MouseEvent) => {
+                        const [px, py] = d3.pointer(event, this.svg.node());
+                        this.tooltipService.show({
+                            dataItems: [
+                                { displayName: "Missing transition", value: `${s} → ${t}` },
+                                { displayName: "Status", value: "In reference, never observed" }
+                            ],
+                            identities: [], coordinates: [px, py], isTouchEvent: false
+                        });
+                    })
+                    .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+            }
         }
 
         // ── Nodes ──────────────────────────────────────────────
@@ -434,7 +529,7 @@ export class Visual implements IVisual {
         else this.panelDiv.selectAll("*").remove();
     }
 
-    private showEdgeTooltip(event: MouseEvent, e: DfgEdge, metric: string): void {
+    private showEdgeTooltip(event: MouseEvent, e: DfgEdge, metric: string, report: ConformanceReport | null): void {
         const [px, py] = d3.pointer(event, this.svg.node());
         const items: VisualTooltipDataItem[] = [
             { displayName: "Transition", value: `${e.source} → ${e.target}` },
@@ -447,6 +542,13 @@ export class Visual implements IVisual {
             items.push({ displayName: "Total value", value: numFmt(e.totalValue) });
         }
         if (e.source === e.target) items.push({ displayName: "Type", value: "Self-loop (rework)" });
+        if (report) {
+            const k = edgeKey(e.source, e.target);
+            items.push({
+                displayName: "Conformance",
+                value: report.conformingEdges.has(k) ? "Conforming (in reference)" : "Violation (not in reference)"
+            });
+        }
         this.tooltipService.show({
             dataItems: items, identities: [],
             coordinates: [px, py], isTouchEvent: false

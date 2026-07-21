@@ -163,6 +163,77 @@ class EdgesCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Conformance Checking — compare observed transitions against a reference
+ * model. Reference model is the set of edges the process is *supposed* to
+ * take. Anything the log does that's not in the reference is a violation;
+ * anything the reference expects that never happened is missing.
+ */
+class ConformanceCard extends FormattingSettingsCard {
+    showConformance = new formattingSettings.ToggleSwitch({
+        name: "showConformance",
+        displayName: "Show conformance",
+        description: "Colour observed edges by whether they match the reference. Missing reference edges are overlaid as dashed lines.",
+        value: false
+    });
+
+    referenceSource = new formattingSettings.ItemDropdown({
+        name: "referenceSource",
+        displayName: "Reference source",
+        description: "Manual accepts a list of expected transitions. Top variant auto-uses the most-frequent path as the reference (useful for a first pass or when there's no documented model).",
+        items: [
+            { value: "manual", displayName: "Manual list below" },
+            { value: "top-variant", displayName: "Top variant (auto)" }
+        ],
+        value: { value: "manual", displayName: "Manual list below" }
+    });
+
+    referenceEdges = new formattingSettings.TextInput({
+        name: "referenceEdges",
+        displayName: "Expected transitions",
+        description: "One per line or separated by ;. Format: A -> B (arrow: -> or → or =>). Chains allowed: A -> B -> C. Use # or // for comments.",
+        value: "",
+        placeholder: "Create PO -> Approve; Approve -> Receive Goods; Receive Goods -> Invoice; Invoice -> Pay"
+    });
+
+    conformingColor = new formattingSettings.ColorPicker({
+        name: "conformingColor",
+        displayName: "Conforming color",
+        value: { value: "#2ca02c" }
+    });
+
+    violationColor = new formattingSettings.ColorPicker({
+        name: "violationColor",
+        displayName: "Violation color",
+        value: { value: "#d62728" }
+    });
+
+    missingColor = new formattingSettings.ColorPicker({
+        name: "missingColor",
+        displayName: "Missing edge color",
+        value: { value: "#888888" }
+    });
+
+    showMissing = new formattingSettings.ToggleSwitch({
+        name: "showMissing",
+        displayName: "Show missing edges",
+        description: "Overlay reference edges never observed as dashed ghost lines between the two nodes.",
+        value: true
+    });
+
+    name: string = "conformance";
+    displayName: string = "Conformance";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showConformance,
+        this.referenceSource,
+        this.referenceEdges,
+        this.conformingColor,
+        this.violationColor,
+        this.missingColor,
+        this.showMissing
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -178,8 +249,9 @@ class InteractionsCard extends FormattingSettingsCard {
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     dfgCard = new DfgCard();
     variantsCard = new VariantsCard();
+    conformanceCard = new ConformanceCard();
     nodesCard = new NodesCard();
     edgesCard = new EdgesCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.dfgCard, this.variantsCard, this.nodesCard, this.edgesCard, this.interactionsCard];
+    cards = [this.dfgCard, this.variantsCard, this.conformanceCard, this.nodesCard, this.edgesCard, this.interactionsCard];
 }

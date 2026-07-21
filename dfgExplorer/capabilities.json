@@ -78,6 +78,24 @@
                 "showEdgeLabel": { "type": { "bool": true } }
             }
         },
+        "conformance": {
+            "properties": {
+                "showConformance": { "type": { "bool": true } },
+                "referenceSource": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "manual", "displayName": "Manual list below" },
+                            { "value": "top-variant", "displayName": "Top variant (auto)" }
+                        ]
+                    }
+                },
+                "referenceEdges": { "type": { "text": true } },
+                "conformingColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "violationColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "missingColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showMissing": { "type": { "bool": true } }
+            }
+        },
         "interactions": {
             "properties": {
                 "dimUnselectedOpacity": { "type": { "numeric": true } }

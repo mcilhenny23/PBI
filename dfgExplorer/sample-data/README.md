@@ -51,6 +51,51 @@ Things the map makes obvious that a table never would:
 
 ---
 
+## Conformance checking — how many cases followed the policy?
+
+Turn on **Conformance → Show conformance** and paste this reference into
+**Expected transitions**:
+
+```
+Create PO -> Approve -> Send to Vendor -> Receive Goods
+Receive Goods -> Receive Invoice -> Pay
+```
+
+Each observed transition is now coloured green (in reference) or red
+(violation), and every heatmap-style tooltip picks up **Conformance:
+Conforming / Violation**. The summary strip at the top-right reports the
+whole story in one line:
+
+> **Conformance · 49% of 400 cases fully conform · 38% of 13 distinct
+> transitions · 8 violations · 0 missing**
+
+Verified against this file — half the cases fail somewhere. The top eight
+violating transitions (from the map):
+
+| Transition | ×  | What it means |
+|---|---:|---|
+| Approve → Reject | 115 | rework loop entry |
+| Reject → Revise | 115 | rework loop body |
+| Revise → Approve | 115 | rework loop exit |
+| Send to Vendor → Receive Invoice | 46 | invoice before goods |
+| Receive Invoice → Receive Goods | 46 | goods after invoice |
+| Receive Goods → Pay | 51 | invoicing step skipped |
+| Send to Vendor → Cancel | 33 | vendor cancellation |
+| Create PO → Send to Vendor | 27 | **approval skipped** — control gap |
+
+The last one is the interesting audit finding: 27 purchase orders reached
+the vendor with no approval. Prefer the **Reference source → Top variant
+(auto)** shortcut to skip typing the reference — it uses the most frequent
+happy path as the reference model, which is a reasonable proxy when no
+documented model exists.
+
+Flip **Show missing edges** off if the reference contains transitions the
+log never took and the dashed ghost lines get in the way of reading the
+map. Reference lines the parser can't read (arrow missing, empty node) are
+counted in the summary, so a typo doesn't fail silently.
+
+---
+
 ## Things to try
 
 - **Click a variant** in the right panel. The map dims to just that path, so

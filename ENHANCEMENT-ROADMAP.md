@@ -47,7 +47,7 @@ Four themes recur:
 
 ## 4. DFG / Process Map — process mining
 
-- **▶ Conformance checking** *(B)* — compare the discovered process against a reference model and highlight deviations. **The #1 commercial process-mining capability**, and this visual is close to it.
+- **✅ Conformance checking** *(B)* — **Conformance → Show conformance** compares observed transitions against a reference model. Reference source can be **Manual list** (paste `A -> B` per line/semicolon, with `->`, `→`, or `=>` accepted, and `#`/`//` comments) or **Top variant (auto)** — the most frequent path as a stand-in when no policy is documented. Observed edges are recoloured green/red per conformance; reference edges never observed are overlaid as dashed grey ghost lines between the two nodes (dagre doesn't see them, so toggling never disturbs the layout). Top-right summary reports case fitness, edge fitness, violation count, missing count, and parse errors. Verified on the P2P sample: 49% of 400 cases fully conform, exposing eight violation transitions including the 27-case "approval skipped" control gap and the 46-case "invoice before goods" three-way matching failure.
 - **▶ Rework & loop metrics** *(C)* — rework rate, self-loop counts, rework cost as figures.
 - **▶ Variant selection → cross-filter the report** — variant clicking exists but only filters *within* the visual.
 - **○ Performance overlay** — bottleneck highlighting by duration (partly available via edge metric).
