@@ -1,0 +1,35 @@
+.line-focus {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.lf-plot, .lf-focus, .lf-overlay {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.lf-plot .gridlines line {
+    pointer-events: none;
+    shape-rendering: crispEdges;
+}
+
+.lf-plot .context path.series {
+    pointer-events: none;
+}
+
+.lf-focus path.series-focus {
+    pointer-events: none;
+}
+
+.lf-overlay rect {
+    cursor: crosshair;
+}
+
+.lf-focus .end-labels text {
+    pointer-events: none;
+}
+
+.lf-landing {
+    user-select: none;
+    pointer-events: none;
+}

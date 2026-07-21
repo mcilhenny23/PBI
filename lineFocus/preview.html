@@ -1,0 +1,139 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Line Focus preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style></head>
+<body>
+<svg id="svg" width="1000" height="560" viewBox="0 0 1000 560"></svg>
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  function el(tag, attrs) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  const W = 1000, H = 560;
+  const M = { top: 60, right: 200, bottom: 50, left: 60 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  // Title.
+  const t = el("text", { x: M.left, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" });
+  t.textContent = "Line Focus — 40 series, three spotlighted";
+  svg.appendChild(t);
+  const sub = el("text", { x: M.left, y: 46, "font-size": 12, fill: "#666" });
+  sub.textContent = "All-gray context; palette-colored focus with direct end labels";
+  svg.appendChild(sub);
+
+  // Series definitions
+  function box() { const u = Math.random(), v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  const N = 40, T = 12;
+  const series = [];
+  const names = ["USA","China","Japan","Germany","India","UK","France","Italy","Brazil","Canada","Russia","South Korea","Australia","Spain","Mexico","Indonesia","Netherlands","Saudi","Turkey","Switzerland","Taiwan","Poland","Sweden","Belgium","Argentina","Norway","Ireland","Israel","Thailand","Nigeria","Austria","Malaysia","Denmark","Philippines","Vietnam","Bangladesh","Colombia","S. Africa","Chile","Finland"];
+  for (let i = 0; i < N; i++) {
+    let v = 100 + Math.random() * 40;
+    const trend = (Math.random() - 0.5) * 3;
+    const pts = [];
+    for (let j = 0; j < T; j++) {
+      v = Math.max(30, v + trend + box() * 4);
+      pts.push({ i: j, y: v });
+    }
+    series.push({ name: names[i], pts, last: pts[T - 1].y });
+  }
+
+  // Scales.
+  const xScale = i => M.left + i / (T - 1) * plotW;
+  let yMin = Infinity, yMax = -Infinity;
+  for (const s of series) for (const p of s.pts) { if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y; }
+  const yPad = (yMax - yMin) * 0.05;
+  const yScale = v => M.top + plotH - (v - (yMin - yPad)) / ((yMax + yPad) - (yMin - yPad)) * plotH;
+
+  // Gridlines.
+  const gridG = el("g"); svg.appendChild(gridG);
+  const ticks = 5;
+  for (let k = 0; k <= ticks; k++) {
+    const val = yMin + (yMax - yMin) * (k / ticks);
+    const y = yScale(val);
+    gridG.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: y, y2: y, stroke: "#eaeaea" }));
+    const lbl = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 11, fill: "#666" });
+    lbl.textContent = val.toFixed(0);
+    gridG.appendChild(lbl);
+  }
+
+  // X ticks (every other quarter).
+  const quarters = ["Q1'24","Q2'24","Q3'24","Q4'24","Q1'25","Q2'25","Q3'25","Q4'25","Q1'26","Q2'26","Q3'26","Q4'26"];
+  for (let i = 0; i < T; i++) {
+    if (i % 2 !== 0) continue;
+    const x = xScale(i);
+    const lbl = el("text", { x, y: M.top + plotH + 18, "text-anchor": "middle", "font-size": 11, fill: "#666" });
+    lbl.textContent = quarters[i];
+    svg.appendChild(lbl);
+  }
+
+  // Line generator (monotone approximation via cubic paths).
+  function linePath(pts) {
+    let d = `M ${xScale(pts[0].i)} ${yScale(pts[0].y)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const p0 = pts[i - 1], p1 = pts[i];
+      const midX = (xScale(p0.i) + xScale(p1.i)) / 2;
+      d += ` C ${midX} ${yScale(p0.y)}, ${midX} ${yScale(p1.y)}, ${xScale(p1.i)} ${yScale(p1.y)}`;
+    }
+    return d;
+  }
+
+  // Top-3 by final value = focus set.
+  const ranked = series.slice().sort((a, b) => b.last - a.last);
+  const focusNames = new Set([ranked[0].name, ranked[1].name, ranked[2].name]);
+  const focusColors = { [ranked[0].name]: "#4E79A7", [ranked[1].name]: "#F28E2B", [ranked[2].name]: "#59A14F" };
+
+  // Context layer (all series in gray).
+  const contextG = el("g"); svg.appendChild(contextG);
+  for (const s of series) {
+    contextG.appendChild(el("path", {
+      d: linePath(s.pts), fill: "none", stroke: "#d9d9d9",
+      "stroke-width": 1, "stroke-opacity": 0.6
+    }));
+  }
+
+  // Focus layer.
+  const focusG = el("g"); svg.appendChild(focusG);
+  const focusedSeries = series.filter(s => focusNames.has(s.name));
+  for (const s of focusedSeries) {
+    focusG.appendChild(el("path", {
+      d: linePath(s.pts), fill: "none",
+      stroke: focusColors[s.name], "stroke-width": 2.5, "stroke-linejoin": "round"
+    }));
+  }
+
+  // Axes.
+  svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH, stroke: "#999" }));
+  svg.appendChild(el("line", { x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH, stroke: "#999" }));
+
+  // End labels — with vertical de-collision.
+  const labels = focusedSeries.map(s => ({
+    ser: s, x: xScale(T - 1), y: yScale(s.last),
+    text: `${s.name} (${s.last.toFixed(0)})`,
+    color: focusColors[s.name]
+  }));
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) {
+    if (labels[i].y - labels[i - 1].y < 16) labels[i].y = labels[i - 1].y + 16;
+  }
+  for (const l of labels) {
+    const trueY = yScale(l.ser.last);
+    if (Math.abs(trueY - l.y) > 6) {
+      svg.appendChild(el("line", {
+        x1: l.x + 2, x2: l.x + 6, y1: trueY, y2: l.y,
+        stroke: l.color, "stroke-width": 0.75
+      }));
+    }
+    const t = el("text", { x: l.x + 8, y: l.y, "dominant-baseline": "central", "font-size": 12, "font-weight": 600, fill: l.color });
+    t.textContent = l.text;
+    svg.appendChild(t);
+  }
+})();
+</script>
+</body></html>
