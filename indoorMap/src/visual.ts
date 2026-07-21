@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -24,6 +27,8 @@ interface MapPoint {
     label: string | null;
     cat: string | null;
     value: number | null;
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 interface RenderPalette {
@@ -91,9 +96,10 @@ function isValidRasterDataUri(s: string | null | undefined): boolean {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -115,7 +121,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.root = options.element as HTMLDivElement;
         this.container = document.createElement("div");
@@ -137,6 +146,39 @@ export class Visual implements IVisual {
         this.pointsG = this.svg.append("g").classed("im-points", true);
         this.labelsG = this.svg.append("g").classed("im-labels", true);
         this.landing = this.svg.append("g").classed("im-landing", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.pointsG.selectAll<SVGCircleElement, MapPoint>("circle").each(function (d) {
+            if (!d) return;
+            const isSel = !!d.selectionId && activeIds.some(a => eq(a, d.selectionId!));
+            const isHl = d.isHighlighted !== false;
+            let mult = 1;
+            if (hasSel && !isSel) mult = dim;
+            if (!isHl) mult = Math.min(mult, dim);
+            const circle = d3.select(this);
+            const base = Number(circle.attr("fill-opacity") ?? 0.9);
+            // Store the base once so repeated applies don't compound the dim.
+            const stored = Number((this as SVGCircleElement).dataset.baseOpacity ?? base);
+            if (!(this as SVGCircleElement).dataset.baseOpacity) {
+                (this as SVGCircleElement).dataset.baseOpacity = String(stored);
+            }
+            circle.attr("fill-opacity", stored * mult);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -178,17 +220,36 @@ export class Visual implements IVisual {
         const catIdx = findCategoryIndex(cat.categories, "colorBy");
         const imgIdx = findCategoryIndex(cat.categories, "imageData");
 
+        // Selection identity: prefer the Label category, fall back to colorBy.
+        const identityCat = lblIdx >= 0 ? cat.categories![lblIdx]
+                          : catIdx >= 0 ? cat.categories![catIdx]
+                          : null;
+        // Highlights ride on the X value column when present.
+        const xHighlights = values[xIdx].highlights ?? null;
+
         const rows = values[xIdx].values.length;
         const points: MapPoint[] = [];
         for (let i = 0; i < rows; i++) {
             const x = safeNum(values[xIdx].values[i]);
             const y = safeNum(values[yIdx].values[i]);
             if (x == null || y == null) continue;
+
+            let selectionId: ISelectionId | undefined;
+            if (identityCat) {
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(identityCat, i)
+                        .createSelectionId();
+                } catch { /* skipped */ }
+            }
+            const isHighlighted = xHighlights ? (xHighlights[i] != null) : true;
+
             points.push({
                 x, y,
                 label: lblIdx >= 0 ? String(cat.categories![lblIdx].values[i]) : null,
                 cat:   catIdx >= 0 ? String(cat.categories![catIdx].values[i]) : null,
-                value: vIdx >= 0 ? safeNum(values[vIdx].values[i]) : null
+                value: vIdx >= 0 ? safeNum(values[vIdx].values[i]) : null,
+                selectionId, isHighlighted
             });
         }
 
@@ -298,14 +359,35 @@ export class Visual implements IVisual {
             const rScale = (v: number | null): number => v == null ? baseR : baseR * Math.sqrt(v / maxV) * 1.5;
 
             const pointG = this.pointsG.append("g");
-            pointG.selectAll("circle")
+            const circles = pointG.selectAll("circle")
                 .data(pts).enter().append("circle")
                 .attr("cx", d => px(d.x)).attr("cy", d => py(d.y))
                 .attr("r", d => Math.max(2, rScale(d.value)))
                 .attr("fill", d => palette.highContrast ? palette.single : (d.cat ? catColor(d.cat) : palette.single))
                 .attr("fill-opacity", opacity)
                 .attr("stroke", palette.background)
-                .attr("stroke-width", 1);
+                .attr("stroke-width", 1)
+                .attr("tabindex", d => d.selectionId ? 0 : -1)
+                .attr("role", "button")
+                .attr("aria-label", d => d.label ? `Point ${d.label}` : "Point");
+
+            circles.style("cursor", d => d.selectionId ? "pointer" : "default");
+            circles.on("click", (event: MouseEvent, d) => {
+                event.stopPropagation();
+                if (!d.selectionId) return;
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(d.selectionId, multi).then(() => this.applySelectionStyling());
+            });
+            circles.on("contextmenu", (event: MouseEvent, d) => {
+                event.preventDefault(); event.stopPropagation();
+                this.selectionManager.showContextMenu(d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+            });
+            circles.on("keydown", (event: KeyboardEvent, d) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                if (!d.selectionId) return;
+                this.selectionManager.select(d.selectionId, event.shiftKey).then(() => this.applySelectionStyling());
+            });
         }
 
         // ── Labels ──
@@ -361,6 +443,8 @@ export class Visual implements IVisual {
                 dataItems: items, identities: [], coordinates: [event.clientX, event.clientY], isTouchEvent: false
             });
         }).on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+
+        this.applySelectionStyling();
     }
 
     private renderHeat(

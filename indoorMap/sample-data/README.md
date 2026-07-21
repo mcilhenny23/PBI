@@ -25,3 +25,11 @@ Set **Image → Image width** to `700` and **Image height** to `320` so the coor
 
 ## Security note
 The `Floor Plan` column only accepts `data:image/png`, `data:image/jpeg`, or `data:image/webp`. **SVG URIs are rejected** — they can carry script tags. If you drop an SVG URI, the visual shows an inline warning ("SVG floor plans are not accepted — use PNG or JPEG").
+
+## Interactions
+
+- **Click a point** to filter every other visual on the page by that pick location (or whichever category is bound to Label). Ctrl / Shift-click to add.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Tab / Enter / Space** for keyboard-driven selection.
+- **Interactions → Unselected opacity** controls how much non-selected points fade. The same dimming applies when *another* visual filters this map.

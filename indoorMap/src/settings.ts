@@ -80,9 +80,22 @@ class LabelsCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.labelMode, this.fontSize];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected / non-highlighted points fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     imageCard = new ImageCard();
     overlayCard = new OverlayCard();
     labelsCard = new LabelsCard();
-    cards = [this.imageCard, this.overlayCard, this.labelsCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.imageCard, this.overlayCard, this.labelsCard, this.interactionsCard];
 }
