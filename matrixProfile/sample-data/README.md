@@ -32,6 +32,27 @@ discords want opposite baselines**:
 Feed a random-walk series to a discord search and it will (correctly) tell you
 every stretch is novel — because in a random walk, it is.
 
+### The visual handles this for you
+
+Because of that tension, blindly drawing "top 3 motifs and top 3 discords" means
+**half the highlights are noise on any real dataset**. So the default
+**Highlight → Auto** only marks findings that genuinely stand apart from the
+next-best candidates, scored in robust σ:
+
+| Dataset | Motif salience | Discord salience | Auto shows |
+|---|---:|---:|---|
+| Pump pressure | **1.43σ** | 0.60σ | motif only |
+| ECG | 0.72σ | **88σ** | discord only |
+
+The suppressed side is exactly the meaningless one — the pump's "discord" is
+just its noisiest stretch, and the ECG's "motif" is two adjacent normal beats.
+A note under the header tells you when a side has been suppressed, so silence
+never reads as breakage.
+
+Set **Highlight** to *Motifs only*, *Discords only* or *Both (unfiltered)* to
+override, and lower **Salience threshold** (default 1.0) to admit weaker
+findings.
+
 ---
 
 ## 1 · Pump pressure — motif discovery
@@ -78,7 +99,10 @@ threshold — just the window length.
   0% every position trivially matches its neighbour and the profile flatlines
   to zero — a good way to see why the exclusion exists.
 - **Motif / discord counts** — raise them to see the second- and third-best
-  patterns, which are usually much weaker than the first.
+  patterns. In Auto these are usually still suppressed, because they sit at the
+  ordinary level; switch Highlight to *Both (unfiltered)* to see them anyway.
+- **Salience threshold** — drop it to 0 to reproduce the old always-show-N
+  behaviour, or raise it to demand a very clear finding.
 - Hover anywhere for the value, the profile distance and where that
   subsequence's nearest match lives.
 

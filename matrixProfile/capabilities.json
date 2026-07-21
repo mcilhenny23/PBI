@@ -19,7 +19,18 @@
                 "windowLength": { "type": { "numeric": true } },
                 "motifCount": { "type": { "numeric": true } },
                 "discordCount": { "type": { "numeric": true } },
-                "exclusionZone": { "type": { "numeric": true } }
+                "exclusionZone": { "type": { "numeric": true } },
+                "highlightMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "auto", "displayName": "Auto (only what stands out)" },
+                            { "value": "motifs", "displayName": "Motifs only" },
+                            { "value": "discords", "displayName": "Discords only" },
+                            { "value": "both", "displayName": "Both (unfiltered)" }
+                        ]
+                    }
+                },
+                "minSalience": { "type": { "numeric": true } }
             }
         },
         "display": {

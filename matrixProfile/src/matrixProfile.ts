@@ -47,17 +47,49 @@ export interface MatrixProfileResult {
     mpi: Int32Array;
     /** Number of subsequences = n - m + 1. */
     length: number;
+    /** Per-window standard deviation, retained for the low-variance guard. */
+    sig: Float64Array;
+    /**
+     * True where the window is so flat that z-normalization would amplify pure
+     * noise into a spurious "anomaly" (see the guard note in stomp()). These
+     * positions are excluded from discord candidacy.
+     */
+    lowVariance: boolean[];
+    lowVarianceCount: number;
+    /** Median of the finite profile values — the "typical distance" baseline. */
+    median: number;
+    /**
+     * Robust spread of the profile (1.4826·MAD ≈ σ for normal data). MAD is used
+     * rather than the standard deviation because a single strong anomaly would
+     * inflate σ and mask itself.
+     */
+    spread: number;
 }
+
+/** Extra candidates pulled beyond those displayed, so the last one still has a successor to compare against. */
+const SALIENCE_TAIL = 4;
 
 export interface MotifPair {
     a: number;          // start index of one occurrence
     b: number;          // start index of the matching occurrence
     distance: number;
+    /** How far *below* the profile bulk this pair sits, in robust σ. */
+    salience: number;
 }
 
 export interface Discord {
     index: number;
     distance: number;
+    /** How far *above* the profile bulk this point sits, in robust σ. */
+    salience: number;
+}
+
+/** Median of an array (does not mutate the input). */
+function medianOf(values: number[]): number {
+    if (values.length === 0) return 0;
+    const s = values.slice().sort((a, b) => a - b);
+    const mid = s.length >> 1;
+    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
 /** Rolling mean and (population) standard deviation for every window. */
@@ -156,47 +188,155 @@ export function stomp(T: Float64Array, m: number, exclusion: number): MatrixProf
         scanRow(i);
     }
 
-    return { mp, mpi, length: l };
+    // ── Low-variance guard ──────────────────────────────────────
+    // A near-flat window has no real shape: after z-normalization it is almost
+    // pure noise, which matches nothing, so its profile distance is spuriously
+    // large. Left alone, those windows masquerade as the top discords. Flag any
+    // window whose σ is a small fraction of the typical σ so the discord search
+    // can skip them. (Motifs are unaffected: flat-matches-flat is a real motif
+    // and already scores a *low* distance, not a high one.)
+    const sigVals: number[] = [];
+    for (let i = 0; i < l; i++) if (Number.isFinite(sig[i])) sigVals.push(sig[i]);
+    const medianSig = medianOf(sigVals);
+    const varianceFloor = medianSig * 0.05;   // < 5% of typical variability
+    const lowVariance = new Array<boolean>(l);
+    let lowVarianceCount = 0;
+    for (let i = 0; i < l; i++) {
+        const low = sig[i] < varianceFloor;
+        lowVariance[i] = low;
+        if (low) lowVarianceCount++;
+    }
+
+    // ── Salience baseline ───────────────────────────────────────
+    // Robust centre and spread of the profile distribution, so motif/discord
+    // extremes can be scored as "how many σ from the bulk" rather than accepted
+    // unconditionally.
+    const mpVals: number[] = [];
+    for (let i = 0; i < l; i++) if (Number.isFinite(mp[i])) mpVals.push(mp[i]);
+    const median = medianOf(mpVals);
+    const mad = medianOf(mpVals.map(v => Math.abs(v - median)));
+    const spread = Math.max(1.4826 * mad, 1e-9);
+
+    return { mp, mpi, length: l, sig, lowVariance, lowVarianceCount, median, spread };
 }
 
 /**
- * Top motif pairs: repeatedly take the globally smallest profile value and its
- * neighbour, then blank out the neighbourhood of both so the next pair is a
- * genuinely different pattern rather than a one-sample shift of this one.
+ * ── How salience is measured, and why ───────────────────────────
+ *
+ * Every series has a smallest and a largest profile value, so "top-N" always
+ * returns something. The question is whether those extremes are *findings* or
+ * just the ends of a continuum. Three candidate measures were tested against
+ * datasets with known ground truth (a planted motif in aperiodic data; a planted
+ * anomaly in periodic data):
+ *
+ *   A. distance from the profile median, in robust σ
+ *   B. distance past the P95/P05 tail
+ *   C. **gap to the runner-up candidates**
+ *
+ * A and B both fail: on tightly-clustered periodic data the profile's spread is
+ * so small that a *trivial* motif (two adjacent identical heartbeats) scores
+ * 2.93σ from the median — higher than a *genuine* planted motif at 2.78σ in
+ * noisier data. No cutoff separates them.
+ *
+ * C separates cleanly, because it asks the right question: **is there a cliff
+ * right after this candidate?** A real, isolated finding is followed by a sharp
+ * drop to ordinary values; the maximum of a noisy continuum has near-identical
+ * runners-up right behind it. On the same ground truth, real findings scored
+ * 1.43 and 88.05 while artifacts scored 0.60 and 0.72 — no overlap.
+ *
+ * (Comparing against a deeper rank instead of the immediate runner-up was also
+ * tried and *loses* the separation: a gentle slope accumulates over several
+ * ranks until a trivial finding looks significant.)
+ *
+ * One wrinkle: two genuinely equal findings would have no gap between them and
+ * would suppress each other. Salience is therefore made monotone with a
+ * backward pass — a candidate inherits the salience of the one behind it if that
+ * is larger — so a tied pair is judged by the cliff *after the pair*.
  */
-export function findMotifs(
-    res: MatrixProfileResult, count: number, exclusion: number
-): MotifPair[] {
-    const work = Float64Array.from(res.mp);
-    const out: MotifPair[] = [];
-    for (let k = 0; k < count; k++) {
-        let best = Infinity, bi = -1;
+
+/** Pull ranked candidates with the trivial-match exclusion applied. */
+function extractCandidates(
+    mp: Float64Array, mpi: Int32Array, skip: boolean[] | null,
+    wanted: number, exclusion: number, largest: boolean
+): { index: number; partner: number; distance: number }[] {
+    const work = Float64Array.from(mp);
+    if (skip) for (let i = 0; i < work.length; i++) if (skip[i]) work[i] = NaN;
+
+    const out: { index: number; partner: number; distance: number }[] = [];
+    for (let k = 0; k < wanted; k++) {
+        let best = largest ? -Infinity : Infinity, bi = -1;
         for (let i = 0; i < work.length; i++) {
-            if (Number.isFinite(work[i]) && work[i] < best) { best = work[i]; bi = i; }
+            if (!Number.isFinite(work[i])) continue;
+            if (largest ? work[i] > best : work[i] < best) { best = work[i]; bi = i; }
         }
         if (bi < 0) break;
-        const partner = res.mpi[bi];
-        out.push({ a: bi, b: partner, distance: best });
+        const partner = mpi[bi];
+        out.push({ index: bi, partner, distance: best });
         blank(work, bi, exclusion);
-        if (partner >= 0) blank(work, partner, exclusion);
+        // For motifs the partner is part of the same finding — claim it too.
+        if (!largest && partner >= 0) blank(work, partner, exclusion);
     }
     return out;
 }
 
-/** Top discords: the same sweep, but taking the largest values. */
+/**
+ * Top motif pairs — the smallest profile values and their matching partners.
+ *
+ * @param minSalience  require each pair to stand at least this many robust σ
+ *                     apart from the ordinary level. 0 keeps the raw top-N
+ *                     (explicit "Motifs" mode); a positive value gates out
+ *                     non-findings (used by "Auto").
+ */
+export function findMotifs(
+    res: MatrixProfileResult, count: number, exclusion: number, minSalience = 0
+): MotifPair[] {
+    const cands = extractCandidates(res.mp, res.mpi, null, count + SALIENCE_TAIL, exclusion, false);
+    if (cands.length === 0) return [];
+    const sal = gapSalience(cands.map(c => c.distance), res.spread, false);
+
+    const out: MotifPair[] = [];
+    for (let k = 0; k < Math.min(count, cands.length); k++) {
+        if (sal[k] < minSalience) break;
+        const c = cands[k];
+        out.push({ a: c.index, b: c.partner, distance: c.distance, salience: sal[k] });
+    }
+    return out;
+}
+
+/**
+ * Gap-to-runner-up salience for a ranked candidate list, made monotone so tied
+ * findings don't cancel each other out. The final candidate has no successor to
+ * compare against and scores 0.
+ */
+function gapSalience(distances: number[], spread: number, largest: boolean): number[] {
+    const n = distances.length;
+    const out = new Array<number>(n).fill(0);
+    for (let k = n - 2; k >= 0; k--) {
+        const gap = largest
+            ? distances[k] - distances[k + 1]        // discords: bigger is better
+            : distances[k + 1] - distances[k];       // motifs: smaller is better
+        out[k] = Math.max(gap / spread, out[k + 1]);
+    }
+    return out;
+}
+
+/**
+ * Top discords — the largest profile values. Low-variance windows are never
+ * eligible: they are z-normalization artifacts, not anomalies.
+ */
 export function findDiscords(
-    res: MatrixProfileResult, count: number, exclusion: number
+    res: MatrixProfileResult, count: number, exclusion: number, minSalience = 0
 ): Discord[] {
-    const work = Float64Array.from(res.mp);
+    const cands = extractCandidates(res.mp, res.mpi, res.lowVariance,
+        count + SALIENCE_TAIL, exclusion, true);
+    if (cands.length === 0) return [];
+    const sal = gapSalience(cands.map(c => c.distance), res.spread, true);
+
     const out: Discord[] = [];
-    for (let k = 0; k < count; k++) {
-        let best = -Infinity, bi = -1;
-        for (let i = 0; i < work.length; i++) {
-            if (Number.isFinite(work[i]) && work[i] > best) { best = work[i]; bi = i; }
-        }
-        if (bi < 0) break;
-        out.push({ index: bi, distance: best });
-        blank(work, bi, exclusion);
+    for (let k = 0; k < Math.min(count, cands.length); k++) {
+        if (sal[k] < minSalience) break;
+        const c = cands[k];
+        out.push({ index: c.index, distance: c.distance, salience: sal[k] });
     }
     return out;
 }

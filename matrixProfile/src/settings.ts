@@ -39,13 +39,35 @@ class ProfileCard extends FormattingSettingsCard {
         value: 50
     });
 
+    highlightMode = new formattingSettings.ItemDropdown({
+        name: "highlightMode",
+        displayName: "Highlight",
+        description: "Auto shows only findings that genuinely stand out — most series support motifs or discords, not both. The other options show the top-N regardless.",
+        items: [
+            { value: "auto", displayName: "Auto (only what stands out)" },
+            { value: "motifs", displayName: "Motifs only" },
+            { value: "discords", displayName: "Discords only" },
+            { value: "both", displayName: "Both (unfiltered)" }
+        ],
+        value: { value: "auto", displayName: "Auto (only what stands out)" }
+    });
+
+    minSalience = new formattingSettings.NumUpDown({
+        name: "minSalience",
+        displayName: "Salience threshold",
+        description: "In Auto mode, how far a finding must stand apart from the next-best candidates (in robust σ) to be highlighted. Lower to see weaker findings.",
+        value: 1
+    });
+
     name: string = "profile";
     displayName: string = "Matrix Profile";
     slices: Array<FormattingSettingsSlice> = [
         this.windowLength,
         this.motifCount,
         this.discordCount,
-        this.exclusionZone
+        this.exclusionZone,
+        this.highlightMode,
+        this.minSalience
     ];
 }
 

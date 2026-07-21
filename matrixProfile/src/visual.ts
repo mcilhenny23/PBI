@@ -131,8 +131,24 @@ export class Visual implements IVisual {
                 return;
             }
 
-            const motifs = findMotifs(res, Math.max(0, Math.round(P.motifCount.value ?? 3)), exclusion);
-            const discords = findDiscords(res, Math.max(0, Math.round(P.discordCount.value ?? 3)), exclusion);
+            // ── Focus + salience gate ──────────────────────────────
+            // Most series support motifs OR discords, not both: a repetitive
+            // series makes anomalies obvious but every "motif" trivial, and an
+            // aperiodic one makes a planted repeat obvious but every "discord"
+            // just the top of a continuum. In Auto the salience gate decides per
+            // dataset, so the visual stops asserting findings that aren't there.
+            const mode = String(P.highlightMode.value?.value ?? "auto");
+            const auto = mode === "auto";
+            const gate = auto ? Math.max(0, P.minSalience.value ?? 1) : 0;
+            const wantMotifs = auto || mode === "motifs" || mode === "both";
+            const wantDiscords = auto || mode === "discords" || mode === "both";
+
+            const motifs = wantMotifs
+                ? findMotifs(res, Math.max(0, Math.round(P.motifCount.value ?? 3)), exclusion, gate)
+                : [];
+            const discords = wantDiscords
+                ? findDiscords(res, Math.max(0, Math.round(P.discordCount.value ?? 3)), exclusion, gate)
+                : [];
 
             // ── Layout ─────────────────────────────────────────────
             const fs = Math.max(6, A.fontSize.value);
@@ -170,6 +186,28 @@ export class Visual implements IVisual {
                     .attr("x", plotL).attr("y", this.margin.top + fs)
                     .attr("font-size", `${fs}px`).attr("fill", "#b26a00")
                     .text(`Showing first ${MAX_POINTS.toLocaleString()} of ${raw.length.toLocaleString()} points — matrix profile is O(n²).`);
+            }
+
+            // ── Status note ────────────────────────────────────────
+            // Silence would read as "broken", so say what was suppressed and why.
+            const statusParts: string[] = [];
+            if (auto) {
+                if (motifs.length === 0 && discords.length === 0) {
+                    statusParts.push("No motif or discord stands out above the salience threshold — this series may have no strong repeated pattern or anomaly");
+                } else if (motifs.length === 0) {
+                    statusParts.push("Discords only: no repeated pattern stands out");
+                } else if (discords.length === 0) {
+                    statusParts.push("Motifs only: no anomaly stands out from the background");
+                }
+            }
+            if (res.lowVarianceCount > 0) {
+                statusParts.push(`${res.lowVarianceCount.toLocaleString()} near-flat window(s) excluded from anomalies (z-normalization amplifies noise there)`);
+            }
+            if (statusParts.length) {
+                this.container.append("text")
+                    .attr("x", plotL).attr("y", this.margin.top + (truncated ? fs * 2 + 4 : fs))
+                    .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("fill", "#8a8a8a")
+                    .text(statusParts.join("  ·  "));
             }
 
             // ── Highlight spans (drawn under the series line) ──────
@@ -294,13 +332,17 @@ export class Visual implements IVisual {
         motifs: MotifPair[], discords: Discord[]
     ): void {
         // Precompute which indices are inside a highlighted span.
+        const salFmt = d3.format(",.2~f");
         const spanOf = (i: number): string | null => {
             for (const mo of motifs) {
-                if (i >= mo.a && i < mo.a + m) return `Motif (pairs with ${labels[mo.b] ?? mo.b})`;
-                if (mo.b >= 0 && i >= mo.b && i < mo.b + m) return `Motif (pairs with ${labels[mo.a] ?? mo.a})`;
+                const s = `  ·  salience ${salFmt(mo.salience)}σ`;
+                if (i >= mo.a && i < mo.a + m) return `Motif (pairs with ${labels[mo.b] ?? mo.b})${s}`;
+                if (mo.b >= 0 && i >= mo.b && i < mo.b + m) return `Motif (pairs with ${labels[mo.a] ?? mo.a})${s}`;
             }
             for (const di of discords) {
-                if (i >= di.index && i < di.index + m) return "Discord (anomaly)";
+                if (i >= di.index && i < di.index + m) {
+                    return `Discord (anomaly)  ·  salience ${salFmt(di.salience)}σ`;
+                }
             }
             return null;
         };
