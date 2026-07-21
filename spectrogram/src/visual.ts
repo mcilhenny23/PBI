@@ -90,7 +90,10 @@ function framedMeanRpm(rpm: Float64Array, windowSize: number, hopSize: number, n
         let sum = 0, count = 0;
         for (let i = start; i < end; i++) {
             const v = rpm[i];
-            if (Number.isFinite(v) && v > 0) { sum += v; count++; }
+            // Zero is a legitimate value (shaft at rest before startup) —
+            // let it through so downstream can distinguish 'shaft stopped'
+            // (framedRpm = 0) from 'no sensor data' (framedRpm = NaN).
+            if (Number.isFinite(v) && v >= 0) { sum += v; count++; }
         }
         out[w] = count > 0 ? sum / count : NaN;
     }
@@ -783,7 +786,13 @@ export class Visual implements IVisual {
                     });
                     if (orderAt != null) {
                         items.push({ displayName: "Order", value: `${orderAt.toFixed(2)}×` });
-                        if (rpmAt != null) items.push({ displayName: "RPM", value: `${fmt(rpmAt)}` });
+                        // Distinguish 'shaft at rest' (RPM=0) from 'no RPM data' (NaN).
+                        const rpmRaw = p.rpm ? p.rpm[w] : NaN;
+                        if (rpmAt != null) {
+                            items.push({ displayName: "RPM", value: `${fmt(rpmAt)}` });
+                        } else if (Number.isFinite(rpmRaw) && rpmRaw === 0) {
+                            items.push({ displayName: "RPM", value: "0 (shaft at rest)" });
+                        }
                         items.push({
                             displayName: "Frequency",
                             value: rpmAt != null ? `${fmt(orderAt * rpmAt / 60)} Hz` : "—"
