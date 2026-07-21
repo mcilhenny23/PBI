@@ -290,16 +290,42 @@ export class Visual implements IVisual {
             const dbMax = D.maxMagnitude.value ?? 0;
             this.logFreq = String(D.frequencyScale.value?.value ?? "linear") === "log";
 
+            // ── Order tracking ────────────────────────────────────
+            // Orders mode requires a sample rate (bins → Hz), an RPM well
+            // (Hz → orders per frame) and Linear frequency (a log-order axis is
+            // for octaves, not orders). Any missing piece silently falls back
+            // to Hz mode rather than showing a wrong image.
+            const orderRequested = String(O.axisMode.value?.value ?? "hz") === "orders";
+            this.ordersMode = orderRequested && hasRate && rIdx >= 0 && !this.logFreq;
+            this.maxOrder = Math.max(1, O.maxOrder.value ?? 10);
+            const orderMarkers = this.ordersMode && O.showOrderMarkers.value
+                ? parseOrderMarkers(String(O.orderMarkerList.value ?? ""))
+                : [];
+
             ctx.imageSmoothingEnabled = true;
 
             specs.forEach((s, pi) => {
                 const spec = s.spec;
                 const py = m.top + pi * (panelH + gap);
-                this.panels.push({ name: s.name, spec, rpm: (s as unknown as { rpm?: Float64Array | null }).rpm ?? null, x: plotX, y: py, w: plotW, h: panelH });
+
+                // Per-frame mean RPM for this sensor. Frames whose RPM couldn't
+                // be measured (all-NaN or zero) leave the cell dark, so those
+                // gaps read as "no order data" instead of a misleading colour.
+                let framedRpm: Float64Array | null = null;
+                if (this.ordersMode) {
+                    const rpmSrc = rpmBySensor.get(s.name);
+                    if (rpmSrc) {
+                        framedRpm = framedMeanRpm(Float64Array.from(rpmSrc),
+                            spec.windowSize, spec.hopSize, spec.numWindows);
+                    }
+                }
+                this.panels.push({ name: s.name, spec, rpm: framedRpm, x: plotX, y: py, w: plotW, h: panelH });
 
                 // Build the heatmap in an offscreen image at (numWindows × rows),
                 // then let drawImage scale it into the panel. Frequency remapping
-                // (linear vs log) happens while filling the rows.
+                // (linear Hz, log Hz, or Hz → orders via RPM) happens while
+                // filling the rows — the FFT itself is unchanged and stays
+                // cached, so any axis switch is instant.
                 const rows = Math.min(MAX_OUTPUT_ROWS, Math.max(2, Math.round(panelH)));
                 const off = document.createElement("canvas");
                 off.width = spec.numWindows; off.height = rows;
@@ -310,34 +336,70 @@ export class Visual implements IVisual {
                 const binMax = spec.numBins - 1;
                 const binMin = 1;                        // skip DC for the log mapping
                 const peak = spec.maxMagnitude || 1;
+                const hzPerBin = hasRate ? this.sampleRate / spec.windowSize : 0;
+                const paintDark = (o: number): void => {
+                    // Palette index 0 = darkest end of the ramp; no "no data"
+                    // colour outside the palette is needed.
+                    px[o] = lut[0]; px[o + 1] = lut[1]; px[o + 2] = lut[2]; px[o + 3] = 255;
+                };
 
                 for (let r = 0; r < rows; r++) {
-                    // r = 0 is the top of the image = highest frequency.
+                    // r = 0 is the top of the image = highest frequency / order.
                     const u = rows > 1 ? (rows - 1 - r) / (rows - 1) : 0;
-                    let bin: number;
-                    if (this.logFreq) {
-                        bin = Math.round(binMin * Math.pow(binMax / binMin, u));
-                    } else {
-                        bin = Math.round(u * binMax);
-                    }
-                    bin = Math.max(0, Math.min(binMax, bin));
 
-                    for (let w = 0; w < spec.numWindows; w++) {
-                        const mag = spec.data[w * spec.numBins + bin];
-                        let t: number;
-                        if (useDb) {
-                            const db = 20 * Math.log10(Math.max(mag, 1e-12) / peak);
-                            t = (db - dbMin) / (dbMax - dbMin || 1);
-                        } else {
-                            t = mag / peak;
+                    if (this.ordersMode && framedRpm) {
+                        // In orders mode the bin depends on the frame's RPM,
+                        // so the inner loop must recompute per column.
+                        const order = u * this.maxOrder;
+                        for (let w = 0; w < spec.numWindows; w++) {
+                            const o4 = (r * spec.numWindows + w) * 4;
+                            const rpm = framedRpm[w];
+                            if (!Number.isFinite(rpm) || rpm <= 0) { paintDark(o4); continue; }
+                            const targetHz = order * rpm / 60;
+                            const bin = Math.round(targetHz / hzPerBin);
+                            if (bin < 0 || bin > binMax) { paintDark(o4); continue; }
+                            const mag = spec.data[w * spec.numBins + bin];
+                            let t: number;
+                            if (useDb) {
+                                const db = 20 * Math.log10(Math.max(mag, 1e-12) / peak);
+                                t = (db - dbMin) / (dbMax - dbMin || 1);
+                            } else {
+                                t = mag / peak;
+                            }
+                            t = t < 0 ? 0 : t > 1 ? 1 : t;
+                            const li = (t * 255) | 0;
+                            px[o4] = lut[li * 3];
+                            px[o4 + 1] = lut[li * 3 + 1];
+                            px[o4 + 2] = lut[li * 3 + 2];
+                            px[o4 + 3] = 255;
                         }
-                        t = t < 0 ? 0 : t > 1 ? 1 : t;
-                        const li = (t * 255) | 0;
-                        const o = (r * spec.numWindows + w) * 4;
-                        px[o] = lut[li * 3];
-                        px[o + 1] = lut[li * 3 + 1];
-                        px[o + 2] = lut[li * 3 + 2];
-                        px[o + 3] = 255;
+                    } else {
+                        // Hz mode: bin is constant across the row, hoist it out.
+                        let bin: number;
+                        if (this.logFreq) {
+                            bin = Math.round(binMin * Math.pow(binMax / binMin, u));
+                        } else {
+                            bin = Math.round(u * binMax);
+                        }
+                        bin = Math.max(0, Math.min(binMax, bin));
+
+                        for (let w = 0; w < spec.numWindows; w++) {
+                            const mag = spec.data[w * spec.numBins + bin];
+                            let t: number;
+                            if (useDb) {
+                                const db = 20 * Math.log10(Math.max(mag, 1e-12) / peak);
+                                t = (db - dbMin) / (dbMax - dbMin || 1);
+                            } else {
+                                t = mag / peak;
+                            }
+                            t = t < 0 ? 0 : t > 1 ? 1 : t;
+                            const li = (t * 255) | 0;
+                            const o = (r * spec.numWindows + w) * 4;
+                            px[o] = lut[li * 3];
+                            px[o + 1] = lut[li * 3 + 1];
+                            px[o + 2] = lut[li * 3 + 2];
+                            px[o + 3] = 255;
+                        }
                     }
                 }
                 octx.putImageData(img, 0, 0);
@@ -353,30 +415,65 @@ export class Visual implements IVisual {
                         .text(s.name);
                 }
 
-                // ── Frequency axis ─────────────────────────────────
+                // ── Frequency / order axis ─────────────────────────
                 const nyquist = hasRate ? this.sampleRate / 2 : binMax;
                 const fLow = hasRate ? this.sampleRate / spec.windowSize : binMin;
                 if (X.showFreqAxis.value) {
-                    const yScale = this.logFreq
-                        ? d3.scaleLog().domain([fLow, nyquist]).range([py + panelH, py])
-                        : d3.scaleLinear().domain([0, nyquist]).range([py + panelH, py]);
+                    let yScale: d3.ScaleContinuousNumeric<number, number>;
+                    if (this.ordersMode) {
+                        yScale = d3.scaleLinear().domain([0, this.maxOrder]).range([py + panelH, py]);
+                    } else if (this.logFreq) {
+                        yScale = d3.scaleLog().domain([fLow, nyquist]).range([py + panelH, py]);
+                    } else {
+                        yScale = d3.scaleLinear().domain([0, nyquist]).range([py + panelH, py]);
+                    }
                     const axis = d3.axisLeft(yScale as d3.ScaleLinear<number, number>)
                         .ticks(Math.max(2, Math.floor(panelH / 34)))
                         .tickSize(3).tickPadding(3);
                     const g = this.overlay.append("g")
                         .attr("transform", `translate(${plotX},0)`)
-                        .call(this.logFreq
+                        .call(this.logFreq && !this.ordersMode
                             ? (axis as d3.Axis<number>).ticks(4, "~s")
                             : axis);
                     g.select(".domain").attr("stroke", "#999");
                     g.selectAll("text").attr("font-size", `${fs}px`).attr("fill", "#666");
                 }
 
+                // ── Order marker lines ─────────────────────────────
+                // A horizontal dashed line at each requested order — the "1×"
+                // line is where a plain shaft unbalance would sit, "2×" is a
+                // misalignment tell, and so on. Static because orders don't
+                // depend on RPM.
+                if (this.ordersMode && orderMarkers.length) {
+                    for (const om of orderMarkers) {
+                        if (om <= 0 || om > this.maxOrder) continue;
+                        const yy = py + panelH - (om / this.maxOrder) * panelH;
+                        this.overlay.append("line")
+                            .attr("x1", plotX).attr("x2", plotX + plotW)
+                            .attr("y1", yy).attr("y2", yy)
+                            .attr("stroke", "#fff").attr("stroke-width", 1)
+                            .attr("stroke-dasharray", "4 3").attr("opacity", 0.75);
+                        this.overlay.append("text")
+                            .attr("x", plotX + plotW - 4).attr("y", yy - 2)
+                            .attr("text-anchor", "end").attr("font-size", `${Math.max(9, fs - 1)}px`)
+                            .attr("fill", "#fff").attr("stroke", "rgba(0,0,0,0.5)").attr("stroke-width", 2)
+                            .attr("paint-order", "stroke")
+                            .text(`${om}×`);
+                    }
+                }
+
                 // ── Alarm band ─────────────────────────────────────
                 if (A.showAlarmBands.value) {
                     const lo = Math.min(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
                     const hi = Math.max(A.alarmBand1Low.value ?? 0, A.alarmBand1High.value ?? 0);
+                    // In orders mode the band's low/high are read as orders,
+                    // so the same "vibration above 3×" alarm follows the machine
+                    // through a run-up without being retuned.
                     const toY = (f: number): number => {
+                        if (this.ordersMode) {
+                            const clamped = Math.max(0, Math.min(this.maxOrder, f));
+                            return py + panelH - (clamped / this.maxOrder) * panelH;
+                        }
                         if (this.logFreq) {
                             const c = Math.max(f, fLow);
                             return py + panelH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * panelH;
@@ -420,7 +517,7 @@ export class Visual implements IVisual {
                 this.overlay.append("text")
                     .attr("transform", `translate(${12},${m.top + 4}) rotate(-90)`)
                     .attr("text-anchor", "end").attr("font-size", `${fs}px`).attr("fill", "#888")
-                    .text(hasRate ? "Hz" : "bins");
+                    .text(this.ordersMode ? "orders (× shaft)" : hasRate ? "Hz" : "bins");
             }
 
             this.attachTooltip(width, height, hasRate);
@@ -445,9 +542,25 @@ export class Visual implements IVisual {
                         Math.floor((px - p.x) / p.w * spec.numWindows)));
                     const u = 1 - (py - p.y) / p.h;              // 0 at bottom, 1 at top
                     const binMax = spec.numBins - 1;
-                    const bin = this.logFreq
-                        ? Math.round(1 * Math.pow(binMax / 1, u))
-                        : Math.round(u * binMax);
+
+                    let bin: number;
+                    let orderAt: number | null = null;
+                    let rpmAt: number | null = null;
+                    if (this.ordersMode && p.rpm) {
+                        orderAt = u * this.maxOrder;
+                        const rpm = p.rpm[w];
+                        if (Number.isFinite(rpm) && rpm > 0) {
+                            rpmAt = rpm;
+                            const hzPerBin = this.sampleRate / spec.windowSize;
+                            bin = Math.round(orderAt * rpm / 60 / hzPerBin);
+                        } else {
+                            bin = 0;
+                        }
+                    } else if (this.logFreq) {
+                        bin = Math.round(1 * Math.pow(binMax / 1, u));
+                    } else {
+                        bin = Math.round(u * binMax);
+                    }
                     const b = Math.max(0, Math.min(binMax, bin));
                     const mag = spec.data[w * spec.numBins + b];
                     const db = 20 * Math.log10(Math.max(mag, 1e-12) / (spec.maxMagnitude || 1));
@@ -460,12 +573,21 @@ export class Visual implements IVisual {
                             ? `${(w * spec.hopSize / this.sampleRate).toFixed(3)} s`
                             : `frame ${w}`
                     });
-                    items.push({
-                        displayName: "Frequency",
-                        value: hasRate
-                            ? `${fmt(b * this.sampleRate / spec.windowSize)} Hz`
-                            : `bin ${b}`
-                    });
+                    if (orderAt != null) {
+                        items.push({ displayName: "Order", value: `${orderAt.toFixed(2)}×` });
+                        if (rpmAt != null) items.push({ displayName: "RPM", value: `${fmt(rpmAt)}` });
+                        items.push({
+                            displayName: "Frequency",
+                            value: rpmAt != null ? `${fmt(orderAt * rpmAt / 60)} Hz` : "—"
+                        });
+                    } else {
+                        items.push({
+                            displayName: "Frequency",
+                            value: hasRate
+                                ? `${fmt(b * this.sampleRate / spec.windowSize)} Hz`
+                                : `bin ${b}`
+                        });
+                    }
                     items.push({ displayName: "Magnitude", value: `${db.toFixed(1)} dB` });
                     this.tooltipService.show({
                         dataItems: items, identities: [],

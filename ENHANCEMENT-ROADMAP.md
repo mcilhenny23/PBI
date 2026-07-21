@@ -38,7 +38,7 @@ Four themes recur:
 
 ## 3. Spectrogram — vibration & acoustics
 
-- **▶ Order tracking** *(B)* — normalise frequency by RPM. On machinery with varying speed a fixed-frequency spectrogram smears into uselessness; this is what makes it usable in the field.
+- **✅ Order tracking** *(B)* — bind an **RPM** column and switch **Order Tracking → Y axis** to Orders. For each frame the y-axis is rescaled by `RPM/60` (per-frame mean RPM, computed at render time from the cached FFT), so a component at order *o* sits at row *o* regardless of shaft speed. Verified on the run-up sample: the 1×, 3× and 5.5× bands smear as curved diagonals in Hz mode and collapse to flat lines in Orders mode. Alarm bands are re-read as orders when the mode is on, so a "vibration above 3×" alarm survives a run-up unchanged. Order-marker lines (comma-separated list) overlay each requested order for eyeballing.
 - **▶ Harmonic cursors** *(B)* — mark 1×, 2×, 3× of a fundamental. This is literally how analysts diagnose faults.
 - **▶ Band-power trending** *(C)* — energy in a frequency band over time, which is the metric alarms are actually built on.
 - **○ Peak hold / averaging** — settle a noisy display.
