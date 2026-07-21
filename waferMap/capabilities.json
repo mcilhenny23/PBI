@@ -53,7 +53,24 @@
                     }
                 },
                 "edgeExclusion": { "type": { "numeric": true } },
-                "showNotch": { "type": { "bool": true } }
+                "showNotch": { "type": { "bool": true } },
+                "multiWaferMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "small-multiples", "displayName": "Small multiples" },
+                            { "value": "stacked", "displayName": "Stacked (composite)" }
+                        ]
+                    }
+                },
+                "stackedMetric": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "fail-rate", "displayName": "Fail rate (% of wafers failing here)" },
+                            { "value": "mean-value", "displayName": "Mean value" }
+                        ]
+                    }
+                },
+                "passBin": { "type": { "text": true } }
             }
         },
         "dieAppearance": {

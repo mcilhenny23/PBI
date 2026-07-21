@@ -63,6 +63,38 @@ center / mid / edge rings; Edge exclusion 1–2 to drop the outermost dies.
 mid-radius ring). Comparing signatures across a lot is exactly how yield
 engineers localize a process problem.
 
+### Stacked (composite) mode — the systematic-vs-random question
+
+Set **Wafer → Multiple wafers** to **Stacked (composite)**.
+
+Instead of four pictures to eyeball, all wafers collapse into **one** map where
+each die is coloured by the **share of wafers that failed at that position**.
+The logic is simple and it's the core of yield engineering:
+
+- A defect landing in the **same place on many wafers** is **systematic** — a
+  process, tooling or reticle problem. It stays bright when stacked.
+- A defect that **moves around** is **random**. It averages out and fades.
+
+On this lot the split comes out as:
+
+| Failed on | Dies | Reading |
+|---|---:|---|
+| 4 of 4 wafers (100%) | 8 | **systematic** — persistent across the lot |
+| 3 of 4 (75%) | 18 | strongly recurring |
+| 2 of 4 (50%) | 51 | partly recurring |
+| 1 of 4 (25%) | 234 | random noise |
+| 0 of 4 | 273 | always good |
+
+**Passing bin** is auto-detected as the most common bin (`Pass` here). Override
+it in **Wafer → Passing bin name** if your log uses a different convention.
+
+**Composite metric** can instead be **Mean value**, which averages the bound
+Value measure per die position across wafers — useful for parametric drift
+rather than pass/fail.
+
+Hovering a die reports *how many wafers* contributed and how many failed, so a
+100% built from 2 wafers isn't mistaken for one built from 25.
+
 ---
 
 ## Things to try

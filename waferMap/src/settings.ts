@@ -45,13 +45,46 @@ class WaferCard extends FormattingSettingsCard {
         value: true
     });
 
+    multiWaferMode = new formattingSettings.ItemDropdown({
+        name: "multiWaferMode",
+        displayName: "Multiple wafers",
+        description: "Small multiples shows each wafer separately. Stacked overlays every wafer into one composite map — random defects average out and systematic spatial signatures stay bright, which is how a repeating process problem is found.",
+        items: [
+            { value: "small-multiples", displayName: "Small multiples" },
+            { value: "stacked", displayName: "Stacked (composite)" }
+        ],
+        value: { value: "small-multiples", displayName: "Small multiples" }
+    });
+
+    stackedMetric = new formattingSettings.ItemDropdown({
+        name: "stackedMetric",
+        displayName: "Composite metric",
+        description: "What each die shows once wafers are stacked",
+        items: [
+            { value: "fail-rate", displayName: "Fail rate (% of wafers failing here)" },
+            { value: "mean-value", displayName: "Mean value" }
+        ],
+        value: { value: "fail-rate", displayName: "Fail rate (% of wafers failing here)" }
+    });
+
+    passBin = new formattingSettings.TextInput({
+        name: "passBin",
+        displayName: "Passing bin name",
+        description: "Which Bin value counts as good. Leave blank to auto-detect the most common bin.",
+        value: "",
+        placeholder: "auto"
+    });
+
     name: string = "wafer";
     displayName: string = "Wafer";
     slices: Array<FormattingSettingsSlice> = [
         this.waferShape,
         this.notchPosition,
         this.edgeExclusion,
-        this.showNotch
+        this.showNotch,
+        this.multiWaferMode,
+        this.stackedMetric,
+        this.passBin
     ];
 }
 

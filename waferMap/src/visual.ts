@@ -24,6 +24,10 @@ interface Die {
     bin: string | null;
     value: number | null;
     wafer: string;
+    /** Stacked mode: how many wafers contributed a die at this position. */
+    stackN?: number;
+    /** Stacked mode: how many of those failed. */
+    stackFail?: number;
 }
 
 /** Where one wafer got drawn — kept so the mouse can be mapped back to a die. */
@@ -142,7 +146,7 @@ export class Visual implements IVisual {
 
             // ── Build dies ─────────────────────────────────────────
             const n = cats[xIdx].values.length;
-            const dies: Die[] = [];
+            let dies: Die[] = [];
             for (let i = 0; i < n; i++) {
                 const dx = safeNum(cats[xIdx].values[i]);
                 const dy = safeNum(cats[yIdx].values[i]);
@@ -160,14 +164,74 @@ export class Visual implements IVisual {
                 return;
             }
 
+            // ── Stacked (composite) mode ───────────────────────────
+            // Overlay every wafer into one map. A defect that lands in the same
+            // place on many wafers is systematic (a process or tooling problem);
+            // one that moves around is random. Small multiples make you spot
+            // that by eye across N pictures — stacking makes it a single map.
+            const allWafers = waferIdx >= 0
+                ? Array.from(new Set(dies.map(d => d.wafer))).sort()
+                : [""];
+            const stacked = String(wf.multiWaferMode.value?.value ?? "small-multiples") === "stacked"
+                && allWafers.length > 1;
+
+            let composite: Die[] = [];
+            let stackedDomain: [number, number] = [0, 1];
+            let stackedIsRate = true;
+            if (stacked) {
+                // "Passing" bin: explicit, else the most common bin in the data.
+                const explicitPass = (wf.passBin.value || "").trim();
+                let passBin = explicitPass;
+                if (!passBin) {
+                    const tally = new Map<string, number>();
+                    for (const d of dies) if (d.bin != null) tally.set(d.bin, (tally.get(d.bin) || 0) + 1);
+                    let best = -1;
+                    tally.forEach((n, b) => { if (n > best) { best = n; passBin = b; } });
+                }
+                stackedIsRate = String(wf.stackedMetric.value?.value ?? "fail-rate") === "fail-rate";
+
+                const agg = new Map<string, { x: number; y: number; n: number; fail: number; sum: number; sumN: number }>();
+                for (const d of dies) {
+                    const k = `${d.x},${d.y}`;
+                    let a = agg.get(k);
+                    if (!a) { a = { x: d.x, y: d.y, n: 0, fail: 0, sum: 0, sumN: 0 }; agg.set(k, a); }
+                    a.n++;
+                    if (d.bin != null && d.bin !== passBin) a.fail++;
+                    if (d.value != null) { a.sum += d.value; a.sumN++; }
+                }
+
+                composite = Array.from(agg.values()).map(a => ({
+                    x: a.x, y: a.y,
+                    bin: null,
+                    value: stackedIsRate
+                        ? (a.n > 0 ? a.fail / a.n : 0)
+                        : (a.sumN > 0 ? a.sum / a.sumN : null),
+                    wafer: "",
+                    stackN: a.n,
+                    stackFail: a.fail
+                }));
+
+                if (stackedIsRate) {
+                    stackedDomain = [0, 1];
+                } else {
+                    const vs = composite.map(d => d.value).filter((v): v is number => v != null);
+                    let lo = vs.length ? d3.min(vs)! : 0, hi = vs.length ? d3.max(vs)! : 1;
+                    if (lo === hi) { lo -= 1; hi += 1; }
+                    stackedDomain = [lo, hi];
+                }
+                dies = composite;
+            }
+
             // Shared grid extent so small multiples stay comparable.
             const minX = d3.min(dies, d => d.x)!, maxX = d3.max(dies, d => d.x)!;
             const minY = d3.min(dies, d => d.y)!, maxY = d3.max(dies, d => d.y)!;
             const gridCols = maxX - minX + 1, gridRows = maxY - minY + 1;
 
             // ── Color ──────────────────────────────────────────────
-            const continuous = String(die.colorMode.value?.value ?? "categorical") === "continuous"
-                && valIdx >= 0;
+            // Stacked mode is inherently continuous — it paints an aggregate,
+            // so the categorical bin ramp doesn't apply.
+            const continuous = stacked
+                || (String(die.colorMode.value?.value ?? "categorical") === "continuous" && valIdx >= 0);
             const bins = Array.from(new Set(dies.map(d => d.bin).filter((b): b is string => b != null))).sort();
             const binColor = new Map<string, string>();
             for (const b of bins) binColor.set(b, this.colorPalette.getColor(b).value);
@@ -175,16 +239,24 @@ export class Visual implements IVisual {
             let valueScale: d3.ScaleLinear<string, string> | null = null;
             let valueDomain: [number, number] = [0, 1];
             if (continuous) {
-                const vs = dies.map(d => d.value).filter((v): v is number => v != null);
-                if (vs.length) {
-                    let lo = d3.min(vs)!, hi = d3.max(vs)!;
+                let lo: number, hi: number;
+                if (stacked) {
+                    [lo, hi] = stackedDomain;
+                } else {
+                    const vs = dies.map(d => d.value).filter((v): v is number => v != null);
+                    if (!vs.length) { lo = 0; hi = 1; } else { lo = d3.min(vs)!; hi = d3.max(vs)!; }
                     if (lo === hi) { lo -= 1; hi += 1; }
-                    valueDomain = [lo, hi];
-                    valueScale = d3.scaleLinear<string>()
-                        .domain([lo, (lo + hi) / 2, hi])
-                        .range([cs.colorScaleLow.value.value, cs.colorScaleMid.value.value, cs.colorScaleHigh.value.value])
-                        .interpolate(d3.interpolateRgb);
                 }
+                valueDomain = [lo, hi];
+                // Fail rate reads "high = bad", so the ramp is reversed against
+                // the value ramp, where high is normally good yield.
+                const ramp = (stacked && stackedIsRate)
+                    ? [cs.colorScaleHigh.value.value, cs.colorScaleMid.value.value, cs.colorScaleLow.value.value]
+                    : [cs.colorScaleLow.value.value, cs.colorScaleMid.value.value, cs.colorScaleHigh.value.value];
+                valueScale = d3.scaleLinear<string>()
+                    .domain([lo, (lo + hi) / 2, hi])
+                    .range(ramp)
+                    .interpolate(d3.interpolateRgb);
             }
             const DEFAULT_DIE = "#b8b8b8";
             const colorFor = (d: Die): string => {
@@ -194,9 +266,8 @@ export class Visual implements IVisual {
             };
 
             // ── Layout ─────────────────────────────────────────────
-            const wafers = waferIdx >= 0
-                ? Array.from(new Set(dies.map(d => d.wafer))).sort()
-                : [""];
+            // Stacking collapses every wafer into a single composite map.
+            const wafers = stacked ? [""] : allWafers;
             const showLegend = width >= 320 && (continuous || bins.length > 0);
             const legendW = showLegend ? 96 : 0;
 
@@ -313,8 +384,11 @@ export class Visual implements IVisual {
             if (showLegend) {
                 const lx = width - this.margin.right - legendW + 10;
                 if (continuous && valueScale) {
+                    const legendTitle = stacked
+                        ? (stackedIsRate ? "Fail rate" : "Mean value")
+                        : (valIdx >= 0 ? (vals[valIdx].source.displayName || "Value") : "Value");
                     this.renderContinuousLegend(lx, this.margin.top + 14, Math.min(plotH - 28, 160),
-                        valueDomain, valueScale, vals[valIdx].source.displayName || "Value");
+                        valueDomain, valueScale, legendTitle, stacked && stackedIsRate);
                 } else {
                     this.renderCategoricalLegend(lx, this.margin.top + 14, bins, binColor,
                         cats[binIdx]?.source.displayName || "Bin", plotH);
@@ -356,8 +430,22 @@ export class Visual implements IVisual {
                     if (hasWafer && d.wafer) items.push({ displayName: "Wafer", value: d.wafer });
                     items.push({ displayName: xTitle, value: String(d.x) });
                     items.push({ displayName: yTitle, value: String(d.y) });
-                    if (binTitle && d.bin != null) items.push({ displayName: binTitle, value: d.bin });
-                    if (valTitle && d.value != null) items.push({ displayName: valTitle, value: numFmt(d.value) });
+                    if (d.stackN != null) {
+                        // Composite die: report the evidence behind the rate, so a
+                        // 100% built from 2 wafers isn't read like one from 25.
+                        const fail = d.stackFail ?? 0;
+                        items.push({ displayName: "Wafers here", value: String(d.stackN) });
+                        items.push({
+                            displayName: "Failed",
+                            value: `${fail} of ${d.stackN}  (${(fail / Math.max(1, d.stackN) * 100).toFixed(0)}%)`
+                        });
+                        if (d.value != null && (d.stackFail == null || d.stackN === 0 || !Number.isFinite(fail))) {
+                            items.push({ displayName: "Mean value", value: numFmt(d.value) });
+                        }
+                    } else {
+                        if (binTitle && d.bin != null) items.push({ displayName: binTitle, value: d.bin });
+                        if (valTitle && d.value != null) items.push({ displayName: valTitle, value: numFmt(d.value) });
+                    }
                     this.tooltipService.show({
                         dataItems: items, identities: [],
                         coordinates: [mx, my], isTouchEvent: false
@@ -397,7 +485,7 @@ export class Visual implements IVisual {
 
     private renderContinuousLegend(
         x: number, y: number, h: number, domain: [number, number],
-        scale: d3.ScaleLinear<string, string>, title: string
+        scale: d3.ScaleLinear<string, string>, title: string, asPercent = false
     ): void {
         const g = this.overlay.append("g").classed("legend", true);
         g.append("text").attr("x", x).attr("y", y - 6)
@@ -413,7 +501,9 @@ export class Visual implements IVisual {
         }
         g.append("rect").attr("x", x).attr("y", y).attr("width", barW).attr("height", h)
             .attr("fill", "none").attr("stroke", "#ccc").attr("stroke-width", 0.5);
-        const f = d3.format(",.3~s");
+        const f = asPercent
+            ? (v: number) => `${Math.round(v * 100)}%`
+            : d3.format(",.3~s");
         g.append("text").attr("x", x + barW + 4).attr("y", y + 8)
             .attr("font-size", "9px").attr("fill", "#666").text(f(domain[1]));
         g.append("text").attr("x", x + barW + 4).attr("y", y + h)
