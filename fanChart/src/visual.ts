@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_BAND_COLOR, DEFAULT_CENTRAL_COLOR, DEFAULT_ACTUALS_COLOR } from "./settings";
@@ -29,6 +32,7 @@ interface FanDataPoint {
     lower2: number | null;
     upper3: number | null;
     lower3: number | null;
+    selectionId?: ISelectionId;
 }
 
 interface BandPair {
@@ -107,9 +111,10 @@ function luminance(hex: string): number {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -124,7 +129,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         // Create root SVG
         this.svg = d3.select(options.element)
@@ -137,6 +145,31 @@ export class Visual implements IVisual {
 
         this.container = this.svg.append("g")
             .classed("fan-chart-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        // Fan chart is continuous — draws bands not individual bars.
+        // Dim the entire visual's non-selected regions by using clipPaths would be complex;
+        // simpler: when a selection is active, reduce all bands' opacity slightly and
+        // brighten the selected horizon marker.
+        const s = this.formattingSettings;
+        if (!s) return;
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        this.container.selectAll<SVGRectElement, FanDataPoint>("rect.hit").each(function (d) {
+            const rect = d3.select(this);
+            const isSel = !!d?.selectionId && activeIds.some(a => a?.equals?.(d.selectionId!));
+            rect.attr("fill", hasSel && isSel ? "rgba(66, 135, 245, 0.15)" : "transparent");
+        });
+        // Dim the whole plot slightly when a selection is active elsewhere.
+        this.container.select(".gridlines").attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
@@ -190,18 +223,28 @@ export class Visual implements IVisual {
             const upper3Idx = findValueIndex(vals, "upper3");
             const lower3Idx = findValueIndex(vals, "lower3");
 
-            const data: FanDataPoint[] = categories.map((c, i) => ({
-                category: String(c),
-                index: i,
-                central: centralIdx >= 0 ? safeNum(vals[centralIdx].values[i]) : null,
-                actuals: actualsIdx >= 0 ? safeNum(vals[actualsIdx].values[i]) : null,
-                upper1: upper1Idx >= 0 ? safeNum(vals[upper1Idx].values[i]) : null,
-                lower1: lower1Idx >= 0 ? safeNum(vals[lower1Idx].values[i]) : null,
-                upper2: upper2Idx >= 0 ? safeNum(vals[upper2Idx].values[i]) : null,
-                lower2: lower2Idx >= 0 ? safeNum(vals[lower2Idx].values[i]) : null,
-                upper3: upper3Idx >= 0 ? safeNum(vals[upper3Idx].values[i]) : null,
-                lower3: lower3Idx >= 0 ? safeNum(vals[lower3Idx].values[i]) : null,
-            }));
+            const axisCol = cat.categories[0];
+            const data: FanDataPoint[] = categories.map((c, i) => {
+                let selectionId: ISelectionId | undefined;
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(axisCol, i)
+                        .createSelectionId();
+                } catch { /* skipped */ }
+                return {
+                    category: String(c),
+                    index: i,
+                    central: centralIdx >= 0 ? safeNum(vals[centralIdx].values[i]) : null,
+                    actuals: actualsIdx >= 0 ? safeNum(vals[actualsIdx].values[i]) : null,
+                    upper1: upper1Idx >= 0 ? safeNum(vals[upper1Idx].values[i]) : null,
+                    lower1: lower1Idx >= 0 ? safeNum(vals[lower1Idx].values[i]) : null,
+                    upper2: upper2Idx >= 0 ? safeNum(vals[upper2Idx].values[i]) : null,
+                    lower2: lower2Idx >= 0 ? safeNum(vals[lower2Idx].values[i]) : null,
+                    upper3: upper3Idx >= 0 ? safeNum(vals[upper3Idx].values[i]) : null,
+                    lower3: lower3Idx >= 0 ? safeNum(vals[lower3Idx].values[i]) : null,
+                    selectionId
+                };
+            });
 
             // ── 4. Determine which band pairs are active ───────────
             const bandPairs: BandPair[] = [];
@@ -459,13 +502,33 @@ export class Visual implements IVisual {
                 .attr("width", bandWidth)
                 .attr("height", plotH)
                 .attr("fill", "transparent")
+                .style("cursor", d => d.selectionId ? "pointer" : "default")
+                .attr("tabindex", d => d.selectionId ? 0 : -1).attr("role", "button")
+                .attr("aria-label", d => `Horizon ${d.category} — click to filter`)
                 .on("mousemove", (event: MouseEvent, d: FanDataPoint) => {
                     // Coordinates are relative to the whole visual element.
                     const [px, py] = d3.pointer(event, this.svg.node());
                     showTooltipFor(d, px, py);
                 })
-                .on("mouseleave", hideTooltip);
+                .on("mouseleave", hideTooltip)
+                .on("click", (event: MouseEvent, d: FanDataPoint) => {
+                    event.stopPropagation();
+                    if (!d.selectionId) return;
+                    const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                    this.selectionManager.select(d.selectionId, multi).then(() => this.applySelectionStyling());
+                })
+                .on("contextmenu", (event: MouseEvent, d: FanDataPoint) => {
+                    event.preventDefault(); event.stopPropagation();
+                    this.selectionManager.showContextMenu(d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                })
+                .on("keydown", (event: KeyboardEvent, d: FanDataPoint) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    if (!d.selectionId) return;
+                    this.selectionManager.select(d.selectionId, event.shiftKey).then(() => this.applySelectionStyling());
+                });
 
+            this.applySelectionStyling();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

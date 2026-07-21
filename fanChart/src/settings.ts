@@ -113,8 +113,21 @@ class AxisSettingsCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-highlighted portions of the fan fade to this opacity when another visual filters this chart.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     fanSettingsCard = new FanSettingsCard();
     axisSettingsCard = new AxisSettingsCard();
-    cards = [this.fanSettingsCard, this.axisSettingsCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.fanSettingsCard, this.axisSettingsCard, this.interactionsCard];
 }
