@@ -347,3 +347,172 @@ function blank(work: Float64Array, centre: number, radius: number): void {
     const hi = Math.min(work.length - 1, centre + radius);
     for (let i = lo; i <= hi; i++) work[i] = NaN;
 }
+
+// ── Pan matrix profile (multi-length) ──────────────────────────
+
+/**
+ * ── Why multi-length exists ──────────────────────────────────────
+ * The window length m is the matrix profile's only real parameter, and users
+ * genuinely don't know what to set it to. Too short and you match noise; too
+ * long and the pattern is diluted by its surroundings and vanishes. Guessing is
+ * the single biggest barrier to using the technique.
+ *
+ * A *pan* matrix profile computes the profile across a whole range of m at once,
+ * so the answer to "which m?" comes out of the data instead of the user.
+ *
+ * ── Making lengths comparable ────────────────────────────────────
+ * z-normalized Euclidean distance grows with window length — the maximum
+ * possible distance is sqrt(2m) — so raw distances at m = 20 and m = 200 cannot
+ * be compared. Every value here is divided by sqrt(2m), putting all lengths on a
+ * common 0..1 scale where 0 is a perfect match and 1 is maximally unlike.
+ *
+ * ── Picking the suggested length ─────────────────────────────────
+ * This is genuinely hard, and the suggestion is a *hint* — the heatmap is the
+ * real answer. Three criteria were measured against series whose true scale was
+ * known (a motif planted at m = 60; ECG beats 100 samples apart):
+ *
+ *   lowest normalized distance   pump 52 ✓   ECG  20 ✗ (5× too short)
+ *   contrast in normalized space pump 105    ECG 118 ✓
+ *
+ * "Lowest distance" fails badly on the pump because an exact planted copy makes
+ * *every* sub-window match perfectly too — the minimum sits on a plateau of
+ * zeros from m = 15 upward, so the winner is decided by floating-point noise
+ * rather than by structure. Contrast has a much better worst case (off by 1.75×
+ * rather than 5×), so it is what's used here.
+ *
+ * Contrast = (median − min) / spread, all measured on the *normalized* values so
+ * numerator and denominator are both scale-free. It asks: at which scale does
+ * the best match stand out furthest from a typical match at that same scale?
+ *
+ * The gap-to-runner-up salience used elsewhere in this file is deliberately NOT
+ * used here. It is computed against each length's own raw profile distribution,
+ * and that distribution degenerates as m grows and few windows remain — it
+ * suggested m = 375 for the pump and m = 500 for the ECG, both absurd.
+ */
+
+export interface LengthScan {
+    m: number;
+    result: MatrixProfileResult;
+    /** Best (lowest) normalized distance at this length, 0..1. */
+    minNorm: number;
+    /** Worst (highest) normalized distance at this length, 0..1. */
+    maxNorm: number;
+    /** Scale-free contrast of the best match against a typical one. */
+    motifContrast: number;
+    /** Scale-free contrast of the worst match against a typical one. */
+    discordContrast: number;
+}
+
+export interface PanProfile {
+    lengths: number[];
+    scans: LengthScan[];
+    /**
+     * Normalized distances, row-major `[lengthIndex * n + position]`, in 0..1.
+     * NaN where a window of that length has no value at that position (the tail
+     * shrinks as m grows).
+     */
+    grid: Float32Array;
+    n: number;
+    /** Window length whose motif stands out most clearly. */
+    suggestedMotifLength: number;
+    /** Window length whose discord stands out most clearly. */
+    suggestedDiscordLength: number;
+}
+
+/**
+ * Geometrically spaced candidate window lengths.
+ *
+ * Geometric rather than linear because scale perception is multiplicative — the
+ * step from 10 to 20 matters as much as 100 to 200, and linear spacing would
+ * waste most of the budget on large, near-identical windows.
+ */
+export function candidateLengths(
+    n: number, steps: number, minM?: number | null, maxM?: number | null
+): number[] {
+    // stomp() only needs n >= 2m, but a profile built from a handful of windows
+    // is statistically meaningless — its spread collapses and every score built
+    // on it becomes noise. Requiring ~10 windows keeps the comparison honest.
+    const hardMax = Math.max(4, Math.floor(n / 10));
+    const lo = Math.max(4, Math.min(hardMax, Math.round(minM ?? Math.max(8, n * 0.01))));
+    const hi = Math.max(lo + 1, Math.min(hardMax, Math.round(maxM ?? hardMax)));
+    const k = Math.max(2, Math.min(40, Math.round(steps)));
+
+    const out: number[] = [];
+    const ratio = Math.pow(hi / lo, 1 / (k - 1));
+    for (let i = 0; i < k; i++) {
+        const m = Math.round(lo * Math.pow(ratio, i));
+        if (out.length === 0 || m > out[out.length - 1]) out.push(m);
+    }
+    return out;
+}
+
+/**
+ * Compute the profile at every candidate length.
+ *
+ * Cost is O(lengths · n²) — the caller is responsible for keeping the product
+ * sane (see the point cap in the visual) and for caching the result.
+ */
+export function panMatrixProfile(
+    T: Float64Array, lengths: number[], exclusionPercent: number
+): PanProfile | null {
+    const n = T.length;
+    if (!lengths.length || n < 8) return null;
+
+    const scans: LengthScan[] = [];
+    for (const m of lengths) {
+        // Need enough windows for the distribution to mean anything.
+        if (n < m * 3) continue;
+        const exclusion = Math.max(1, Math.round(m * exclusionPercent / 100));
+        const result = stomp(T, m, exclusion);
+        if (!result) continue;
+
+        // Everything below is measured on NORMALIZED distances so lengths are
+        // directly comparable.
+        const norm = Math.sqrt(2 * m);          // maximum possible distance at this m
+        const vals: number[] = [];
+        for (let i = 0; i < result.length; i++) {
+            const v = result.mp[i];
+            if (Number.isFinite(v)) vals.push(Math.min(1, v / norm));
+        }
+        if (!vals.length) continue;
+
+        const med = medianOf(vals);
+        const mad = medianOf(vals.map(v => Math.abs(v - med)));
+        const spread = Math.max(1.4826 * mad, 1e-9);
+        let minNorm = Infinity, maxNorm = -Infinity;
+        for (const v of vals) { if (v < minNorm) minNorm = v; if (v > maxNorm) maxNorm = v; }
+
+        scans.push({
+            m, result, minNorm, maxNorm,
+            motifContrast: (med - minNorm) / spread,
+            discordContrast: (maxNorm - med) / spread
+        });
+    }
+    if (!scans.length) return null;
+
+    // Normalized grid for the heatmap.
+    const grid = new Float32Array(scans.length * n).fill(NaN);
+    scans.forEach((scan, r) => {
+        const norm = Math.sqrt(2 * scan.m);
+        const base = r * n;
+        for (let i = 0; i < scan.result.length; i++) {
+            const v = scan.result.mp[i];
+            grid[base + i] = Number.isFinite(v) ? Math.min(1, v / norm) : NaN;
+        }
+    });
+
+    let bestMotif = scans[0], bestDiscord = scans[0];
+    for (const s of scans) {
+        if (s.motifContrast > bestMotif.motifContrast) bestMotif = s;
+        if (s.discordContrast > bestDiscord.discordContrast) bestDiscord = s;
+    }
+
+    return {
+        lengths: scans.map(s => s.m),
+        scans,
+        grid,
+        n,
+        suggestedMotifLength: bestMotif.m,
+        suggestedDiscordLength: bestDiscord.m
+    };
+}

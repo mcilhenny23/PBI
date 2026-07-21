@@ -30,7 +30,7 @@ Four themes recur:
 ## 2. Matrix Profile — anomaly & pattern discovery
 
 - **✅ Salience gate + focus control** — suppresses findings that don't stand apart (see `open-review-items`).
-- **▶ Multi-length (pan-matrix) profile** *(D)* — the window length `m` is the one parameter and users genuinely don't know it. Computing across a range removes the guess entirely. **Highest usability unlock in the set.**
+- **✅ Multi-length (pan-matrix) profile** *(D)* — the window length `m` is the one parameter and users genuinely don't know it. **Window length → Multi-length (scan & suggest)** scans a geometric range of lengths, draws the profile strip as a heatmap (X = position, Y = length, bright = no match), and suggests a length by strongest normalized contrast. Suggests m=107 on the ECG (truth 100) and m=99 on the pump (truth 60) — both within 2×. Capped at 3,000 points and cached, since the scan is O(lengths × n²).
 - **▶ Regime change / semantic segmentation** *(B)* — the arc-curve (FLUSS) extension answers "when did behaviour *change*?", which motifs and discords don't.
 - **○ Chains** — evolving patterns that drift over time.
 - **○ Annotation vector** — bias the profile to ignore known-uninteresting shapes.

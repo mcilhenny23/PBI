@@ -90,11 +90,52 @@ threshold — just the window length.
 
 ---
 
+## Don't know what window length to use? Scan for it
+
+**Window length** is the one parameter that matters, and it is also the one
+users most often have no basis for setting. Set **Matrix Profile → Window
+length** to **Multi-length (scan & suggest)** and the visual computes a profile
+at a whole range of lengths at once, spaced geometrically, and draws the result
+as a *pan matrix profile*:
+
+- **X** = position in the series (same axis as the chart above)
+- **Y** = window length, shortest at the bottom
+- **Colour** = distance to the nearest match, dark for a close match, bright
+  yellow-green for none
+
+A feature that only exists at one scale appears as a short stripe; a genuine
+anomaly appears as a **column running up through many lengths**. On the ECG file
+the suppressed beat is the brightest thing in the strip at **10 of the 12**
+lengths scanned — only the two shortest miss it, because a 25-sample window
+lands inside a beat rather than spanning one.
+
+The visual then picks the length whose profile has the strongest **contrast** —
+the largest robust-σ gap between its most extreme window and its typical one,
+measured after dividing every distance by `sqrt(2m)` so lengths are comparable.
+That gives **m = 107** on the ECG (true beat period 100) and **m = 99** on the
+pump (planted surge 60): both within 2×, which is close enough for the profile
+to be read, then tuned by hand.
+
+The findings drawn on the series come from the suggested length, and the note
+under the header tells you what was chosen.
+
+| Setting | Meaning |
+|---|---|
+| **Lengths to scan** | How many lengths to try (default 12). Cost grows linearly. |
+| **Shortest / Longest length** | Blank = auto. The upper end is capped so at least ten windows fit — a profile built from a handful of windows says nothing. |
+
+> **Cost:** a scan is O(lengths × n²), so it is capped at the first **3,000**
+> points rather than 10,000. Twelve lengths over 2,000 points takes about half a
+> second; the result is cached, so restyling never recomputes it.
+
+---
+
 ## Things to try
 
 - **Window length** is the only real parameter. Set it to roughly the duration
   of the pattern you care about. On the ECG, try 100 (one beat) versus 50 (half
-  a beat) and watch the profile change character.
+  a beat) and watch the profile change character — or switch to **Multi-length**
+  and see both at once.
 - **Exclusion zone** stops a window matching itself shifted by one sample. At
   0% every position trivially matches its neighbour and the profile flatlines
   to zero — a good way to see why the exclusion exists.

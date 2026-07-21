@@ -11,11 +11,42 @@ import FormattingSettingsModel = formattingSettings.Model;
  * that really matters.
  */
 class ProfileCard extends FormattingSettingsCard {
+    windowMode = new formattingSettings.ItemDropdown({
+        name: "windowMode",
+        displayName: "Window length",
+        description: "Fixed uses the length below. Multi-length scans a range of lengths at once, draws the result as a heatmap, and suggests a length — use it when you don't know what to set.",
+        items: [
+            { value: "fixed", displayName: "Fixed" },
+            { value: "multi", displayName: "Multi-length (scan & suggest)" }
+        ],
+        value: { value: "fixed", displayName: "Fixed" }
+    });
+
     windowLength = new formattingSettings.NumUpDown({
         name: "windowLength",
         displayName: "Window length (m)",
         description: "Length of the pattern to look for, in samples. The one parameter that matters — set it to roughly the duration of the shape you care about.",
         value: 50
+    });
+
+    lengthSteps = new formattingSettings.NumUpDown({
+        name: "lengthSteps",
+        displayName: "Lengths to scan",
+        description: "How many window lengths the multi-length scan tries, spaced geometrically. Cost grows linearly with this.",
+        value: 12
+    });
+
+    minWindow = new formattingSettings.NumUpDown({
+        name: "minWindow",
+        displayName: "Shortest length (blank = auto)",
+        value: null
+    });
+
+    maxWindow = new formattingSettings.NumUpDown({
+        name: "maxWindow",
+        displayName: "Longest length (blank = auto)",
+        description: "Capped so at least ten windows fit — a profile built from a handful of windows is statistically meaningless.",
+        value: null
     });
 
     motifCount = new formattingSettings.NumUpDown({
@@ -62,7 +93,11 @@ class ProfileCard extends FormattingSettingsCard {
     name: string = "profile";
     displayName: string = "Matrix Profile";
     slices: Array<FormattingSettingsSlice> = [
+        this.windowMode,
         this.windowLength,
+        this.lengthSteps,
+        this.minWindow,
+        this.maxWindow,
         this.motifCount,
         this.discordCount,
         this.exclusionZone,

@@ -16,7 +16,18 @@
     "objects": {
         "profile": {
             "properties": {
+                "windowMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "fixed", "displayName": "Fixed" },
+                            { "value": "multi", "displayName": "Multi-length (scan & suggest)" }
+                        ]
+                    }
+                },
                 "windowLength": { "type": { "numeric": true } },
+                "lengthSteps": { "type": { "numeric": true } },
+                "minWindow": { "type": { "numeric": true } },
+                "maxWindow": { "type": { "numeric": true } },
                 "motifCount": { "type": { "numeric": true } },
                 "discordCount": { "type": { "numeric": true } },
                 "exclusionZone": { "type": { "numeric": true } },

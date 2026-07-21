@@ -14,7 +14,10 @@ import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
-import { stomp, findMotifs, findDiscords, MatrixProfileResult, MotifPair, Discord } from "./matrixProfile";
+import {
+    stomp, findMotifs, findDiscords, panMatrixProfile, candidateLengths,
+    MatrixProfileResult, MotifPair, Discord, PanProfile
+} from "./matrixProfile";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
 /**
@@ -22,6 +25,12 @@ import { Fingerprint, ComputeCache } from "./computeCache";
  * the series is truncated and the user is told.
  */
 const MAX_POINTS = 10000;
+
+/**
+ * Multi-length costs O(lengths x n^2), so the series is capped harder there than
+ * in fixed mode to keep a scan interactive.
+ */
+const MAX_MULTI_POINTS = 3000;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -47,6 +56,8 @@ export class Visual implements IVisual {
     private host: powerbi.extensibility.visual.IVisualHost;
     private tooltipService: ITooltipService;
 
+    private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
+    private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -59,13 +70,18 @@ export class Visual implements IVisual {
     /** Caches the O(n²) profile so styling changes don't recompute it. */
     private profileCache = new ComputeCache<MatrixProfileResult>();
 
+    /** Caches the multi-length scan, which is O(lengths x n^2). */
+    private panCache = new ComputeCache<PanProfile>();
+
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.formattingSettingsService = new FormattingSettingsService();
 
-        this.svg = d3.select(options.element).append("svg").classed("mp-root", true);
+        this.root = d3.select(options.element).append("div").classed("mp-wrap", true);
+        this.canvas = this.root.append("canvas").classed("mp-canvas", true);
+        this.svg = this.root.append("svg").classed("mp-root", true);
         this.landing = this.svg.append("g").classed("mp-landing", true);
         this.container = this.svg.append("g").classed("mp-container", true);
     }
@@ -84,6 +100,18 @@ export class Visual implements IVisual {
             const height = options.viewport.height;
             this.svg.attr("width", width).attr("height", height);
             this.container.selectAll("*").remove();
+            // Clear the heatmap underlay every pass; it is only redrawn in
+            // multi-length mode, and a stale image must never show through.
+            {
+                const cvNode = this.canvas.node();
+                if (cvNode) {
+                    const dpr0 = window.devicePixelRatio || 1;
+                    cvNode.width = Math.max(1, Math.floor(width * dpr0));
+                    cvNode.height = Math.max(1, Math.floor(height * dpr0));
+                    this.canvas.style("width", `${width}px`).style("height", `${height}px`);
+                    cvNode.getContext("2d")?.clearRect(0, 0, width, height);
+                }
+            }
 
             // ── Data ───────────────────────────────────────────────
             const dataView: DataView = options.dataViews?.[0];
@@ -116,7 +144,7 @@ export class Visual implements IVisual {
             const seriesLabels = truncated ? rawLabels.slice(0, MAX_POINTS) : rawLabels;
             const n = series.length;
 
-            const m = Math.max(4, Math.round(P.windowLength.value || 50));
+            let m = Math.max(4, Math.round(P.windowLength.value || 50));
             if (n < m * 2) {
                 this.renderMessage(width, height, "Series too short",
                     `Need at least ${m * 2} points for a window length of ${m}.`,
@@ -131,14 +159,40 @@ export class Visual implements IVisual {
             // zone, so recolouring or resizing must never trigger it. Motif and
             // discord extraction stays outside the cache: it is O(n) and lets
             // the highlight mode respond instantly.
-            const exclusion = Math.max(1, Math.round(m * (P.exclusionZone.value ?? 50) / 100));
+            const exclusionPct = P.exclusionZone.value ?? 50;
+            const multiLength = String(P.windowMode.value?.value ?? "fixed") === "multi";
+
+            // Multi-length scans every candidate m, so it costs O(lengths · n²).
+            // The series is capped harder here than in fixed mode to keep that
+            // product interactive.
+            let pan: PanProfile | null = null;
+            if (multiLength) {
+                const scanSeries = series.length > MAX_MULTI_POINTS
+                    ? series.slice(0, MAX_MULTI_POINTS)
+                    : series;
+                const lengths = candidateLengths(
+                    scanSeries.length,
+                    Math.max(2, Math.round(P.lengthSteps.value ?? 12)),
+                    P.minWindow.value, P.maxWindow.value
+                );
+                const panKey = new Fingerprint()
+                    .nums(scanSeries).nums(lengths).num(exclusionPct).done();
+                pan = this.panCache.get(panKey,
+                    () => panMatrixProfile(scanSeries, lengths, exclusionPct));
+                // Highlights come from the suggested length, so the user sees the
+                // findings at the scale the scan actually recommends.
+                if (pan) m = pan.suggestedMotifLength;
+            }
+
+            const exclusion = Math.max(1, Math.round(m * exclusionPct / 100));
             const key = new Fingerprint()
                 .nums(series)
                 .num(m)
                 .num(exclusion)
                 .done();
-            const res: MatrixProfileResult | null =
-                this.profileCache.get(key, () => stomp(series, m, exclusion));
+            const res: MatrixProfileResult | null = multiLength && pan
+                ? (pan.scans.find(sc => sc.m === m)?.result ?? null)
+                : this.profileCache.get(key, () => stomp(series, m, exclusion));
             if (!res) {
                 this.renderMessage(width, height, "Cannot compute profile",
                     "Check the window length against the series length.", "");
@@ -206,6 +260,14 @@ export class Visual implements IVisual {
             // ── Status note ────────────────────────────────────────
             // Silence would read as "broken", so say what was suppressed and why.
             const statusParts: string[] = [];
+            if (multiLength && pan) {
+                statusParts.push(
+                    `Scanned ${pan.lengths.length} lengths (${pan.lengths[0]}-${pan.lengths[pan.lengths.length - 1]}) · ` +
+                    `suggested m=${pan.suggestedMotifLength} for motifs, m=${pan.suggestedDiscordLength} for discords`);
+                if (series.length > MAX_MULTI_POINTS) {
+                    statusParts.push(`scan used the first ${MAX_MULTI_POINTS.toLocaleString()} points`);
+                }
+            }
             if (auto) {
                 if (motifs.length === 0 && discords.length === 0) {
                     statusParts.push("No motif or discord stands out above the salience threshold — this series may have no strong repeated pattern or anomaly");
@@ -275,6 +337,14 @@ export class Visual implements IVisual {
                 .attr("stroke-linejoin", "round");
 
             // ── Profile strip ──────────────────────────────────────
+            // Multi-length replaces the 1-D strip with a pan heatmap: X is
+            // position, Y is window length, colour is the normalized distance.
+            // Dark valleys are motifs, bright ridges are discords, and reading
+            // *up* a column shows at which scales a pattern exists at all —
+            // which is the actual answer to "what should m be?".
+            if (multiLength && pan) {
+                this.renderPanHeatmap(pan, plotL, profY, plotW, profH, m, width, height);
+            } else {
             const profArea = d3.area<number>()
                 .defined(d => Number.isFinite(d))
                 .x((_, i) => x(i))
@@ -303,11 +373,19 @@ export class Visual implements IVisual {
                     .attr("fill", discordColor).attr("stroke", "#fff").attr("stroke-width", 1);
             }
 
+            }   // end of single-length profile strip
+
             // Panel label for the strip.
             this.container.append("text")
                 .attr("x", plotL + 4).attr("y", profY + fs)
-                .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("fill", "#888")
-                .text("matrix profile");
+                .attr("font-size", `${Math.max(9, fs - 1)}px`)
+                .attr("fill", multiLength && pan ? "#fff" : "#888")
+                .attr("paint-order", "stroke")
+                .attr("stroke", multiLength && pan ? "rgba(0,0,0,0.45)" : "none")
+                .attr("stroke-width", multiLength && pan ? 2 : 0)
+                .text(multiLength && pan
+                    ? `pan matrix profile · ${pan.lengths.length} lengths`
+                    : "matrix profile");
 
             // ── Axes ───────────────────────────────────────────────
             if (A.showAxis.value) {
@@ -391,6 +469,88 @@ export class Visual implements IVisual {
                 });
             })
             .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+    }
+
+    /**
+     * Pan matrix profile heatmap: X = position, Y = window length (short at the
+     * bottom), colour = normalized distance. Drawn on the canvas underlay via an
+     * offscreen image because the grid is lengths × n cells — far too many for
+     * SVG rects.
+     */
+    private renderPanHeatmap(
+        pan: PanProfile, x0: number, y0: number, w: number, h: number,
+        selectedM: number, width: number, height: number
+    ): void {
+        const dpr = window.devicePixelRatio || 1;
+        const cv = this.canvas.node()!;
+        cv.width = Math.max(1, Math.floor(width * dpr));
+        cv.height = Math.max(1, Math.floor(height * dpr));
+        this.canvas.style("width", `${width}px`).style("height", `${height}px`);
+        const ctx = cv.getContext("2d")!;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const rows = pan.lengths.length, cols = pan.n;
+        if (rows === 0 || cols === 0 || w <= 0 || h <= 0) return;
+
+        const off = document.createElement("canvas");
+        off.width = cols; off.height = rows;
+        const octx = off.getContext("2d")!;
+        const img = octx.createImageData(cols, rows);
+        const px = img.data;
+
+        // Viridis, low distance to dark: a window with a close match sinks into
+        // the background, one with no match anywhere glows yellow. Same reading
+        // as the 1-D strip, where motifs are dips and discords are peaks.
+        for (let r = 0; r < rows; r++) {
+            const srcRow = rows - 1 - r;              // shortest length at the bottom
+            const base = srcRow * cols;
+            for (let c = 0; c < cols; c++) {
+                const v = pan.grid[base + c];
+                const o = (r * cols + c) * 4;
+                if (!Number.isFinite(v)) {
+                    // Past n - m: no window starts here. Left fully transparent
+                    // so it reads as absence on whatever background is behind,
+                    // rather than as a pale colour in the ramp.
+                    px[o + 3] = 0;
+                    continue;
+                }
+                const t = Math.max(0, Math.min(1, v));
+                const rgb = d3.color(d3.interpolateViridis(t))!.rgb();
+                px[o] = rgb.r; px[o + 1] = rgb.g; px[o + 2] = rgb.b; px[o + 3] = 255;
+            }
+        }
+        octx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(off, 0, 0, cols, rows, x0, y0, w, h);
+
+        // Marker for the length whose findings are being highlighted above.
+        const idx = pan.lengths.indexOf(selectedM);
+        if (idx >= 0) {
+            const rowH = h / rows;
+            const yy = y0 + h - (idx + 1) * rowH + rowH / 2;
+            this.container.append("line")
+                .attr("x1", x0).attr("x2", x0 + w).attr("y1", yy).attr("y2", yy)
+                .attr("stroke", "#fff").attr("stroke-width", 1.2)
+                .attr("stroke-dasharray", "4 3").attr("opacity", 0.9);
+            this.container.append("text")
+                .attr("x", x0 - 4).attr("y", yy)
+                .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+                .attr("font-size", "9px").attr("fill", "#555")
+                .text(`m=${selectedM}`);
+        }
+
+        // Length axis: label the extremes so the vertical scale is readable.
+        this.container.append("text")
+            .attr("x", x0 - 4).attr("y", y0 + h)
+            .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+            .attr("font-size", "9px").attr("fill", "#999")
+            .text(String(pan.lengths[0]));
+        this.container.append("text")
+            .attr("x", x0 - 4).attr("y", y0 + 4)
+            .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+            .attr("font-size", "9px").attr("fill", "#999")
+            .text(String(pan.lengths[pan.lengths.length - 1]));
     }
 
     private renderMessage(width: number, height: number, title: string, line1: string, line2: string): void {
