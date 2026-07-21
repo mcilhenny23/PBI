@@ -1,0 +1,130 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Histogram Pro preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style></head>
+<body>
+<svg id="svg" width="960" height="540" viewBox="0 0 960 540"></svg>
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  function el(tag, attrs) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+
+  const W = 960, H = 540;
+  const M = { top: 60, right: 30, bottom: 90, left: 60 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  // Title
+  const t = el("text", { x: M.left, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" });
+  t.textContent = "Histogram Pro — 10,000 draws, FD binning + KDE + normal-fit overlay";
+  svg.appendChild(t);
+  const sub = el("text", { x: M.left, y: 46, "font-size": 12, fill: "#666" });
+  sub.textContent = "Solid = KDE density · dashed = fit N(μ,σ) · slider under axis persists custom bin width";
+  svg.appendChild(sub);
+
+  // Generate 10k N(50, 10)
+  function box(mu, sig) { const u = Math.random(), v = Math.random(); return mu + sig * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  const N = 10000;
+  const values = [];
+  for (let i = 0; i < N; i++) values.push(box(50, 10));
+
+  // FD binning
+  const sorted = values.slice().sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(N * 0.25)], q3 = sorted[Math.floor(N * 0.75)];
+  const iqr = q3 - q1;
+  const width0 = Math.max(0.5, 2 * iqr * Math.pow(N, -1 / 3));
+  const min = sorted[0], max = sorted[N - 1];
+  const dMin = Math.floor(min / width0) * width0;
+  const dMax = Math.ceil(max / width0) * width0;
+  const nBins = Math.round((dMax - dMin) / width0);
+  const bins = new Array(nBins).fill(0);
+  for (const v of values) {
+    const bi = Math.min(nBins - 1, Math.floor((v - dMin) / width0));
+    bins[bi]++;
+  }
+
+  // Scales
+  const xScale = x => M.left + (x - dMin) / (dMax - dMin) * plotW;
+  const maxCount = Math.max(...bins);
+  const yScale = y => M.top + plotH - (y / maxCount) * plotH;
+
+  // Gridlines
+  for (let k = 0; k <= 5; k++) {
+    const v = maxCount * k / 5;
+    const y = yScale(v);
+    svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: y, y2: y, stroke: "#eaeaea" }));
+    const lbl = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 10, fill: "#666" });
+    lbl.textContent = Math.round(v);
+    svg.appendChild(lbl);
+  }
+
+  // Bars
+  for (let i = 0; i < nBins; i++) {
+    const x0 = dMin + i * width0, x1 = x0 + width0;
+    svg.appendChild(el("rect", {
+      x: xScale(x0) + 1, y: yScale(bins[i]),
+      width: Math.max(1, xScale(x1) - xScale(x0) - 2),
+      height: yScale(0) - yScale(bins[i]),
+      fill: "#4472C4", "fill-opacity": 0.7
+    }));
+  }
+
+  // X axis
+  for (let v = Math.ceil(dMin / 10) * 10; v <= dMax; v += 10) {
+    const x = xScale(v);
+    svg.appendChild(el("line", { x1: x, x2: x, y1: M.top + plotH, y2: M.top + plotH + 4, stroke: "#999" }));
+    const t = el("text", { x, y: M.top + plotH + 18, "text-anchor": "middle", "font-size": 11, fill: "#666" });
+    t.textContent = v;
+    svg.appendChild(t);
+  }
+  svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH, stroke: "#999" }));
+  svg.appendChild(el("line", { x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH, stroke: "#999" }));
+
+  // KDE — Silverman bandwidth
+  const mean = values.reduce((a, b) => a + b, 0) / N;
+  const sd = Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / N);
+  const h = 1.06 * sd * Math.pow(N, -0.2);
+  const gridX = [];
+  const step = (dMax - dMin) / 200;
+  for (let x = dMin; x < dMax; x += step) gridX.push(x);
+  const kdeY = gridX.map(x => {
+    let sum = 0;
+    // For speed sample every 10th value only.
+    for (let i = 0; i < N; i += 10) {
+      const u = (x - values[i]) / h;
+      sum += Math.exp(-0.5 * u * u);
+    }
+    return sum / ((N / 10) * h * Math.sqrt(2 * Math.PI));
+  });
+  const maxKde = Math.max(...kdeY);
+  // Scale KDE to bar heights.
+  const kdeScale = maxCount / maxKde;
+  let kdeD = `M ${xScale(gridX[0])} ${yScale(kdeY[0] * kdeScale)}`;
+  for (let i = 1; i < gridX.length; i++) kdeD += ` L ${xScale(gridX[i])} ${yScale(kdeY[i] * kdeScale)}`;
+  svg.appendChild(el("path", { d: kdeD, fill: "none", stroke: "#d62728", "stroke-width": 2 }));
+
+  // Normal fit overlay dashed
+  const normY = gridX.map(x => (1 / (sd * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((x - mean) / sd) ** 2));
+  const maxN = Math.max(...normY);
+  const normScale = maxCount / maxN;
+  let nD = `M ${xScale(gridX[0])} ${yScale(normY[0] * normScale)}`;
+  for (let i = 1; i < gridX.length; i++) nD += ` L ${xScale(gridX[i])} ${yScale(normY[i] * normScale)}`;
+  svg.appendChild(el("path", { d: nD, fill: "none", stroke: "#333", "stroke-width": 1.2, "stroke-dasharray": "4 3" }));
+
+  // Bin slider
+  const trackY = M.top + plotH + 42;
+  svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: trackY, y2: trackY, stroke: "#999", "stroke-width": 2 }));
+  const lblL = el("text", { x: M.left, y: trackY - 8, "font-size": 10, fill: "#666" });
+  lblL.textContent = "Bin width";
+  svg.appendChild(lblL);
+  const lblR = el("text", { x: M.left + plotW, y: trackY - 8, "text-anchor": "end", "font-size": 10, fill: "#666" });
+  lblR.textContent = `= ${width0.toFixed(2)}`;
+  svg.appendChild(lblR);
+  // Handle 45% along
+  svg.appendChild(el("circle", { cx: M.left + plotW * 0.45, cy: trackY, r: 8, fill: "#fff", stroke: "#999", "stroke-width": 1.5 }));
+})();
+</script>
+</body></html>
