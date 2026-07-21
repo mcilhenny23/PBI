@@ -15,6 +15,7 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import { stomp, findMotifs, findDiscords, MatrixProfileResult, MotifPair, Discord } from "./matrixProfile";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 /**
  * STOMP is O(n²). Past this many points the wait stops being interactive, so
@@ -54,6 +55,9 @@ export class Visual implements IVisual {
     private formattingSettingsService: FormattingSettingsService;
 
     private margin = { top: 14, right: 16, bottom: 30, left: 48 };
+
+    /** Caches the O(n²) profile so styling changes don't recompute it. */
+    private profileCache = new ComputeCache<MatrixProfileResult>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -121,9 +125,20 @@ export class Visual implements IVisual {
                 return;
             }
 
-            // ── Compute ────────────────────────────────────────────
+            // ── Compute (cached) ───────────────────────────────────
+            // STOMP is O(n²) — the single most expensive thing in the visual.
+            // It depends only on the series, the window length and the exclusion
+            // zone, so recolouring or resizing must never trigger it. Motif and
+            // discord extraction stays outside the cache: it is O(n) and lets
+            // the highlight mode respond instantly.
             const exclusion = Math.max(1, Math.round(m * (P.exclusionZone.value ?? 50) / 100));
-            const res: MatrixProfileResult | null = stomp(series, m, exclusion);
+            const key = new Fingerprint()
+                .nums(series)
+                .num(m)
+                .num(exclusion)
+                .done();
+            const res: MatrixProfileResult | null =
+                this.profileCache.get(key, () => stomp(series, m, exclusion));
             if (!res) {
                 this.renderMessage(width, height, "Cannot compute profile",
                     "Check the window length against the series length.", "");

@@ -16,6 +16,7 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import { layoutStoryline, StorylineRow, Ordering, LayoutResult } from "./layout";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -44,6 +45,9 @@ export class Visual implements IVisual {
     private formattingSettingsService: FormattingSettingsService;
 
     private margin = { top: 26, right: 92, bottom: 26, left: 74 };
+
+    /** Caches the barycentre sweep so restyling doesn't re-run it. */
+    private layoutCache = new ComputeCache<LayoutResult>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -109,9 +113,19 @@ export class Visual implements IVisual {
             const slotHeight = lineWidth + entityGap;
             const ordering = String(L.orderingStrategy.value?.value ?? "minimize-crossings") as Ordering;
 
-            const res: LayoutResult | null = layoutStoryline(rows, {
-                slotHeight, groupGap, ordering
-            });
+            // ── Layout (cached) ────────────────────────────────────
+            // The barycentre sweep runs several full passes over every entity at
+            // every time step. It depends on the rows and the geometry that
+            // shapes it — slot height, group gap, ordering strategy — so line
+            // colour, tension, labels and hover styling all re-render from the
+            // cached layout rather than re-sweeping.
+            const layoutKey = new Fingerprint()
+                .num(slotHeight).num(groupGap).str(ordering)
+                .num(rows.length)
+                .strs(rows.map(r => `${r.entity}${r.time}${r.group}`))
+                .done();
+            const res: LayoutResult | null = this.layoutCache.get(layoutKey,
+                () => layoutStoryline(rows, { slotHeight, groupGap, ordering }));
             if (!res || res.times.length === 0) {
                 this.renderLandingPage(width, height, true, true, true);
                 this.events.renderingFinished(options);

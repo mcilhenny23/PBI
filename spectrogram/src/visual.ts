@@ -15,6 +15,7 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import { computeSpectrogram, Spectrogram, WindowName } from "./fft";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 /** Vertical resolution of the rendered heatmap before it's scaled to the plot. */
 const MAX_OUTPUT_ROWS = 512;
@@ -91,6 +92,9 @@ export class Visual implements IVisual {
 
     private margin = { top: 12, right: 14, bottom: 34, left: 52 };
 
+    /** Caches the sliding-window FFT so display changes don't re-transform. */
+    private spectroCache = new ComputeCache<{ name: string; spec: Spectrogram }[]>();
+
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
@@ -166,14 +170,30 @@ export class Visual implements IVisual {
             const overlap = Math.max(0, Math.min(90, F.overlapPercent.value ?? 50));
             const winName = String(F.windowFunction.value?.value ?? "hann") as WindowName;
 
-            const specs: { name: string; spec: Spectrogram }[] = [];
+            // ── FFT sweep (cached) ─────────────────────────────────
+            // Every sensor runs a sliding-window FFT — hundreds of transforms.
+            // It depends only on the signal and the three FFT parameters, so the
+            // display controls (colour ramp, dB scale, magnitude floor, log
+            // frequency) must not trigger it. Those are applied at render time
+            // from this cached matrix, which is what makes them feel instant.
             let shortest = Infinity;
             for (const name of sensorNames) {
-                const arr = bySensor.get(name)!;
-                shortest = Math.min(shortest, arr.length);
-                const spec = computeSpectrogram(Float64Array.from(arr), windowSize, overlap, winName);
-                if (spec) specs.push({ name, spec });
+                shortest = Math.min(shortest, bySensor.get(name)!.length);
             }
+
+            const fp = new Fingerprint().num(windowSize).num(overlap).str(winName);
+            for (const name of sensorNames) {
+                fp.str(name).nums(bySensor.get(name)!);
+            }
+            const specs = this.spectroCache.get(fp.done(), () => {
+                const out: { name: string; spec: Spectrogram }[] = [];
+                for (const name of sensorNames) {
+                    const arr = bySensor.get(name)!;
+                    const spec = computeSpectrogram(Float64Array.from(arr), windowSize, overlap, winName);
+                    if (spec) out.push({ name, spec });
+                }
+                return out;
+            }) ?? [];
 
             if (specs.length === 0) {
                 this.renderMessage(width, height, "Insufficient data",

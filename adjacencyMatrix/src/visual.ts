@@ -15,6 +15,7 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import { euclideanDistances, agglomerative, cutIntoGroups } from "./cluster";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 /** Above this node count, clustering is too slow — fall back to degree order. */
 const CLUSTER_LIMIT = 400;
@@ -68,6 +69,9 @@ export class Visual implements IVisual {
     private nodes: string[] = [];
     private order: number[] = [];
     private matrix: number[][] = [];
+
+    /** Caches the seriation so styling changes don't re-cluster. */
+    private clusterCache = new ComputeCache<{ order: number[]; groups: number[][] }>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -169,10 +173,22 @@ export class Visual implements IVisual {
             } else if (mode === "degree") {
                 order = d3.range(N).sort((a, b) => degree[b] - degree[a]);
             } else if (mode === "cluster") {
-                const root = agglomerative(euclideanDistances(matrix));
-                order = root ? root.members : d3.range(N);
-                const k = Math.min(8, Math.max(2, Math.round(Math.sqrt(N / 2))));
-                groups = cutIntoGroups(root, k);
+                // Agglomerative clustering is the expensive step here (an N×N
+                // distance matrix plus N−1 merges). It depends only on the
+                // adjacency matrix, so colour ramps, labels and boundary styling
+                // must never re-run it — hence the cache.
+                const fp = new Fingerprint().str("cluster").num(N);
+                for (const row of matrix) fp.nums(row);
+                const seriated = this.clusterCache.get(fp.done(), () => {
+                    const root = agglomerative(euclideanDistances(matrix));
+                    const k = Math.min(8, Math.max(2, Math.round(Math.sqrt(N / 2))));
+                    return {
+                        order: root ? root.members : d3.range(N),
+                        groups: cutIntoGroups(root, k)
+                    };
+                });
+                order = seriated ? seriated.order : d3.range(N);
+                groups = seriated ? seriated.groups : [];
             } else {
                 order = d3.range(N);                                        // data order
             }

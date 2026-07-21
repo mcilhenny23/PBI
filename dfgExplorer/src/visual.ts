@@ -19,6 +19,7 @@ import {
     EventRow, CaseTrace, Variant, Dfg, DfgEdge,
     buildTraces, buildDfg, buildVariants, metricOf, edgeKey, variantEdgeKeys
 } from "./processMining";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 const ROW_LIMIT = 30000;
 
@@ -83,6 +84,9 @@ export class Visual implements IVisual {
     private ambiguous = 0;
     private truncated = false;
     private viewport = { width: 0, height: 0 };
+
+    /** Caches the dagre layout so variant clicks and restyles don't relayout. */
+    private layoutCache = new ComputeCache<dagre.graphlib.Graph>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -224,20 +228,35 @@ export class Visual implements IVisual {
 
         // ── Dagre layout ───────────────────────────────────────
         const rankdir = String(D.layoutDirection.value?.value ?? "LR");
-        const g = new dagre.graphlib.Graph();
-        g.setGraph({ rankdir, ranksep: 62, nodesep: 26, marginx: 10, marginy: 10 });
-        g.setDefaultEdgeLabel(() => ({}));
-
         const nodeH = N.showFrequencyLabel.value ? fs * 2.7 + 8 : fs * 1.9 + 8;
-        for (const a of liveNodes) {
-            const label = truncate(a, 26);
-            const w = Math.max(N.nodeMinWidth.value ?? 80, label.length * fs * 0.62 + 20);
-            g.setNode(a, { width: w, height: nodeH, label });
-        }
-        for (const e of flowEdges) {
-            g.setEdge(e.source, e.target, { weight: Math.max(1, e.count) });
-        }
-        dagre.layout(g);
+        const nodeMinW = N.nodeMinWidth.value ?? 80;
+
+        // Layout is keyed on the graph's *shape*, deliberately not on the
+        // selection: clicking a variant only changes which path is highlighted,
+        // so re-running dagre there would be pure waste - and node positions
+        // have to stay put anyway, or the user loses their bearings on what is
+        // meant to be a stable map of the process.
+        const layoutKey = new Fingerprint()
+            .str(rankdir).num(nodeH).num(nodeMinW).num(fs)
+            .strs(Array.from(liveNodes).sort())
+            .strs(flowEdges.map(e => e.source + " -> " + e.target).sort())
+            .done();
+
+        const g = this.layoutCache.get(layoutKey, () => {
+            const gg = new dagre.graphlib.Graph();
+            gg.setGraph({ rankdir, ranksep: 62, nodesep: 26, marginx: 10, marginy: 10 });
+            gg.setDefaultEdgeLabel(() => ({}));
+            for (const a of liveNodes) {
+                const label = truncate(a, 26);
+                const w = Math.max(nodeMinW, label.length * fs * 0.62 + 20);
+                gg.setNode(a, { width: w, height: nodeH, label });
+            }
+            for (const e of flowEdges) {
+                gg.setEdge(e.source, e.target, { weight: Math.max(1, e.count) });
+            }
+            dagre.layout(gg);
+            return gg;
+        })!;
 
         const gr = g.graph();
         const gw = Math.max(1, gr.width || 1), gh = Math.max(1, gr.height || 1);

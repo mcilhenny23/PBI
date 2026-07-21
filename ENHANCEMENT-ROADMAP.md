@@ -158,12 +158,35 @@ a poor fit for quantileDotplot, hops, spectrogram and matrixProfile, whose marks
 are *computed aggregates* — a quantile dot is not a row. Those want
 **brush-a-range → filter** instead.
 
-## Performance
+## Performance — ✅ done
 
-`matrixProfile`, `spectrogram`, `adjacencyMatrix`, `dfgExplorer`,
-`eventBundles` and `storyline` all re-run their expensive computation inside
-`update()` with no caching — so **changing a colour in the format pane currently
-re-runs an O(n²) matrix profile, a full FFT sweep, or a clustering pass.**
-Splitting compute from render and keying compute on a data+parameter signature
-would make cosmetic changes instant. `intervalTrack` already does this for zoom;
-the pattern generalises.
+Previously all six heavy visuals re-ran their expensive computation inside
+`update()`, so **changing a colour re-ran an O(n²) matrix profile, a full FFT
+sweep, or a clustering pass.**
+
+Now split compute from render via `src/computeCache.ts` (present in each of the
+six). Compute is keyed on a fingerprint of the data **plus only the parameters
+that shape it** — never styling — so cosmetic changes re-render from cache.
+
+| Visual | Cached work | Invalidated by |
+|---|---|---|
+| matrixProfile | STOMP profile, O(n²) | series, window length, exclusion zone |
+| spectrogram | sliding-window FFT sweep | signal, window size, overlap, window fn |
+| adjacencyMatrix | agglomerative seriation | adjacency matrix contents |
+| dfgExplorer | dagre layout | graph shape, node sizing, direction |
+| eventBundles | prefix tree build + prune | sequences, depth, support, anchor |
+| storyline | barycentre sweep | rows, slot height, group gap, ordering |
+
+**Why a full O(n) fingerprint rather than sampling:** a false cache hit renders
+*stale* results, which is a correctness bug, whereas a false miss is merely slow.
+Measured at n = 10,000 the fingerprint costs **0.08 ms** against STOMP's ~10⁸
+distance evaluations — roughly four orders of magnitude cheaper, so there is no
+reason to gamble on a sample.
+
+Verified behaviourally: identical inputs and style-only changes hit; changing a
+compute parameter, changing one value by 1e-9, or swapping two values all miss;
+20,000 near-identical series produced 20,000 distinct keys with no collisions.
+
+Notable side-effect: in `dfgExplorer` the layout key deliberately excludes the
+selected variant, so **clicking a variant no longer re-runs dagre** — it only
+re-highlights.

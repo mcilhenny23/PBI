@@ -18,6 +18,7 @@ import { VisualFormattingSettingsModel } from "./settings";
 import {
     TrieNode, Anchor, buildTrie, pruneTrie, layoutTrie, alignSequences
 } from "./prefixTree";
+import { Fingerprint, ComputeCache } from "./computeCache";
 
 const intFmt = d3.format(",.0f");
 
@@ -45,6 +46,9 @@ export class Visual implements IVisual {
     private eventCategory = new Map<string, string>();
 
     private margin = { top: 30, right: 14, bottom: 16, left: 14 };
+
+    /** Caches the built+pruned prefix tree so restyling doesn't rebuild it. */
+    private trieCache = new ComputeCache<{ fwdRoot: TrieNode; bwdRoot: TrieNode | null; prunedF: number; prunedB: number }>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -144,14 +148,38 @@ export class Visual implements IVisual {
             const maxDepth = Math.max(1, Math.round(AG.maxDepth.value ?? 10));
             const minSupport = Math.max(1, Math.round(AG.minBundleSupport.value ?? 5));
 
-            const fwdRoot = buildTrie(aligned.forward, maxDepth);
-            const prunedF = pruneTrie(fwdRoot, minSupport);
-            let bwdRoot: TrieNode | null = null;
-            let prunedB = 0;
-            if (aligned.backward.length) {
-                bwdRoot = buildTrie(aligned.backward, maxDepth);
-                prunedB = pruneTrie(bwdRoot, minSupport);
-            }
+            // ── Trie build + prune (cached) ────────────────────────
+            // Building and pruning the prefix tree walks every case. It depends
+            // only on the aligned sequences, the depth limit and the support
+            // threshold — never on colours, orientation or block sizing — so
+            // those re-render straight from the cached tree.
+            // Note pruning MUTATES the tree, so the cached value is the
+            // already-pruned result; re-pruning a cached tree would be a no-op
+            // but returning an unpruned one would leak past the threshold.
+            const trieKey = new Fingerprint()
+                .num(maxDepth).num(minSupport)
+                .str(anchor).str(anchorEvent)
+                .num(aligned.forward.length).num(aligned.backward.length)
+                .strs(aligned.forward.map(s => s.join("")))
+                .strs(aligned.backward.map(s => s.join("")))
+                .done();
+
+            const trie = this.trieCache.get(trieKey, () => {
+                const f = buildTrie(aligned.forward, maxDepth);
+                const pf = pruneTrie(f, minSupport);
+                let b: TrieNode | null = null;
+                let pb = 0;
+                if (aligned.backward.length) {
+                    b = buildTrie(aligned.backward, maxDepth);
+                    pb = pruneTrie(b, minSupport);
+                }
+                return { fwdRoot: f, bwdRoot: b, prunedF: pf, prunedB: pb };
+            })!;
+
+            const fwdRoot = trie.fwdRoot;
+            const bwdRoot = trie.bwdRoot;
+            const prunedF = trie.prunedF;
+            const prunedB = trie.prunedB;
 
             // ── Geometry ───────────────────────────────────────────
             this.horizontal = String(LO.orientation.value?.value ?? "horizontal") === "horizontal";
