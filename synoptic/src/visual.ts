@@ -360,8 +360,17 @@ export class Visual implements IVisual {
             }
         }
         if (this.blinkEls.length) {
-            const on = Math.floor(ts / 500) % 2 === 0;
-            for (const b of this.blinkEls) b.attr("opacity", on ? 1 : 0.28);
+            // When a peer visual is dimming the whole scene, freeze alarms at
+            // full opacity so they still read against the dimmed backdrop —
+            // otherwise sceneDim × blinkOff (~0.30 × 0.28 = 0.084) would
+            // hide the alarms just when they matter most.
+            const hasSel = this.selectionManager.getSelectionIds().length > 0;
+            if (hasSel) {
+                for (const b of this.blinkEls) b.attr("opacity", 1);
+            } else {
+                const on = Math.floor(ts / 500) % 2 === 0;
+                for (const b of this.blinkEls) b.attr("opacity", on ? 1 : 0.28);
+            }
         }
     };
 
