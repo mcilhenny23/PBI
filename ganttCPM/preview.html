@@ -1,0 +1,221 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Gantt CPM preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+  .bar-rect        { fill-opacity: 0.35; stroke-width: 1; }
+  .bar-progress    { fill-opacity: 0.85; }
+  .row-grid        { stroke: #eaeaea; }
+  .arrow           { fill: none; }
+  .col-sep         { stroke: #eaeaea; }
+</style></head>
+<body>
+<svg id="svg" width="1200" height="600" viewBox="0 0 1200 600"></svg>
+
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  const svg = document.getElementById("svg");
+  const W = 1200, H = 600;
+  const nameW = 220;
+  const chartX = nameW;
+  const M = { top: 60, right: 20, bottom: 20 };
+  const chartTop = M.top;
+  const chartW = W - chartX - M.right;
+
+  // Title.
+  svg.appendChild(Object.assign(el("text", {
+    x: 20, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e"
+  }), { textContent: "Gantt CPM — Project Plan" }));
+  svg.appendChild(Object.assign(el("text", {
+    x: 20, y: 46, "font-size": 12, fill: "#666"
+  }), { textContent: "Dependency arrows · critical path in red · WBS with summary bars" }));
+
+  // Data.
+  const tasks = [
+    { name: "Kickoff",       parent: null,          start: "2026-08-01", end: "2026-08-01", progress: 1,   preds: [],                  milestone: true,  cat: "Governance" },
+    { name: "Discovery",     parent: null,          start: "2026-08-01", end: "2026-08-20", progress: 0.9, preds: [],                  milestone: false, cat: null, summary: true },
+    { name: "  Interviews",  parent: "Discovery",   start: "2026-08-01", end: "2026-08-10", progress: 1,   preds: [{from:"Kickoff",type:"FS"}], milestone: false, cat: "Discovery" },
+    { name: "  Analysis",    parent: "Discovery",   start: "2026-08-11", end: "2026-08-20", progress: 0.8, preds: [{from:"  Interviews",type:"FS"}], milestone: false, cat: "Discovery" },
+    { name: "Design",        parent: null,          start: "2026-08-21", end: "2026-09-15", progress: 0.6, preds: [],                  milestone: false, cat: null, summary: true },
+    { name: "  Wireframes",  parent: "Design",      start: "2026-08-21", end: "2026-09-01", progress: 1,   preds: [{from:"  Analysis",type:"FS"}], milestone: false, cat: "Design" },
+    { name: "  Visual",      parent: "Design",      start: "2026-09-02", end: "2026-09-15", progress: 0.5, preds: [{from:"  Wireframes",type:"FS"}], milestone: false, cat: "Design" },
+    { name: "Build",         parent: null,          start: "2026-09-16", end: "2026-11-05", progress: 0.2, preds: [],                  milestone: false, cat: null, summary: true },
+    { name: "  Setup",       parent: "Build",       start: "2026-09-16", end: "2026-09-22", progress: 1,   preds: [{from:"  Visual",type:"FS"}], milestone: false, cat: "Build" },
+    { name: "  Backend",     parent: "Build",       start: "2026-09-23", end: "2026-10-20", progress: 0.4, preds: [{from:"  Setup",type:"FS"}], milestone: false, cat: "Build" },
+    { name: "  Frontend",    parent: "Build",       start: "2026-09-23", end: "2026-10-25", progress: 0.3, preds: [{from:"  Setup",type:"FS"}], milestone: false, cat: "Build" },
+    { name: "  Integration", parent: "Build",       start: "2026-10-26", end: "2026-11-05", progress: 0,   preds: [{from:"  Backend",type:"FF"}], milestone: false, cat: "Build" },
+    { name: "QA",            parent: null,          start: "2026-11-06", end: "2026-11-20", progress: 0,   preds: [],                  milestone: false, cat: null, summary: true },
+    { name: "  Regression",  parent: "QA",          start: "2026-11-06", end: "2026-11-15", progress: 0,   preds: [{from:"  Integration",type:"FS"}], milestone: false, cat: "QA" },
+    { name: "  UAT",         parent: "QA",          start: "2026-11-13", end: "2026-11-20", progress: 0,   preds: [{from:"  Regression",type:"SS"}], milestone: false, cat: "QA" },
+    { name: "Launch",        parent: null,          start: "2026-11-21", end: "2026-11-21", progress: 0,   preds: [{from:"  UAT",type:"FS"}], milestone: true, cat: "Governance" }
+  ];
+
+  // Simple critical-path marker: hand-marked chain that determines end date.
+  const criticalNames = new Set([
+    "Kickoff", "  Interviews", "  Analysis", "  Wireframes", "  Visual",
+    "  Setup", "  Backend", "  Integration", "  Regression", "  UAT", "Launch"
+  ]);
+  for (const t of tasks) t.critical = criticalNames.has(t.name);
+
+  const rowH = 26;
+  const barH = 16;
+  const totalH = tasks.length * rowH;
+
+  // Column separator.
+  svg.appendChild(el("line", { x1: nameW - 1, x2: nameW - 1, y1: 0, y2: H, stroke: "#eaeaea" }));
+
+  // Time scale.
+  const toMs = (s) => new Date(s + "T00:00:00").getTime();
+  const domMin = Math.min(...tasks.map(t => toMs(t.start)));
+  const domMax = Math.max(...tasks.map(t => toMs(t.end)));
+  const pad = (domMax - domMin) * 0.03;
+  const [d0, d1] = [domMin - pad, domMax + pad];
+  const xScale = (ms) => chartX + (ms - d0) / (d1 - d0) * chartW;
+
+  // Header — month band + week band.
+  const monthMs = 30.5 * 86400000;
+  const headerH = 44;
+  svg.appendChild(el("rect", { x: chartX, y: 0, width: chartW, height: headerH, fill: "#ffffff", stroke: "#eaeaea" }));
+  const start = new Date(d0);
+  start.setDate(1); start.setHours(0, 0, 0, 0);
+  let cur = new Date(start);
+  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  while (cur.getTime() <= d1) {
+    const next = new Date(cur); next.setMonth(cur.getMonth() + 1);
+    const x0 = xScale(Math.max(cur.getTime(), d0));
+    const x1 = xScale(Math.min(next.getTime(), d1));
+    if (x1 - x0 > 4) {
+      svg.appendChild(el("line", { x1: x0, x2: x0, y1: 0, y2: headerH, stroke: "#eaeaea" }));
+      const t = el("text", { x: (x0 + x1) / 2, y: 26, "text-anchor": "middle", "font-size": 12, "font-weight": 600, fill: "#333" });
+      t.textContent = `${monthNames[cur.getMonth()]} ${cur.getFullYear()}`;
+      svg.appendChild(t);
+    }
+    // Week ticks
+    const inMonthStart = cur.getTime() < d0 ? new Date(d0) : new Date(cur);
+    const weekStart = new Date(inMonthStart);
+    while (weekStart.getDay() !== 1) weekStart.setDate(weekStart.getDate() + 1);
+    for (let w = new Date(weekStart); w.getTime() < next.getTime(); w.setDate(w.getDate() + 7)) {
+      const x = xScale(w.getTime());
+      if (x < chartX || x > chartX + chartW) continue;
+      svg.appendChild(el("line", { x1: x, x2: x, y1: 22, y2: headerH, stroke: "#eaeaea" }));
+      const tx = el("text", { x: x + 2, y: 40, "font-size": 10, fill: "#888" });
+      tx.textContent = `W${Math.ceil(((w - new Date(w.getFullYear(),0,1)) / 86400000 + 1) / 7)}`;
+      svg.appendChild(tx);
+    }
+    cur = next;
+  }
+
+  // Task list column + row separators.
+  const catColors = { Governance: "#7f4fb2", Discovery: "#1f77b4", Design: "#2ca02c", Build: "#ff7f0e", QA: "#17becf" };
+  tasks.forEach((t, i) => {
+    const y = chartTop + i * rowH + rowH / 2;
+    // Row separator (chart side)
+    svg.appendChild(el("line", { x1: chartX, x2: chartX + chartW, y1: y + rowH / 2, y2: y + rowH / 2, stroke: "#eaeaea" }));
+    // Task name.
+    const isChild = t.name.startsWith("  ");
+    const tt = el("text", { x: 12, y, "dominant-baseline": "central", "font-size": 12, "font-weight": t.summary ? 600 : 400, fill: "#333" });
+    tt.textContent = t.name.replace(/^  /, "");
+    if (isChild) tt.setAttribute("x", 30);
+    svg.appendChild(tt);
+    if (t.cat) {
+      svg.appendChild(el("circle", { cx: isChild ? 22 : 4, cy: y, r: 4, fill: catColors[t.cat] || "#666" }));
+    }
+  });
+
+  // Bars & milestones & summary brackets.
+  tasks.forEach((t, i) => {
+    const y = chartTop + i * rowH + rowH / 2;
+    if (t.summary) {
+      const x0 = xScale(toMs(t.start)), x1 = xScale(toMs(t.end));
+      svg.appendChild(el("path", {
+        d: `M ${x0} ${y} L ${x0} ${y + 5} L ${x1} ${y + 5} L ${x1} ${y} M ${x0} ${y + 5} L ${x0 + 5} ${y + 10} M ${x1} ${y + 5} L ${x1 - 5} ${y + 10}`,
+        fill: "none", stroke: "#333", "stroke-width": 2
+      }));
+      return;
+    }
+    if (t.milestone) {
+      const x = xScale(toMs(t.start));
+      const c = t.critical ? "#d62728" : "#7f4fb2";
+      svg.appendChild(el("path", {
+        d: `M ${x} ${y - 8} L ${x + 8} ${y} L ${x} ${y + 8} L ${x - 8} ${y} Z`,
+        fill: c
+      }));
+      return;
+    }
+    const x0 = xScale(toMs(t.start)), x1 = xScale(toMs(t.end));
+    const w = Math.max(1, x1 - x0);
+    const c = t.critical ? "#d62728" : (catColors[t.cat] || "#4472C4");
+    svg.appendChild(el("rect", {
+      class: "bar-rect", x: x0, y: y - barH / 2, width: w, height: barH,
+      rx: 3, ry: 3, fill: c, stroke: c
+    }));
+    if (t.progress > 0) {
+      svg.appendChild(el("rect", {
+        class: "bar-progress", x: x0, y: y - barH / 2,
+        width: w * t.progress, height: barH, rx: 3, ry: 3, fill: c
+      }));
+    }
+  });
+
+  // Today line.
+  const todayMs = new Date("2026-09-25").getTime();
+  if (todayMs > d0 && todayMs < d1) {
+    const tx = xScale(todayMs);
+    svg.appendChild(el("line", {
+      x1: tx, x2: tx, y1: chartTop, y2: chartTop + totalH,
+      stroke: "#d62728", "stroke-width": 1.5, "stroke-dasharray": "5 3"
+    }));
+    const tl = el("text", { x: tx + 4, y: chartTop + 12, "font-size": 10, "font-weight": 600, fill: "#d62728" });
+    tl.textContent = "Today";
+    svg.appendChild(tl);
+  }
+
+  // Arrows (subset — main FS chain, one FF, one SS).
+  const rowOf = new Map(tasks.map((t, i) => [t.name, i]));
+  function yOfIdx(i) { return chartTop + i * rowH + rowH / 2; }
+  function drawArrow(fromName, toName, type) {
+    const fi = rowOf.get(fromName), ti = rowOf.get(toName);
+    if (fi == null || ti == null) return;
+    const from = tasks[fi], to = tasks[ti];
+    if (from.summary || to.summary) return;
+    let x1, x2;
+    if (type === "FS") { x1 = xScale(toMs(from.end)); x2 = xScale(toMs(to.start)); }
+    else if (type === "FF") { x1 = xScale(toMs(from.end)); x2 = xScale(toMs(to.end)); }
+    else if (type === "SS") { x1 = xScale(toMs(from.start)); x2 = xScale(toMs(to.start)); }
+    else return;
+    const y1 = yOfIdx(fi), y2 = yOfIdx(ti);
+    const midY = (y1 + y2) / 2;
+    const exitDir = (type === "FS" || type === "FF") ? 1 : -1;
+    const enterDir = (type === "FS") ? -1 : (type === "FF") ? 1 : -1;
+    const exitX = x1 + exitDir * 6, enterX = x2 + enterDir * 6;
+    const d = `M ${x1} ${y1} L ${exitX} ${y1} L ${exitX} ${midY} L ${enterX} ${midY} L ${enterX} ${y2} L ${x2} ${y2}`;
+    const isCrit = from.critical && to.critical;
+    const c = isCrit ? "#d62728" : "#7f7f7f";
+    svg.appendChild(el("path", { d, fill: "none", stroke: c, "stroke-width": isCrit ? 1.8 : 1.4 }));
+    // Arrowhead.
+    svg.appendChild(el("path", {
+      d: `M ${x2 - 5} ${y2 - 3} L ${x2} ${y2} L ${x2 - 5} ${y2 + 3} Z`,
+      fill: c
+    }));
+  }
+  // The main FS chain
+  drawArrow("Kickoff", "  Interviews", "FS");
+  drawArrow("  Interviews", "  Analysis", "FS");
+  drawArrow("  Analysis", "  Wireframes", "FS");
+  drawArrow("  Wireframes", "  Visual", "FS");
+  drawArrow("  Visual", "  Setup", "FS");
+  drawArrow("  Setup", "  Backend", "FS");
+  drawArrow("  Setup", "  Frontend", "FS");
+  drawArrow("  Backend", "  Integration", "FF");
+  drawArrow("  Integration", "  Regression", "FS");
+  drawArrow("  Regression", "  UAT", "SS");
+  drawArrow("  UAT", "Launch", "FS");
+})();
+</script>
+</body></html>
