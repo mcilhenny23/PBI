@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "webglScatter",
+        "displayName": "WebGL Scatter Density",
+        "guid": "webglScatterAE2C4B18F65D42794AE0128D6A7C3B54",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Honest scatter for large N. Renders every point via WebGL point sprites (500k+ without downsampling), auto-switches to a Canvas density heatmap or hexbin summary when zoomed out, and requests additional data segments via fetchMoreData so nothing is silently dropped.",
+        "supportUrl": "https://github.com/jeffs-visuals/webgl-scatter",
+        "gitHubUrl": "https://github.com/jeffs-visuals/webgl-scatter"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

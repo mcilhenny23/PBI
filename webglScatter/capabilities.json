@@ -1,0 +1,101 @@
+{
+    "dataRoles": [
+        { "displayName": "X",       "name": "x",        "kind": "Measure" },
+        { "displayName": "Y",       "name": "y",        "kind": "Measure" },
+        { "displayName": "Legend",  "name": "colorBy",  "kind": "Grouping", "description": "Categorical color (≤12 classes)" },
+        { "displayName": "Size",    "name": "sizeBy",   "kind": "Measure",  "description": "Optional size mapping" },
+        { "displayName": "Details", "name": "detail",   "kind": "Grouping", "description": "Row identity — required to keep every row (bind a unique id or row index)" }
+    ],
+    "objects": {
+        "mode": {
+            "properties": {
+                "renderMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "auto",    "displayName": "Auto" },
+                            { "value": "points",  "displayName": "Points" },
+                            { "value": "density", "displayName": "Density" },
+                            { "value": "hexbin",  "displayName": "Hexbin" }
+                        ]
+                    }
+                },
+                "autoThreshold": { "type": { "numeric": true } }
+            }
+        },
+        "points": {
+            "properties": {
+                "pointSize":    { "type": { "numeric": true } },
+                "pointOpacity": { "type": { "numeric": true } }
+            }
+        },
+        "densityCard": {
+            "properties": {
+                "colorRamp": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "viridis", "displayName": "Viridis" },
+                            { "value": "inferno", "displayName": "Inferno" },
+                            { "value": "blues",   "displayName": "Blues" },
+                            { "value": "turbo",   "displayName": "Turbo" }
+                        ]
+                    }
+                },
+                "intensityScale": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "linear", "displayName": "Linear" },
+                            { "value": "log",    "displayName": "Log" },
+                            { "value": "sqrt",   "displayName": "Sqrt" }
+                        ]
+                    }
+                },
+                "hexRadius": { "type": { "numeric": true } }
+            }
+        },
+        "axes": {
+            "properties": {
+                "showAxes":   { "type": { "bool": true } },
+                "fontSize":   { "type": { "numeric": true } },
+                "showSampleWarningBadge": { "type": { "bool": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                {
+                    "x": { "min": 1, "max": 1 }, "y": { "min": 1, "max": 1 },
+                    "colorBy": { "min": 0, "max": 1 },
+                    "sizeBy":  { "min": 0, "max": 1 },
+                    "detail":  { "min": 0, "max": 1 }
+                }
+            ],
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "detail" } },
+                        { "for": { "in": "colorBy" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "x" } },
+                        { "for": { "in": "y" } },
+                        { "for": { "in": "sizeBy" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

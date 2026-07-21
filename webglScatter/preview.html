@@ -1,0 +1,160 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>WebGL Scatter preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  #wrap { position: relative; width: 960px; height: 560px; }
+  canvas, svg { position: absolute; left: 0; top: 0; }
+</style></head>
+<body>
+<div id="wrap">
+  <canvas id="density" width="1600" height="900"></canvas>
+  <svg id="svg" width="960" height="560" viewBox="0 0 960 560"></svg>
+</div>
+
+<script>
+(function () {
+  const wrap = document.getElementById("wrap");
+  const dc = document.getElementById("density");
+  const svg = document.getElementById("svg");
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  const W = 960, H = 560;
+  const M = { top: 60, right: 40, bottom: 50, left: 60 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  // Title
+  const title = el("text", { x: M.left, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" });
+  title.textContent = "WebGL Scatter — 50,000-point density (Viridis, log)";
+  svg.appendChild(title);
+  const sub = el("text", { x: M.left, y: 46, "font-size": 12, fill: "#666" });
+  sub.textContent = "Every row rendered — no downsampling";
+  svg.appendChild(sub);
+
+  // Generate 50k points.
+  function box(mu, sigma) {
+    const u = Math.random(), v = Math.random();
+    return mu + sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  const N = 50000;
+  const pts = new Float32Array(N * 2);
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (let i = 0; i < N - 200; i++) {
+    const x = box(0, 1), y = box(0, 1);
+    pts[i * 2] = x; pts[i * 2 + 1] = y;
+    if (x < xMin) xMin = x; if (x > xMax) xMax = x;
+    if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+  }
+  // Outliers
+  for (let i = N - 200; i < N; i++) {
+    const x = box(4, 0.4), y = box(3, 0.4);
+    pts[i * 2] = x; pts[i * 2 + 1] = y;
+    if (x < xMin) xMin = x; if (x > xMax) xMax = x;
+    if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+  }
+  const xr = xMax - xMin, yr = yMax - yMin;
+  const xPad = xr * 0.03, yPad = yr * 0.03;
+  const xd0 = xMin - xPad, xd1 = xMax + xPad;
+  const yd0 = yMin - yPad, yd1 = yMax + yPad;
+  const px = v => (v - xd0) / (xd1 - xd0) * plotW;
+  const py = v => plotH - (v - yd0) / (yd1 - yd0) * plotH;
+
+  // Density canvas — positioned to plot area, DPR scaled.
+  dc.style.left = M.left + "px";
+  dc.style.top  = M.top  + "px";
+  dc.style.width  = plotW + "px";
+  dc.style.height = plotH + "px";
+  const dpr = 2;
+  dc.width  = plotW * dpr;
+  dc.height = plotH * dpr;
+  const ctx = dc.getContext("2d");
+
+  // Pass 1 — additive splats.
+  const acc = document.createElement("canvas");
+  acc.width = dc.width; acc.height = dc.height;
+  const accCtx = acc.getContext("2d");
+  accCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const splatR = 6;
+  const grad = accCtx.createRadialGradient(0, 0, 0, 0, 0, splatR);
+  grad.addColorStop(0, "rgba(255,255,255,0.28)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  accCtx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < N; i++) {
+    const x = px(pts[i * 2]);
+    const y = py(pts[i * 2 + 1]);
+    accCtx.save();
+    accCtx.translate(x, y);
+    accCtx.fillStyle = grad;
+    accCtx.beginPath();
+    accCtx.arc(0, 0, splatR, 0, Math.PI * 2);
+    accCtx.fill();
+    accCtx.restore();
+  }
+
+  // Pass 2 — colorize.
+  const viridis = [[68,1,84],[71,44,122],[59,81,139],[44,113,142],[33,144,141],[39,173,129],[92,200,99],[170,220,50],[253,231,37]];
+  function ramp(t) {
+    const idx = Math.max(0, Math.min(viridis.length - 1, t * (viridis.length - 1)));
+    const lo = Math.floor(idx), hi = Math.min(viridis.length - 1, lo + 1);
+    const f = idx - lo;
+    return [
+      viridis[lo][0] + (viridis[hi][0] - viridis[lo][0]) * f,
+      viridis[lo][1] + (viridis[hi][1] - viridis[lo][1]) * f,
+      viridis[lo][2] + (viridis[hi][2] - viridis[lo][2]) * f
+    ];
+  }
+  const src = accCtx.getImageData(0, 0, dc.width, dc.height).data;
+  const dst = ctx.createImageData(dc.width, dc.height);
+  let maxA = 1;
+  for (let i = 3; i < src.length; i += 4) if (src[i] > maxA) maxA = src[i];
+  for (let i = 0, j = 0; i < src.length; i += 4, j += 4) {
+    const a = src[i + 3];
+    if (a === 0) { dst.data[j + 3] = 0; continue; }
+    let t = a / maxA;
+    t = Math.log1p(t * 9) / Math.log(10);
+    const rgb = ramp(t);
+    dst.data[j]     = rgb[0];
+    dst.data[j + 1] = rgb[1];
+    dst.data[j + 2] = rgb[2];
+    dst.data[j + 3] = Math.min(255, Math.round(t * 255));
+  }
+  ctx.putImageData(dst, 0, 0);
+
+  // Axes.
+  const axesG = el("g"); svg.appendChild(axesG);
+  // X ticks
+  for (let v = Math.ceil(xd0); v <= Math.floor(xd1); v++) {
+    const x = M.left + px(v);
+    axesG.appendChild(el("line", { x1: x, x2: x, y1: M.top + plotH, y2: M.top + plotH + 4, stroke: "#999" }));
+    const t = el("text", { x, y: M.top + plotH + 18, "text-anchor": "middle", "font-size": 11, fill: "#666" });
+    t.textContent = v;
+    axesG.appendChild(t);
+  }
+  // Y ticks
+  for (let v = Math.ceil(yd0); v <= Math.floor(yd1); v++) {
+    const y = M.top + py(v);
+    axesG.appendChild(el("line", { x1: M.left - 4, x2: M.left, y1: y, y2: y, stroke: "#999" }));
+    const t = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 11, fill: "#666" });
+    t.textContent = v;
+    axesG.appendChild(t);
+  }
+  axesG.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH, stroke: "#999" }));
+  axesG.appendChild(el("line", { x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH, stroke: "#999" }));
+
+  // Badge.
+  const badge = el("g", { transform: `translate(${M.left + 8}, ${M.top + 12})` });
+  const tt = el("text", { x: 8, y: 2, "dominant-baseline": "middle", "font-size": 10, "font-weight": 600, fill: "#333" });
+  tt.textContent = "n = 50,000 · density";
+  badge.appendChild(tt);
+  svg.appendChild(badge);
+  // Backdrop
+  const bb = tt.getBBox();
+  const rect = el("rect", { x: bb.x - 6, y: bb.y - 2, width: bb.width + 12, height: bb.height + 4, rx: 3, fill: "#f5f5f5", stroke: "#555", "stroke-width": 1 });
+  badge.insertBefore(rect, tt);
+})();
+</script>
+</body></html>
