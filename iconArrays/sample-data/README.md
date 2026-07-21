@@ -77,3 +77,12 @@ add a slicer on any other column and the array updates live.
 - **Grid size**: try 20 × 5, or 5 × 5 (25 icons — proportions rescale to fit).
 - **Icon size / spacing** and the **Highlight / Base colors** under Appearance.
 - Resize the visual very small — icons shrink to fit with no overflow.
+
+## Interactions
+
+Requires the **Category** field for cross-filtering (single-value mode has no data-model identity to select on).
+
+- **Click any colored segment** to filter every other visual on the page by that category. Ctrl / Shift-click to add.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Interactions → Unselected opacity** controls how much non-selected icons fade. The same dimming applies when *another* visual filters this chart.

@@ -114,8 +114,21 @@ class AppearanceCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected category segments fade to this opacity when a segment is selected or another visual filters this chart.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     layoutCard = new LayoutCard();
     appearanceCard = new AppearanceCard();
-    cards = [this.layoutCard, this.appearanceCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.layoutCard, this.appearanceCard, this.interactionsCard];
 }

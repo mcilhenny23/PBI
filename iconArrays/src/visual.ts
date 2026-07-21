@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -27,6 +30,8 @@ interface Segment {
     count: number;   // icons allocated to this segment
     start: number;   // inclusive fill-rank where this segment begins
     end: number;     // exclusive fill-rank where this segment ends
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 /** One rendered icon. */
@@ -36,6 +41,7 @@ interface IconDatum {
     y: number;          // top-left pixel y of the icon
     fill: string;
     tip: VisualTooltipDataItem[];
+    segment?: Segment;  // set for highlighted icons that belong to a category segment
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -76,14 +82,18 @@ const pctFmt = d3.format(".1~f");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private colorPalette: ISandboxExtendedColorPalette;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
+
+    /** Segments — built each render, referenced by applySelectionStyling. */
+    private currentSegments: Segment[] = [];
 
     private margin = { top: 10, right: 10, bottom: 10, left: 10 };
 
@@ -92,7 +102,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.colorPalette = options.host.colorPalette;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element)
             .append("svg")
@@ -103,6 +116,39 @@ export class Visual implements IVisual {
 
         this.container = this.svg.append("g")
             .classed("icon-array-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        // Icons are tagged with the segment they belong to via their datum.
+        this.container.selectAll<SVGPathElement, IconDatum>("path.icon").each(function (d) {
+            const p = d3.select(this);
+            const seg = d?.segment;
+            let opacity = 1;
+            if (seg) {
+                const isSel = !!seg.selectionId && activeIds.some(a => eq(a, seg.selectionId!));
+                const isHl = seg.isHighlighted !== false;
+                if (hasSel && !isSel) opacity = dim;
+                if (!isHl) opacity = Math.min(opacity, dim);
+            } else if (hasSel) {
+                // Non-segment icons (the un-highlighted grid base) always dim during selection.
+                opacity = dim;
+            }
+            p.attr("opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -183,15 +229,24 @@ export class Visual implements IVisual {
                 }
 
                 let remaining = gridSize;
+                const catHighlights = vals[valueIdx].highlights ?? null;
                 categoryCol.values.forEach((c, i) => {
                     const v = rawValues[i];
                     const raw = denominator > 0 ? (v / denominator) * gridSize : 0;
                     const count = Math.min(remaining, Math.round(raw));
                     remaining -= count;
                     const color = hc ? hcFg : this.colorPalette.getColor(String(c)).value;
+                    let selectionId: ISelectionId | undefined;
+                    try {
+                        selectionId = this.host.createSelectionIdBuilder()
+                            .withCategory(categoryCol, i)
+                            .createSelectionId();
+                    } catch { /* skipped */ }
+                    const isHighlighted = catHighlights ? (catHighlights[i] != null) : true;
                     segments.push({
                         name: String(c), value: v, color,
-                        count, start: 0, end: 0
+                        count, start: 0, end: 0,
+                        selectionId, isHighlighted
                     });
                 });
                 // Assign contiguous fill-rank ranges in category order.
@@ -284,9 +339,11 @@ export class Visual implements IVisual {
                     x: cellX + inset,
                     y: cellY + inset,
                     fill,
-                    tip: this.buildTooltip(seg, hasCategory, valueName, singleValue, singleTotal, gridSize, totalHighlighted)
+                    tip: this.buildTooltip(seg, hasCategory, valueName, singleValue, singleTotal, gridSize, totalHighlighted),
+                    segment: seg ?? undefined
                 };
             }
+            this.currentSegments = segments;
 
             // ── 8. Render icons ────────────────────────────────────
             const gIcons = this.container.append("g").classed("icons", true);
@@ -313,8 +370,21 @@ export class Visual implements IVisual {
                         coordinates: [px, py], isTouchEvent: false
                     });
                 })
-                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }))
+                .style("cursor", d => d.segment?.selectionId ? "pointer" : "default")
+                .on("click", (event: MouseEvent, d: IconDatum) => {
+                    event.stopPropagation();
+                    if (!d.segment?.selectionId) return;
+                    const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                    this.selectionManager.select(d.segment.selectionId, multi).then(() => this.applySelectionStyling());
+                })
+                .on("contextmenu", (event: MouseEvent, d: IconDatum) => {
+                    event.preventDefault(); event.stopPropagation();
+                    this.selectionManager.showContextMenu(d.segment?.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                });
             sel.exit().remove();
+
+            this.applySelectionStyling();
 
             // ── 9. Caption / legend ────────────────────────────────
             if (look.showLabel.value) {
