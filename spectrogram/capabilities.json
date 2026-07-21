@@ -17,6 +17,12 @@
             "name": "sensor",
             "kind": "Grouping",
             "description": "Optional — renders one stacked spectrogram per sensor"
+        },
+        {
+            "displayName": "RPM",
+            "name": "rpm",
+            "kind": "Measure",
+            "description": "Optional — shaft speed at each sample, enables order tracking so machinery components stay at a fixed order regardless of speed changes"
         }
     ],
     "objects": {
@@ -45,6 +51,21 @@
                         ]
                     }
                 }
+            }
+        },
+        "orderTracking": {
+            "properties": {
+                "axisMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "hz", "displayName": "Hz (fixed frequency)" },
+                            { "value": "orders", "displayName": "Orders (multiples of shaft speed)" }
+                        ]
+                    }
+                },
+                "maxOrder": { "type": { "numeric": true } },
+                "showOrderMarkers": { "type": { "bool": true } },
+                "orderMarkerList": { "type": { "text": true } }
             }
         },
         "display": {
@@ -95,9 +116,16 @@
                 "sampleRate": { "type": { "numeric": true } },
                 "fontSize": { "type": { "formatting": { "fontSize": true } } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,
@@ -118,7 +146,8 @@
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "amplitude" } }
+                        { "for": { "in": "amplitude" } },
+                        { "for": { "in": "rpm" } }
                     ]
                 }
             }

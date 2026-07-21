@@ -55,6 +55,55 @@ class FftCard extends FormattingSettingsCard {
 }
 
 /**
+ * Order Tracking — rescales the frequency axis by shaft RPM so a fixed-order
+ * component (1×, 3×, 5.5× etc.) stays at the same row across the image, even
+ * as the machine speeds up or slows down. Without this a run-up smears every
+ * band diagonally and diagnosis becomes eyeballing slopes.
+ */
+class OrderTrackingCard extends FormattingSettingsCard {
+    axisMode = new formattingSettings.ItemDropdown({
+        name: "axisMode",
+        displayName: "Y axis",
+        description: "Orders requires the RPM well and Axis → Sample rate. Order o at time t is sampled from the spectrum at o × RPM / 60 Hz.",
+        items: [
+            { value: "hz", displayName: "Hz (fixed frequency)" },
+            { value: "orders", displayName: "Orders (multiples of shaft speed)" }
+        ],
+        value: { value: "hz", displayName: "Hz (fixed frequency)" }
+    });
+
+    maxOrder = new formattingSettings.NumUpDown({
+        name: "maxOrder",
+        displayName: "Max order to display",
+        description: "Capped internally by Nyquist at the lowest RPM in the range, so no bogus band shows above the machine's actual reach.",
+        value: 10
+    });
+
+    showOrderMarkers = new formattingSettings.ToggleSwitch({
+        name: "showOrderMarkers",
+        displayName: "Show order marker lines",
+        value: true
+    });
+
+    orderMarkerList = new formattingSettings.TextInput({
+        name: "orderMarkerList",
+        displayName: "Order markers",
+        description: "Comma-separated orders to mark with a dashed line (e.g. 1, 3, 5.5)",
+        value: "1, 2, 3",
+        placeholder: "1, 3, 5.5"
+    });
+
+    name: string = "orderTracking";
+    displayName: string = "Order Tracking";
+    slices: Array<FormattingSettingsSlice> = [
+        this.axisMode,
+        this.maxOrder,
+        this.showOrderMarkers,
+        this.orderMarkerList
+    ];
+}
+
+/**
  * Display — scales and color mapping.
  */
 class DisplayCard extends FormattingSettingsCard {
@@ -193,10 +242,24 @@ class AxisCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "The spectrogram dims when another visual filters the chart.",
+        value: 30
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     fftCard = new FftCard();
+    orderTrackingCard = new OrderTrackingCard();
     displayCard = new DisplayCard();
     alarmBandsCard = new AlarmBandsCard();
     axisCard = new AxisCard();
-    cards = [this.fftCard, this.displayCard, this.alarmBandsCard, this.axisCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.fftCard, this.orderTrackingCard, this.displayCard, this.alarmBandsCard, this.axisCard, this.interactionsCard];
 }

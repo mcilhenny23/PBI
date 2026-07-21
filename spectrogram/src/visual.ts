@@ -11,6 +11,8 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -67,15 +69,46 @@ function buildLut(name: string): Uint8ClampedArray {
 interface Panel {
     name: string;
     spec: Spectrogram;
+    /** Per-frame mean RPM, aligned to spec.numWindows; null if RPM not bound. */
+    rpm: Float64Array | null;
     x: number; y: number; w: number; h: number;
+}
+
+/**
+ * Mean RPM over each FFT frame. Only used when order tracking is on.
+ *
+ * Slow-varying RPM (relative to windowSize/sampleRate) is the case where
+ * computed order tracking is valid; if RPM changes materially inside a single
+ * frame, the frame itself smears in the frequency domain and no post-hoc
+ * warp can undo that. Averaging inside the frame at least keeps the caller
+ * from picking an arbitrary edge value.
+ */
+function framedMeanRpm(rpm: Float64Array, windowSize: number, hopSize: number, numWindows: number): Float64Array {
+    const out = new Float64Array(numWindows);
+    for (let w = 0; w < numWindows; w++) {
+        const start = w * hopSize, end = Math.min(rpm.length, start + windowSize);
+        let sum = 0, count = 0;
+        for (let i = start; i < end; i++) {
+            const v = rpm[i];
+            if (Number.isFinite(v) && v > 0) { sum += v; count++; }
+        }
+        out[w] = count > 0 ? sum / count : NaN;
+    }
+    return out;
+}
+
+function parseOrderMarkers(raw: string): number[] {
+    if (!raw) return [];
+    return raw.split(",").map(s => parseFloat(s.trim())).filter(v => Number.isFinite(v) && v > 0);
 }
 
 // ── Visual ─────────────────────────────────────────────────────
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
@@ -89,6 +122,8 @@ export class Visual implements IVisual {
     private panels: Panel[] = [];
     private sampleRate = 1000;
     private logFreq = false;
+    private ordersMode = false;
+    private maxOrder = 10;
 
     private margin = { top: 12, right: 14, bottom: 34, left: 52 };
 
@@ -99,13 +134,30 @@ export class Visual implements IVisual {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.root = d3.select(options.element).append("div").classed("spec-root", true);
         this.canvas = this.root.append("canvas").classed("spec-canvas", true);
         this.svg = this.root.append("svg").classed("spec-svg", true);
         this.landing = this.svg.append("g").classed("spec-landing", true);
         this.overlay = this.svg.append("g").classed("spec-overlay", true);
+
+        this.svg.on("click.clear", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            }
+        });
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.canvas.style("opacity", hasSel ? String(dim) : "1");
     }
 
     public update(options: VisualUpdateOptions) {
@@ -115,6 +167,7 @@ export class Visual implements IVisual {
             this.formattingSettings = this.formattingSettingsService
                 .populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews?.[0]);
             const F = this.formattingSettings.fftCard;
+            const O = this.formattingSettings.orderTrackingCard;
             const D = this.formattingSettings.displayCard;
             const A = this.formattingSettings.alarmBandsCard;
             const X = this.formattingSettings.axisCard;
@@ -141,6 +194,7 @@ export class Visual implements IVisual {
             const tIdx = cats ? findCategoryIndex(cats, "timeIndex") : -1;
             const sIdx = cats ? findCategoryIndex(cats, "sensor") : -1;
             const aIdx = vals ? findValueIndex(vals, "amplitude") : -1;
+            const rIdx = vals ? findValueIndex(vals, "rpm") : -1;
 
             if (aIdx < 0 || !vals?.length) {
                 this.renderMessage(width, height, "Spectrogram",
@@ -153,7 +207,11 @@ export class Visual implements IVisual {
 
             const n = vals[aIdx].values.length;
             // Group samples by sensor, preserving the incoming (time) order.
+            // RPM (if bound) is grouped in lockstep so per-frame mean RPM later
+            // matches the amplitude frames one-for-one.
             const bySensor = new Map<string, number[]>();
+            const rpmBySensor = new Map<string, number[]>();
+            const rpmValues = rIdx >= 0 ? vals[rIdx].values : null;
             for (let i = 0; i < n; i++) {
                 const amp = safeNum(vals[aIdx].values[i]);
                 if (amp == null) continue;
@@ -161,6 +219,12 @@ export class Visual implements IVisual {
                 let arr = bySensor.get(key);
                 if (!arr) { arr = []; bySensor.set(key, arr); }
                 arr.push(amp);
+                if (rpmValues) {
+                    let rArr = rpmBySensor.get(key);
+                    if (!rArr) { rArr = []; rpmBySensor.set(key, rArr); }
+                    const r = safeNum(rpmValues[i]);
+                    rArr.push(r == null ? NaN : r);
+                }
             }
             // If a time index is bound we trust its order as delivered; Power BI
             // sorts categorical rows by the category, which is what we want.
@@ -231,7 +295,7 @@ export class Visual implements IVisual {
             specs.forEach((s, pi) => {
                 const spec = s.spec;
                 const py = m.top + pi * (panelH + gap);
-                this.panels.push({ name: s.name, spec, x: plotX, y: py, w: plotW, h: panelH });
+                this.panels.push({ name: s.name, spec, rpm: (s as unknown as { rpm?: Float64Array | null }).rpm ?? null, x: plotX, y: py, w: plotW, h: panelH });
 
                 // Build the heatmap in an offscreen image at (numWindows × rows),
                 // then let drawImage scale it into the panel. Frequency remapping
