@@ -91,8 +91,12 @@ export class Visual implements IVisual {
         this.landing = this.svg.append("g").classed("mp-landing", true);
         this.container = this.svg.append("g").classed("mp-container", true);
 
+        // Also accept clicks on the tooltip hit rect (transparent, full-plot) —
+        // it sits over the whole visual and would otherwise swallow every
+        // background click before this guard could fire.
         this.svg.on("click.clear", (event: MouseEvent) => {
-            if (event.target === this.svg.node()) {
+            const t = event.target as Element | null;
+            if (t === this.svg.node() || (t && t.classList?.contains("hit"))) {
                 this.selectionManager.clear().then(() => this.applyExternalDim());
             }
         });

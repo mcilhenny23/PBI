@@ -107,8 +107,12 @@ export class Visual implements IVisual {
         this.landing = this.svg.append("g").classed("ob-landing", true);
         this.overlay = this.svg.append("g").classed("ob-overlay", true);
 
+        // Also accept clicks on the tooltip hit rect — it covers the whole
+        // visual and would otherwise swallow every background click before the
+        // svg-root guard could fire.
         this.svg.on("click.clear", (event: MouseEvent) => {
-            if (event.target === this.svg.node()) {
+            const t = event.target as Element | null;
+            if (t === this.svg.node() || (t && t.classList?.contains("hit"))) {
                 this.selectionManager.clear().then(() => this.applyExternalDim());
             }
         });
