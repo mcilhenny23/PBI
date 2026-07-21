@@ -13,6 +13,8 @@ import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_CONTEXT_COLOR, DEFAULT_FOCUS_COLOR } from "./settings";
@@ -33,6 +35,8 @@ interface SeriesData {
     points: Array<{ axis: string; axisIdx: number; y: number }>;
     lastValue: number;
     focusFlag: boolean;
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 interface RenderPalette {
@@ -89,19 +93,29 @@ export class Visual implements IVisual {
 
     private pinned = new Set<string>();
     private hoverSeriesName: string | null = null;
+    private selectionManager: ISelectionManager;
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element).append("svg").classed("line-focus", true);
         this.landing = this.svg.append("g").classed("lf-landing", true);
         this.plot = this.svg.append("g").classed("lf-plot", true);
         this.focusLayer = this.svg.append("g").classed("lf-focus", true);
         this.overlay = this.svg.append("g").classed("lf-overlay", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -172,10 +186,25 @@ export class Visual implements IVisual {
             const flag = flagCol
                 ? flagCol.values.some(v => { const n = safeNum(v); return n != null && n > 0; })
                 : false;
+
+            // Series identity — every point in this group shares the same series identity,
+            // so we build one selection id per series using withSeries on the group.
+            let selectionId: ISelectionId | undefined;
+            try {
+                selectionId = this.host.createSelectionIdBuilder()
+                    .withSeries(cat.values as unknown as powerbi.DataViewValueColumns, g)
+                    .createSelectionId();
+            } catch { /* fall back to no per-series identity */ }
+
+            // Highlights: any non-null highlight for this series → highlighted.
+            const hasHighlights = !!valCol.highlights;
+            const isHighlighted = !hasHighlights || valCol.highlights!.some(v => v != null);
+
             if (pts.length) {
                 series.push({
                     name, idx: gi, points: pts,
-                    lastValue: last ?? 0, focusFlag: flag
+                    lastValue: last ?? 0, focusFlag: flag,
+                    selectionId, isHighlighted
                 });
             }
         });
@@ -409,18 +438,76 @@ export class Visual implements IVisual {
             this.tooltipService.hide({ immediately: false, isTouchEvent: false });
         });
 
-        // Click-pin: toggle nearest series into the pinned set.
+        // Click-pin: toggle nearest series into the pinned set AND cross-filter via SelectionManager.
         if (focusMode === "click-pin") {
             hit.on("click", (event: MouseEvent) => {
                 const [mx, my] = d3.pointer(event, this.svg.node());
                 const p = qt.find(mx - M.left, my - M.top, 40);
                 if (!p) return;
+                event.stopPropagation();
                 if (this.pinned.has(p.seriesName)) this.pinned.delete(p.seriesName);
                 else this.pinned.add(p.seriesName);
                 this.persistPinned();
                 drawFocused(new Set(this.pinned));
+
+                // Cross-filter: aggregate every pinned series' selection id.
+                const ids = parsed.series.filter(s2 => this.pinned.has(s2.name))
+                                         .map(s2 => s2.selectionId)
+                                         .filter((id): id is ISelectionId => !!id);
+                if (ids.length === 0) this.selectionManager.clear();
+                else this.selectionManager.select(ids, false);
+            });
+            hit.on("contextmenu", (event: MouseEvent) => {
+                const [mx, my] = d3.pointer(event, this.svg.node());
+                const p = qt.find(mx - M.left, my - M.top, 40);
+                if (!p) return;
+                event.preventDefault(); event.stopPropagation();
+                const ser = parsed.series.find(s2 => s2.name === p.seriesName);
+                this.selectionManager.showContextMenu(ser?.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+            });
+        } else if (focusMode === "hover") {
+            // In hover mode a click commits the currently-hovered series to a real filter,
+            // so users get the same cross-filter behavior without swapping modes.
+            hit.on("click", (event: MouseEvent) => {
+                const [mx, my] = d3.pointer(event, this.svg.node());
+                const p = qt.find(mx - M.left, my - M.top, 40);
+                if (!p) return;
+                event.stopPropagation();
+                const ser = parsed.series.find(s2 => s2.name === p.seriesName);
+                if (!ser?.selectionId) return;
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(ser.selectionId, multi).then(() => this.applySelectionStyling());
             });
         }
+
+        this.applySelectionStyling();
+    }
+
+    /**
+     * Fade non-selected series when a selection is active AND fade non-highlighted series
+     * when another visual is cross-filtering this one. Focused (color) and context (gray)
+     * paths get the same treatment.
+     */
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 20) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        // Attach the series data to every rendered path so we can look it up here.
+        this.focusLayer.selectAll<SVGPathElement, SeriesData>("path.series-focus").each(function (d) {
+            const sel = d3.select(this);
+            const isSel = !!d?.selectionId && activeIds.some(a => eq(a, d.selectionId!));
+            const isHl = d?.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            sel.attr("opacity", opacity);
+        });
+        // Context lines are always dim; they don't need selection-driven fading.
     }
 
     /**

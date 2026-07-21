@@ -17,3 +17,13 @@ With 40 series bound, every line as a distinct color is unreadable — the incum
 - **Focus → Focus (0/1) measure**: bind a DAX flag measure (returns 1 for selected series, 0 otherwise) so a slicer or button controls the focused set. Direct downstream integration with report state.
 
 Push **Fallback / Trellis threshold** to 30 (below 40) to trigger small-multiples fallback — every series gets its own mini-panel with a ghosted context, on a shared Y-scale.
+
+## Interactions
+
+Every focus mode also cross-filters other visuals via SelectionManager:
+
+- **Focus → Hover**: click the nearest series to filter every other visual by that country. Ctrl / Shift-click adds to the selection.
+- **Focus → Click to pin**: pins survive report reload AND cross-filter — click multiple to build a persistent multi-country comparison.
+- **Right-click** any series for the Power BI context menu.
+- **Click empty plot area** to clear.
+- When another visual filters this chart, non-highlighted series fade to **Interactions → Unselected opacity**.

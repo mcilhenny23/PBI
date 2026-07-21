@@ -95,11 +95,24 @@ class PinnedSeriesCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.pinned];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When any selection is active, non-selected series fade to this opacity.",
+        value: 20
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     focusCard = new FocusCard();
     labelsCard = new LabelsCard();
     fallbackCard = new FallbackCard();
     axesCard = new AxesCard();
     pinnedCard = new PinnedSeriesCard();
-    cards = [this.focusCard, this.labelsCard, this.fallbackCard, this.axesCard, this.pinnedCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.focusCard, this.labelsCard, this.fallbackCard, this.axesCard, this.interactionsCard, this.pinnedCard];
 }
