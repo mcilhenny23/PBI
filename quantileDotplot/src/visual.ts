@@ -184,21 +184,34 @@ export class Visual implements IVisual {
             const nRows = cat?.categories?.[0]?.values?.length || vals[sampleIdx[0]].values.length;
 
             // One group per bound "samples" measure; each pools its per-row values.
-            const obsKeyCat = cat?.categories?.find(c => c.source.roles && c.source.roles["category"])
-                          ?? cat?.categories?.[0]
-                          ?? null;
+            // Only build row-level identities when the Category role is actually bound —
+            // falling back to categories[0] would filter downstream by whatever column
+            // happened to be first, which is not what the user picked.
+            const obsKeyCat = cat?.categories?.find(c => c.source.roles && c.source.roles["category"]) ?? null;
+
+            // Build one identity per row up front and reuse across groups — otherwise
+            // every group ends up with the same nRows ids duplicated per iteration.
+            const rowIds: (ISelectionId | null)[] = [];
+            if (obsKeyCat) {
+                for (let i = 0; i < nRows; i++) {
+                    try {
+                        rowIds.push(this.host.createSelectionIdBuilder().withCategory(obsKeyCat, i).createSelectionId());
+                    } catch { rowIds.push(null); }
+                }
+            }
+
             const groups: Group[] = [];
             for (const idx of sampleIdx) {
                 const pool: number[] = [];
                 const ids: ISelectionId[] = [];
                 for (let i = 0; i < nRows; i++) {
                     const n = safeNum(vals[idx].values[i]);
-                    if (n != null) pool.push(n);
-                    if (obsKeyCat) {
-                        try {
-                            ids.push(this.host.createSelectionIdBuilder().withCategory(obsKeyCat, i).createSelectionId());
-                        } catch { /* skipped */ }
-                    }
+                    // Only push a value-and-id when the group actually rendered this row.
+                    // Otherwise clicking group A would filter rows where A was null.
+                    if (n == null) continue;
+                    pool.push(n);
+                    const id = rowIds[i];
+                    if (id) ids.push(id);
                 }
                 groups.push({
                     name: vals[idx].source.displayName || "Samples",
