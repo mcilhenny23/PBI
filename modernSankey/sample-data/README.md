@@ -24,3 +24,13 @@ Visitor → outcome cascade. Every drop-out (Bounced, Dormant, Free Only, Churne
 - Weight ≤ 0 rows are dropped silently.
 - **Drag any node** vertically to reorder it within its column. The new order is persisted via `persistProperties` and survives report reload.
 - To reset a persisted order, clear **Node order (persisted) → Node order** in the format pane.
+
+## Interactions
+
+- **Click a node** to filter every other visual on the page by every row touching it. Ctrl-click / Shift-click to add to the selection.
+- **Click a ribbon** to filter by that specific flow only.
+- **Right-click** either for the Power BI context menu (drill-through, include / exclude).
+- **Click empty space** to clear the selection.
+- Focus a node with `Tab`, press `Enter` or `Space` to select it via the keyboard.
+- **Interactions → Click a node to select**: "All connected links" selects both incoming and outgoing rows; "Outgoing only" filters the current node → downstream; "Incoming only" filters upstream → the current node.
+- **Interactions → Unselected opacity**: how much non-selected nodes / links fade when any selection is active. The same dimming applies when *another* visual filters this chart.

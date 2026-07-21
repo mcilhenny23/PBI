@@ -110,9 +110,25 @@
             "properties": {
                 "order": { "type": { "text": true } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } },
+                "selectionMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "node",       "displayName": "Node (source or target)" },
+                            { "value": "node-out",   "displayName": "Outgoing links only" },
+                            { "value": "node-in",    "displayName": "Incoming links only" }
+                        ]
+                    }
+                }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

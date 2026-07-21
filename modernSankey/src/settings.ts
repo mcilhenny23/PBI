@@ -143,6 +143,29 @@ class NodeOrderCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.order];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When any selection is active, non-touched nodes and links fade to this opacity.",
+        value: 25
+    });
+    selectionMode = new formattingSettings.ItemDropdown({
+        name: "selectionMode",
+        displayName: "Click a node to select",
+        items: [
+            { value: "node",     displayName: "All connected links" },
+            { value: "node-out", displayName: "Outgoing links only" },
+            { value: "node-in",  displayName: "Incoming links only" }
+        ],
+        value: { value: "node", displayName: "All connected links" }
+    });
+
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity, this.selectionMode];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     layoutCard = new LayoutCard();
     cyclesCard = new CyclesCard();
@@ -150,5 +173,9 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     linksCard  = new LinksCard();
     labelsCard = new LabelsCard();
     nodeOrderCard = new NodeOrderCard();
-    cards = [this.layoutCard, this.cyclesCard, this.nodesCard, this.linksCard, this.labelsCard, this.nodeOrderCard];
+    interactionsCard = new InteractionsCard();
+    cards = [
+        this.layoutCard, this.cyclesCard, this.nodesCard, this.linksCard,
+        this.labelsCard, this.interactionsCard, this.nodeOrderCard
+    ];
 }

@@ -14,6 +14,8 @@ import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_NODE_COLOR, DEFAULT_CYCLE_COLOR } from "./settings";
@@ -25,6 +27,10 @@ interface RawEdge {
     target: string;
     weight: number;
     linkCategory?: string;
+    /** Row-level selection id for this edge (data-view row identity). */
+    selectionId?: ISelectionId;
+    /** Highlight value for this edge (null if no cross-highlight is active). */
+    highlightWeight?: number | null;
 }
 
 interface NodeExtra {
@@ -32,11 +38,17 @@ interface NodeExtra {
     baseName: string;    // pre-"(return)" name
     color?: string;
     level?: number;
+    /** Every edge selection id that touches this node — used when the node is clicked. */
+    selectionIds?: ISelectionId[];
+    /** Any incoming/outgoing highlight above 0 keeps the node highlighted. */
+    isHighlighted?: boolean;
 }
 interface LinkExtra {
     weight: number;
     category?: string;
     isCycleEdge?: boolean;
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 type MyNode = SankeyNode<NodeExtra, LinkExtra>;
 type MyLink = SankeyLink<NodeExtra, LinkExtra>;
@@ -127,6 +139,7 @@ export class Visual implements IVisual {
     private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -142,7 +155,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element)
             .append("svg")
@@ -151,6 +167,13 @@ export class Visual implements IVisual {
         this.defs = this.svg.append("defs");
         this.landing = this.svg.append("g").classed("ms-landing", true);
         this.container = this.svg.append("g").classed("ms-container", true);
+
+        // Click on empty space clears the selection.
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -196,7 +219,9 @@ export class Visual implements IVisual {
         const srcVals = cat.categories![srcIdx].values;
         const tgtVals = cat.categories![tgtIdx].values;
         const wVals = cat.values![wIdx].values;
+        const wHighlights = cat.values![wIdx].highlights ?? null;
         const catVals = catIdx >= 0 ? cat.categories![catIdx].values : null;
+        const srcCategory = cat.categories![srcIdx];
         const rows = srcVals.length;
 
         const edges: RawEdge[] = [];
@@ -205,12 +230,31 @@ export class Visual implements IVisual {
             const t = tgtVals[i] == null ? null : String(tgtVals[i]);
             const w = safeNum(wVals[i]);
             if (!s || !t || w == null || w <= 0) continue;
+
+            // Per-row selection id — anchored on the source category column so
+            // Power BI can resolve it back to the underlying data row.
+            let selectionId: ISelectionId | undefined;
+            try {
+                selectionId = this.host.createSelectionIdBuilder()
+                    .withCategory(srcCategory, i)
+                    .createSelectionId();
+            } catch { /* per-row identity is optional; interactions become no-ops for this edge */ }
+
+            const highlightWeight = wHighlights ? safeNum(wHighlights[i]) : null;
+
             edges.push({
                 source: s, target: t, weight: w,
-                linkCategory: catVals ? String(catVals[i]) : undefined
+                linkCategory: catVals ? String(catVals[i]) : undefined,
+                selectionId,
+                highlightWeight: wHighlights ? highlightWeight : null
             });
         }
         return edges;
+    }
+
+    /** True when any highlight array survived on the value column (cross-filter is active). */
+    private isHighlightActive(edges: RawEdge[]): boolean {
+        return edges.some(e => e.highlightWeight != null);
     }
 
     private render(rawEdges: RawEdge[], width: number, height: number, palette: RenderPalette): void {
@@ -302,8 +346,23 @@ export class Visual implements IVisual {
             if (!src || !tgt) continue;
             (links as any).push({
                 source: src, target: tgt, value: e.weight,
-                weight: e.weight, category: e.linkCategory, isCycleEdge: false
+                weight: e.weight, category: e.linkCategory, isCycleEdge: false,
+                selectionId: e.selectionId,
+                isHighlighted: e.highlightWeight == null || Math.abs(e.highlightWeight) > 1e-9
             });
+        }
+
+        // Build per-node aggregated selection identity — every edge touching a node
+        // contributes its row's selectionId. Clicking the node selects them all.
+        const idsByNode = new Map<string, ISelectionId[]>();
+        const highlightedNodes = new Set<string>();
+        for (const e of rawEdges) {
+            if (!e.selectionId) continue;
+            for (const nm of [e.source, e.target]) {
+                if (!idsByNode.has(nm)) idsByNode.set(nm, []);
+                idsByNode.get(nm)!.push(e.selectionId);
+                if (e.highlightWeight == null || Math.abs(e.highlightWeight) > 1e-9) highlightedNodes.add(nm);
+            }
         }
 
         const alignFn = (function () {
@@ -360,6 +419,10 @@ export class Visual implements IVisual {
             }
             n.color = c;
             this.nodeColorByName.set(n.name, c);
+            // Attach aggregated selection state — the `baseName` maps back to raw source/target.
+            const key = n.baseName ?? n.name;
+            n.selectionIds = idsByNode.get(key) ?? [];
+            n.isHighlighted = !this.isHighlightActive(rawEdges) || highlightedNodes.has(key);
         }
 
         // ── Link gradients (defs) ──
@@ -451,7 +514,57 @@ export class Visual implements IVisual {
             .attr("height", d => Math.max(1, d.y1! - d.y0!))
             .attr("fill", d => d.color!)
             .attr("stroke", palette.highContrast ? palette.border : borderColor)
-            .attr("stroke-width", palette.highContrast ? 1 : borderWidth);
+            .attr("stroke-width", palette.highContrast ? 1 : borderWidth)
+            .attr("tabindex", 0)
+            .attr("role", "button")
+            .attr("aria-label", d => `${d.name}, ${d.value ?? 0} total`);
+
+        // Node interactions — click selects every row touching that node.
+        const selectionMode = String(s.interactionsCard.selectionMode.value?.value ?? "node");
+        nodeSel.on("click", (event: MouseEvent, n) => {
+            event.stopPropagation();
+            const nodeIds = n.selectionIds ?? [];
+            if (nodeIds.length === 0) return;
+            const filtered = selectionMode === "node" ? nodeIds
+                : (graph.links as MyLink[])
+                    .filter(l => selectionMode === "node-out"
+                        ? (l.source as MyNode).name === n.name
+                        : (l.target as MyNode).name === n.name)
+                    .map(l => (l as LinkExtra).selectionId!)
+                    .filter(Boolean);
+            const ids = filtered.length ? filtered : nodeIds;
+            const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+            this.selectionManager.select(ids, multi).then(() => this.applySelectionStyling());
+        });
+        nodeSel.on("contextmenu", (event: MouseEvent, n) => {
+            event.preventDefault(); event.stopPropagation();
+            const first = (n.selectionIds ?? [])[0] ?? ({} as ISelectionId);
+            this.selectionManager.showContextMenu(first, { x: event.clientX, y: event.clientY });
+        });
+        nodeSel.on("keydown", (event: KeyboardEvent, n) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            const ids = n.selectionIds ?? [];
+            if (ids.length === 0) return;
+            this.selectionManager.select(ids, event.shiftKey).then(() => this.applySelectionStyling());
+        });
+
+        // Link interactions — click selects that individual flow.
+        linkSel.on("click", (event: MouseEvent, l) => {
+            event.stopPropagation();
+            const id = (l as LinkExtra).selectionId;
+            if (!id) return;
+            const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+            this.selectionManager.select(id, multi).then(() => this.applySelectionStyling());
+        });
+        linkSel.on("contextmenu", (event: MouseEvent, l) => {
+            event.preventDefault(); event.stopPropagation();
+            const id = (l as LinkExtra).selectionId ?? ({} as ISelectionId);
+            this.selectionManager.showContextMenu(id, { x: event.clientX, y: event.clientY });
+        });
+
+        // Base opacity stashed on the DOM node so applySelectionStyling can restore it after dimming.
+        linkSel.each(function () { (this as SVGPathElement).dataset.baseOpacity = String(baseOpacity); });
 
         // ── Labels ──
         const showValues = s.labelsCard.showValues.value;
@@ -536,6 +649,48 @@ export class Visual implements IVisual {
         if (s.layoutCard.enableDragReorder.value) {
             this.attachDrag(nodeSel, linkSel, labelG, graph as SankeyGraph<NodeExtra, LinkExtra>, H, linkPath);
         }
+
+        // Apply the initial selection/highlight styling now that nodes+links exist.
+        this.applySelectionStyling();
+    }
+
+    /**
+     * Apply fill/opacity for nodes and stroke-opacity for links based on:
+     *   (a) external highlights (fields carried on nodes / links at parse time), and
+     *   (b) local SelectionManager state.
+     * Links get the base opacity restored from the DOM data-attribute stashed during render.
+     */
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGRectElement, MyNode>("rect.node").each(function (n) {
+            const rect = d3.select(this);
+            const localIds = n.selectionIds ?? [];
+            const isSel = localIds.some(id => activeIds.some(a => eq(a, id)));
+            const isHl = n.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            rect.attr("fill-opacity", opacity).attr("stroke-opacity", opacity);
+        });
+
+        this.container.selectAll<SVGPathElement, MyLink>("path.link").each(function (l) {
+            const path = d3.select(this);
+            const base = Number(this.dataset.baseOpacity ?? "0.4");
+            const id = (l as LinkExtra).selectionId;
+            const isSel = id && activeIds.some(a => eq(a, id));
+            const isHl = (l as LinkExtra).isHighlighted !== false;
+            let opacity = base;
+            if (hasSel && !isSel) opacity = base * dim;
+            if (!isHl) opacity = Math.min(opacity, base * dim);
+            path.attr("stroke-opacity", opacity);
+        });
     }
 
     /**
