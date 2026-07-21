@@ -746,6 +746,11 @@ export class Visual implements IVisual {
                     let bin: number;
                     let orderAt: number | null = null;
                     let rpmAt: number | null = null;
+                    // magKnown gates the Magnitude readout: in orders mode without a
+                    // valid RPM there is no way to know which bin corresponds to the
+                    // hovered order, so we must not print a magnitude — reading the
+                    // DC bin and labelling it 'Order N.NN×' would be actively wrong.
+                    let magKnown = true;
                     if (this.ordersMode && p.rpm) {
                         orderAt = u * this.maxOrder;
                         const rpm = p.rpm[w];
@@ -754,7 +759,7 @@ export class Visual implements IVisual {
                             const hzPerBin = this.sampleRate / spec.windowSize;
                             bin = Math.round(orderAt * rpm / 60 / hzPerBin);
                         } else {
-                            bin = 0;
+                            magKnown = false;
                         }
                     } else if (this.logFreq) {
                         bin = Math.round(1 * Math.pow(binMax / 1, u));
@@ -788,7 +793,7 @@ export class Visual implements IVisual {
                                 : `bin ${b}`
                         });
                     }
-                    items.push({ displayName: "Magnitude", value: `${db.toFixed(1)} dB` });
+                    items.push({ displayName: "Magnitude", value: magKnown ? `${db.toFixed(1)} dB` : "—" });
 
                     // If harmonic cursors are on and this cell sits within ±one
                     // bin of a multiple of the fundamental, tell the user which
