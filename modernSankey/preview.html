@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Modern Sankey preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+  .link { fill: none; }
+  .cycle-link { fill: none; stroke-linecap: round; }
+  .label { font-size: 12px; fill: #333; }
+</style>
+<script src="node_modules/d3/dist/d3.min.js"></script>
+<script src="node_modules/d3-sankey/dist/d3-sankey.min.js"></script>
+</head>
+<body>
+<svg id="svg" width="1000" height="600" viewBox="0 0 1000 600"></svg>
+
+<script>
+(function () {
+  const W = 1000, H = 600;
+  const M = { top: 60, right: 140, bottom: 40, left: 140 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+  const svg = d3.select("#svg");
+
+  // Title
+  svg.append("text").attr("x", M.left).attr("y", 28)
+    .attr("font-size", 18).attr("font-weight", 600).attr("fill", "#1a1a2e")
+    .text("Modern Sankey — Energy Flow (with a cycle)");
+  svg.append("text").attr("x", M.left).attr("y", 46)
+    .attr("font-size", 12).attr("fill", "#666")
+    .text("Gradient ribbons · route-back arcs (red) for reverse flow · one row per link");
+
+  const data = [
+    // Multi-level acyclic flow
+    { source: "Coal",        target: "Electricity",    value: 52 },
+    { source: "Natural Gas", target: "Electricity",    value: 48 },
+    { source: "Nuclear",     target: "Electricity",    value: 30 },
+    { source: "Hydro",       target: "Electricity",    value: 18 },
+    { source: "Solar",       target: "Electricity",    value: 12 },
+    { source: "Wind",        target: "Electricity",    value: 20 },
+    { source: "Electricity", target: "Residential",    value: 55 },
+    { source: "Electricity", target: "Commercial",     value: 42 },
+    { source: "Electricity", target: "Industrial",     value: 58 },
+    { source: "Electricity", target: "Losses",         value: 25 },
+    // Cycle edge to demo route-back:
+    { source: "Losses",      target: "Coal",           value: 6, cycle: true }
+  ];
+
+  // Set aside cycle edges before running d3-sankey.
+  const acyclic = data.filter(d => !d.cycle);
+  const cycles  = data.filter(d =>  d.cycle);
+
+  const nameSet = new Set();
+  for (const d of data) { nameSet.add(d.source); nameSet.add(d.target); }
+  const nodes = Array.from(nameSet).map(n => ({ name: n }));
+
+  const links = acyclic.map(d => ({ source: d.source, target: d.target, value: d.value }));
+
+  const sankey = d3.sankey()
+    .nodeId(d => d.name)
+    .nodeAlign(d3.sankeyJustify)
+    .nodeWidth(16)
+    .nodePadding(14)
+    .extent([[M.left, M.top], [M.left + plotW, M.top + plotH]]);
+
+  const graph = sankey({
+    nodes: nodes.map(n => ({...n})),
+    links: links.map(l => ({...l}))
+  });
+
+  // Color assignment: palette per unique node.
+  const cats = d3.schemeTableau10.concat(d3.schemeSet2);
+  const color = d3.scaleOrdinal().range(cats);
+  const cmap = new Map();
+  graph.nodes.forEach(n => { const c = color(n.name); n.color = c; cmap.set(n.name, c); });
+
+  // Gradient defs.
+  const defs = svg.append("defs");
+  graph.links.forEach((l, i) => {
+    const g = defs.append("linearGradient")
+      .attr("id", `msg-${i}`)
+      .attr("gradientUnits", "userSpaceOnUse")
+      .attr("x1", l.source.x1).attr("x2", l.target.x0)
+      .attr("y1", 0).attr("y2", 0);
+    g.append("stop").attr("offset", "0%").attr("stop-color", l.source.color);
+    g.append("stop").attr("offset", "100%").attr("stop-color", l.target.color);
+  });
+
+  // Links.
+  const linkPath = d3.sankeyLinkHorizontal();
+  svg.append("g").selectAll("path")
+    .data(graph.links).enter().append("path")
+    .attr("class", "link")
+    .attr("d", linkPath)
+    .attr("stroke", (_, i) => `url(#msg-${i})`)
+    .attr("stroke-width", d => Math.max(1, d.width))
+    .attr("stroke-opacity", 0.45);
+
+  // Nodes.
+  svg.append("g").selectAll("rect")
+    .data(graph.nodes).enter().append("rect")
+    .attr("x", d => d.x0).attr("y", d => d.y0)
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => d.y1 - d.y0)
+    .attr("fill", d => d.color);
+
+  // Labels.
+  svg.append("g").selectAll("text.label")
+    .data(graph.nodes).enter().append("text")
+    .attr("class", "label")
+    .attr("x", d => d.x0 < M.left + plotW / 2 ? d.x0 - 6 : d.x1 + 6)
+    .attr("y", d => (d.y0 + d.y1) / 2)
+    .attr("text-anchor", d => d.x0 < M.left + plotW / 2 ? "end" : "start")
+    .attr("dominant-baseline", "central")
+    .text(d => `${d.name} (${d.value})`);
+
+  // Route-back cycle arcs.
+  const nodeByName = new Map(graph.nodes.map(n => [n.name, n]));
+  const sweepY = M.top + plotH + 20;
+  for (const c of cycles) {
+    const s = nodeByName.get(c.source), t = nodeByName.get(c.target);
+    if (!s || !t) continue;
+    const sy = (s.y0 + s.y1) / 2;
+    const ty = (t.y0 + t.y1) / 2;
+    const sx = s.x1, tx = t.x0;
+    const path = `M ${sx} ${sy}
+                  C ${sx + 40} ${sy}, ${sx + 40} ${sweepY}, ${(sx + tx) / 2} ${sweepY}
+                  C ${tx - 40} ${sweepY}, ${tx - 40} ${ty}, ${tx} ${ty}`;
+    svg.append("path")
+      .attr("class", "cycle-link")
+      .attr("d", path)
+      .attr("stroke", "#d62728")
+      .attr("stroke-width", Math.max(2, c.value / 2))
+      .attr("stroke-opacity", 0.7);
+  }
+})();
+</script>
+</body></html>

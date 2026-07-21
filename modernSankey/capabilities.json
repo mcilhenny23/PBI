@@ -1,0 +1,147 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "Source",
+            "name": "source",
+            "kind": "Grouping",
+            "description": "Source node of each flow (one row per link)"
+        },
+        {
+            "displayName": "Target",
+            "name": "target",
+            "kind": "Grouping",
+            "description": "Target node of each flow"
+        },
+        {
+            "displayName": "Weight",
+            "name": "weight",
+            "kind": "Measure",
+            "description": "Link magnitude (bar width)"
+        },
+        {
+            "displayName": "Link Category",
+            "name": "linkColorBy",
+            "kind": "Grouping",
+            "description": "Optional: color links by this category (overrides node-color modes)"
+        }
+    ],
+    "objects": {
+        "layout": {
+            "properties": {
+                "nodeWidth":         { "type": { "numeric": true } },
+                "nodePadding":       { "type": { "numeric": true } },
+                "iterations":        { "type": { "numeric": true } },
+                "nodeAlignment":     {
+                    "type": {
+                        "enumeration": [
+                            { "value": "justify", "displayName": "Justify" },
+                            { "value": "left",    "displayName": "Left" },
+                            { "value": "right",   "displayName": "Right" },
+                            { "value": "center",  "displayName": "Center" }
+                        ]
+                    }
+                },
+                "enableDragReorder": { "type": { "bool": true } }
+            }
+        },
+        "cycles": {
+            "properties": {
+                "cycleHandling": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "route-back",     "displayName": "Route back (arc)" },
+                            { "value": "duplicate-node", "displayName": "Duplicate node" },
+                            { "value": "drop",           "displayName": "Drop cycle edges" }
+                        ]
+                    }
+                },
+                "cycleLinkColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "nodes": {
+            "properties": {
+                "nodeColorMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "palette",  "displayName": "Palette (per node)" },
+                            { "value": "single",   "displayName": "Single color" },
+                            { "value": "by-level", "displayName": "By level" }
+                        ]
+                    }
+                },
+                "nodeColor":       { "type": { "fill": { "solid": { "color": true } } } },
+                "nodeBorderColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "nodeBorderWidth": { "type": { "numeric": true } }
+            }
+        },
+        "links": {
+            "properties": {
+                "linkOpacity":     { "type": { "numeric": true } },
+                "linkColorMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "source",   "displayName": "Match source" },
+                            { "value": "target",   "displayName": "Match target" },
+                            { "value": "gradient", "displayName": "Source → target gradient" },
+                            { "value": "category", "displayName": "By link category" }
+                        ]
+                    }
+                },
+                "hoverHighlight":  { "type": { "bool": true } }
+            }
+        },
+        "labels": {
+            "properties": {
+                "labelPosition": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "auto",    "displayName": "Auto" },
+                            { "value": "inside",  "displayName": "Inside" },
+                            { "value": "outside", "displayName": "Outside" }
+                        ]
+                    }
+                },
+                "showValues":     { "type": { "bool": true } },
+                "fontSize":       { "type": { "numeric": true } },
+                "maxLabelLength": { "type": { "numeric": true } }
+            }
+        },
+        "nodeOrder": {
+            "properties": {
+                "order": { "type": { "text": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                { "source": { "min": 1, "max": 1 }, "target": { "min": 1, "max": 1 }, "weight": { "min": 1, "max": 1 }, "linkColorBy": { "min": 0, "max": 1 } }
+            ],
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "source" } },
+                        { "for": { "in": "target" } },
+                        { "for": { "in": "linkColorBy" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "weight" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

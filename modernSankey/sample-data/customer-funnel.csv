@@ -1,0 +1,9 @@
+Source,Target,Weight
+Visitors,Signups,220
+Visitors,Bounced,780
+Signups,Activated,180
+Signups,Dormant,40
+Activated,Paid,90
+Activated,Free Only,90
+Paid,Retained,72
+Paid,Churned,18

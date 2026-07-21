@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "modernSankey",
+        "displayName": "Modern Sankey",
+        "guid": "modernSankeyC5D2B8F3E4194A7C9E12F5A6D7C8B935",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Modern Sankey diagram: cycle-aware layout, drag-to-reorder nodes with persistent state, gradient links from source→target, and a highlight-connected hover. Multi-level flows come from chained source→target rows — no level column required.",
+        "supportUrl": "https://github.com/jeffs-visuals/modern-sankey",
+        "gitHubUrl": "https://github.com/jeffs-visuals/modern-sankey"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

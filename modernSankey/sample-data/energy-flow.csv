@@ -1,0 +1,21 @@
+Source,Target,Weight
+Coal,Electricity,52
+Natural Gas,Electricity,48
+Nuclear,Electricity,30
+Hydro,Electricity,18
+Solar,Electricity,12
+Wind,Electricity,20
+Electricity,Residential,55
+Electricity,Commercial,42
+Electricity,Industrial,58
+Electricity,Losses,25
+Residential,Heating,20
+Residential,Appliances,18
+Residential,Lighting,10
+Residential,Other Res,7
+Commercial,HVAC,18
+Commercial,Lighting Comm,12
+Commercial,Equipment,12
+Industrial,Machinery,26
+Industrial,Process Heat,20
+Industrial,Other Ind,12

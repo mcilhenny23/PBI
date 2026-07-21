@@ -1,0 +1,36 @@
+.modern-sankey {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.ms-container {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.ms-container .link {
+    fill: none;
+    transition: stroke-opacity 0.15s ease;
+}
+
+.ms-container .cycle-links path {
+    fill: none;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.ms-container .node {
+    cursor: grab;
+}
+.ms-container .node:active {
+    cursor: grabbing;
+}
+
+.ms-landing {
+    user-select: none;
+    pointer-events: none;
+}
+
+.ms-container .labels text {
+    pointer-events: none;
+}

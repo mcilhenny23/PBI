@@ -1,0 +1,8 @@
+Source,Target,Weight
+Backlog,In Progress,60
+In Progress,Review,55
+Review,Done,42
+Review,In Progress,10
+Done,Backlog,4
+In Progress,Blocked,8
+Blocked,In Progress,7
