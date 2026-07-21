@@ -393,9 +393,14 @@ export class Visual implements IVisual {
                         return;
                     }
                     event.stopPropagation();
-                    // Aggregate every edge id touching either endpoint node.
+                    // Dedupe by row-identity reference — a hub node with 3000
+                    // in-edges + 3000 out-edges would otherwise ship 6000 ids
+                    // (doubled again on a diagonal cell) and stall the host.
                     const si = this.order[r], ti = this.order[c];
-                    const ids = [...(this.nodeIds[si] ?? []), ...(this.nodeIds[ti] ?? [])];
+                    const ids = Array.from(new Set<ISelectionId>([
+                        ...(this.nodeIds[si] ?? []),
+                        ...(this.nodeIds[ti] ?? [])
+                    ]));
                     if (ids.length === 0) return;
                     const multi = event.ctrlKey || event.metaKey || event.shiftKey;
                     this.selectionManager.select(ids, multi).then(() => this.applyExternalDim());
@@ -409,7 +414,10 @@ export class Visual implements IVisual {
                     if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) return;
                     const si = this.order[r];
                     const ids = this.nodeIds[si] ?? [];
-                    this.selectionManager.showContextMenu(ids[0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                    // Skip the menu when no id exists — passing {} as ISelectionId
+                    // leaves the host in an indeterminate state.
+                    if (!ids.length) return;
+                    this.selectionManager.showContextMenu(ids[0], { x: event.clientX, y: event.clientY });
                 });
 
             this.events.renderingFinished(options);
