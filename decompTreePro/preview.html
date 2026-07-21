@@ -1,0 +1,139 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Decomp Tree Pro preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style></head>
+<body>
+<svg id="svg" width="1100" height="520" viewBox="0 0 1100 520"></svg>
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  function el(tag, attrs) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+
+  // Title
+  const t = el("text", { x: 20, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" });
+  t.textContent = "Decomp Tree Pro — Sales, expanded West → Gadgets";
+  svg.appendChild(t);
+  const sub = el("text", { x: 20, y: 46, "font-size": 12, fill: "#666" });
+  sub.textContent = "Conditional coloring vs threshold 100 · secondary shows % of parent";
+  svg.appendChild(sub);
+
+  // Data
+  const total = 1745;
+  const cols = [
+    { header: "Total", nodes: [{ name: "Total", value: 1745, pct: null, isRoot: true }] },
+    { header: "Region", nodes: [
+      { name: "West",  value: 585, pct: 0.335 },
+      { name: "North", value: 405, pct: 0.232 },
+      { name: "South", value: 405, pct: 0.232 },
+      { name: "East",  value: 350, pct: 0.201 }
+    ], selected: "West" },
+    { header: "Product", nodes: [
+      { name: "Gadgets", value: 270, pct: 0.462 },
+      { name: "Widgets", value: 315, pct: 0.538 }
+    ], selected: "Gadgets" },
+    { header: "Segment", nodes: [
+      { name: "Enterprise", value: 200, pct: 0.741 },
+      { name: "Consumer",   value:  70, pct: 0.259 }
+    ] }
+  ];
+
+  const colW = 180, gap = 40, nodeH = 34, headerY = 88;
+  const cx = (ci) => 20 + ci * (colW + gap);
+  const above = "#2ca02c", below = "#d62728", single = "#4472C4";
+  const threshold = 100;
+  function colorFor(v) { return v >= threshold ? above : below; }
+
+  // Root centered
+  const H = 520 - headerY - 20;
+  const placed = [];
+  function place(ci, ni, of, parent) {
+    const totalH = of * (nodeH + 6) - 6;
+    const startY = parent
+      ? parent.y + nodeH / 2 - totalH / 2
+      : headerY + (H - totalH) / 2;
+    const y = Math.max(headerY, startY) + ni * (nodeH + 6);
+    return { x: cx(ci), y };
+  }
+
+  // Root
+  const p0 = { node: cols[0].nodes[0], x: cx(0), y: headerY + H / 2 - nodeH / 2, parent: null, col: 0 };
+  placed.push(p0);
+
+  // Region column
+  const regionPositions = [];
+  for (let i = 0; i < cols[1].nodes.length; i++) {
+    const pos = place(1, i, cols[1].nodes.length, p0);
+    regionPositions.push({ node: cols[1].nodes[i], x: pos.x, y: pos.y, parent: p0, col: 1 });
+  }
+  placed.push(...regionPositions);
+  const westParent = regionPositions.find(p => p.node.name === "West");
+
+  // Product column (only under West)
+  const productPositions = [];
+  for (let i = 0; i < cols[2].nodes.length; i++) {
+    const pos = place(2, i, cols[2].nodes.length, westParent);
+    productPositions.push({ node: cols[2].nodes[i], x: pos.x, y: pos.y, parent: westParent, col: 2 });
+  }
+  placed.push(...productPositions);
+  const gadgetsParent = productPositions.find(p => p.node.name === "Gadgets");
+
+  // Segment column
+  for (let i = 0; i < cols[3].nodes.length; i++) {
+    const pos = place(3, i, cols[3].nodes.length, gadgetsParent);
+    placed.push({ node: cols[3].nodes[i], x: pos.x, y: pos.y, parent: gadgetsParent, col: 3 });
+  }
+
+  // Column headers
+  for (let ci = 0; ci < cols.length; ci++) {
+    const t = el("text", { x: cx(ci) + 8, y: headerY - 10, "font-size": 10, "font-weight": 600, fill: "#666" });
+    t.textContent = cols[ci].header;
+    svg.appendChild(t);
+  }
+
+  // Connectors
+  for (const p of placed) {
+    if (!p.parent) continue;
+    const x1 = p.parent.x + colW, y1 = p.parent.y + nodeH / 2;
+    const x2 = p.x, y2 = p.y + nodeH / 2;
+    svg.appendChild(el("path", {
+      d: `M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`,
+      fill: "none", stroke: "#c9c9c9", "stroke-width": 1
+    }));
+  }
+
+  // Nodes
+  const maxByCol = [total, 585, 315, 200];
+  for (const p of placed) {
+    const g = el("g", { transform: `translate(${p.x}, ${p.y})` });
+    // Frame
+    g.appendChild(el("rect", { x: 0, y: 0, width: colW, height: nodeH, rx: 4, ry: 4, fill: "#fff", stroke: "#e6e6e6" }));
+    // Bar
+    if (!p.node.isRoot) {
+      const bw = (p.node.value / maxByCol[p.col]) * (colW - 12);
+      g.appendChild(el("rect", { x: 6, y: nodeH - 10, width: bw, height: 6, rx: 2, fill: colorFor(p.node.value) }));
+    } else {
+      const bw = colW - 12;
+      g.appendChild(el("rect", { x: 6, y: nodeH - 10, width: bw, height: 6, rx: 2, fill: single, "fill-opacity": 0.7 }));
+    }
+    // Name
+    const nm = el("text", { x: 8, y: 16, "font-size": 11, "font-weight": 600, fill: "#333" });
+    nm.textContent = p.node.name;
+    g.appendChild(nm);
+    // Value
+    const val = el("text", { x: colW - 8, y: 16, "text-anchor": "end", "font-size": 11, fill: "#333" });
+    val.textContent = p.node.value.toLocaleString();
+    g.appendChild(val);
+    // Secondary
+    if (p.node.pct != null) {
+      const sec = el("text", { x: colW - 8, y: nodeH - 12, "text-anchor": "end", "font-size": 9, fill: "#888" });
+      sec.textContent = `${(p.node.pct * 100).toFixed(1)}% of parent`;
+      g.appendChild(sec);
+    }
+    svg.appendChild(g);
+  }
+})();
+</script>
+</body></html>

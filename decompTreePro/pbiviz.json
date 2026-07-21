@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "decompTreePro",
+        "displayName": "Decomp Tree Pro",
+        "guid": "decompTreeProA9CD5E82F8944B7CB2E10FA5C6D89D34",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Decomposition tree with the four features the native one lacks: conditional bar coloring against a threshold, a secondary measure beside the primary (or auto %-of-parent), custom per-level sort, and a pinnable analyst-defined expansion path that survives report reload.",
+        "supportUrl": "https://github.com/jeffs-visuals/decomp-tree-pro",
+        "gitHubUrl": "https://github.com/jeffs-visuals/decomp-tree-pro"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

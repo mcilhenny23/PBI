@@ -1,0 +1,17 @@
+Region,Product,Segment,Sales,Margin
+North,Widgets,Consumer,120,18
+North,Widgets,Enterprise,85,22
+North,Gadgets,Consumer,60,-4
+North,Gadgets,Enterprise,140,26
+South,Widgets,Consumer,95,12
+South,Widgets,Enterprise,110,20
+South,Gadgets,Consumer,45,-8
+South,Gadgets,Enterprise,155,28
+East,Widgets,Consumer,80,10
+East,Widgets,Enterprise,95,16
+East,Gadgets,Consumer,55,2
+East,Gadgets,Enterprise,120,24
+West,Widgets,Consumer,140,15
+West,Widgets,Enterprise,175,32
+West,Gadgets,Consumer,70,-2
+West,Gadgets,Enterprise,200,42

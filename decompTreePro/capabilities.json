@@ -1,0 +1,95 @@
+{
+    "dataRoles": [
+        { "displayName": "Analyze",           "name": "value",     "kind": "Measure" },
+        { "displayName": "Secondary Measure", "name": "secondary", "kind": "Measure",  "description": "Shown beside primary (defaults to % of parent when empty)" },
+        { "displayName": "Explain By",        "name": "levels",    "kind": "Grouping", "description": "Bind multiple grouping fields — expansion order = your clicks" }
+    ],
+    "objects": {
+        "nodes": {
+            "properties": {
+                "barColorMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "single",      "displayName": "Single color" },
+                            { "value": "conditional", "displayName": "Conditional vs threshold" }
+                        ]
+                    }
+                },
+                "barColor":       { "type": { "fill": { "solid": { "color": true } } } },
+                "thresholdValue": { "type": { "numeric": true } },
+                "aboveColor":     { "type": { "fill": { "solid": { "color": true } } } },
+                "belowColor":     { "type": { "fill": { "solid": { "color": true } } } },
+                "showSecondary":  { "type": { "bool": true } },
+                "secondaryMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "measure",   "displayName": "Bound Secondary measure" },
+                            { "value": "pct-parent","displayName": "% of parent" },
+                            { "value": "pct-total", "displayName": "% of total" }
+                        ]
+                    }
+                },
+                "barHeight":       { "type": { "numeric": true } },
+                "fontSize":        { "type": { "numeric": true } },
+                "maxNodesPerLevel":{ "type": { "numeric": true } }
+            }
+        },
+        "sorting": {
+            "properties": {
+                "sortMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "value-desc",       "displayName": "Value descending" },
+                            { "value": "value-asc",        "displayName": "Value ascending" },
+                            { "value": "alphabetical",     "displayName": "Alphabetical" },
+                            { "value": "custom-per-level", "displayName": "Custom per level" }
+                        ]
+                    }
+                },
+                "customOrder": { "type": { "text": true } }
+            }
+        },
+        "expansion": {
+            "properties": {
+                "defaultExpansion": { "type": { "text": true } },
+                "connectorStyle": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "curved",     "displayName": "Curved" },
+                            { "value": "orthogonal", "displayName": "Orthogonal" }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                { "value": { "min": 1, "max": 1 }, "secondary": { "min": 0, "max": 1 }, "levels": { "min": 1 } }
+            ],
+            "matrix": {
+                "rows": {
+                    "for": { "in": "levels" },
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "value" } },
+                        { "for": { "in": "secondary" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
