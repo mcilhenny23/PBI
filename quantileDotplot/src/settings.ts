@@ -119,9 +119,22 @@ class AxisCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected dots fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     dotplotCard = new DotplotCard();
     thresholdCard = new ThresholdCard();
     axisCard = new AxisCard();
-    cards = [this.dotplotCard, this.thresholdCard, this.axisCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.dotplotCard, this.thresholdCard, this.axisCard, this.interactionsCard];
 }

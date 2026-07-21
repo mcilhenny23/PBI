@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -21,6 +24,7 @@ import { VisualFormattingSettingsModel } from "./settings";
 interface Group {
     name: string;
     dots: number[];      // quantile values, ascending
+    selectionIds?: ISelectionId[];
 }
 
 interface PackedDot {
@@ -95,9 +99,10 @@ const numFmt = d3.format(",.4~g");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private colorPalette: ISandboxExtendedColorPalette;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -109,13 +114,42 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.colorPalette = options.host.colorPalette;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element)
             .append("svg")
             .classed("quantile-dotplot", true);
         this.landing = this.svg.append("g").classed("qd-landing", true);
         this.container = this.svg.append("g").classed("qd-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        // Groups (each drawn <g>) carry their aggregated selection ids.
+        this.container.selectAll<SVGGElement, Group>("g.qd-group").each(function (d) {
+            const g = d3.select(this);
+            const ids = d?.selectionIds ?? [];
+            const isSel = ids.some(id => activeIds.some(a => eq(a, id)));
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            g.attr("opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -150,14 +184,27 @@ export class Visual implements IVisual {
             const nRows = cat?.categories?.[0]?.values?.length || vals[sampleIdx[0]].values.length;
 
             // One group per bound "samples" measure; each pools its per-row values.
+            const obsKeyCat = cat?.categories?.find(c => c.source.roles && c.source.roles["category"])
+                          ?? cat?.categories?.[0]
+                          ?? null;
             const groups: Group[] = [];
             for (const idx of sampleIdx) {
                 const pool: number[] = [];
+                const ids: ISelectionId[] = [];
                 for (let i = 0; i < nRows; i++) {
                     const n = safeNum(vals[idx].values[i]);
                     if (n != null) pool.push(n);
+                    if (obsKeyCat) {
+                        try {
+                            ids.push(this.host.createSelectionIdBuilder().withCategory(obsKeyCat, i).createSelectionId());
+                        } catch { /* skipped */ }
+                    }
                 }
-                groups.push({ name: vals[idx].source.displayName || "Samples", dots: computeDots(pool, dotCount) });
+                groups.push({
+                    name: vals[idx].source.displayName || "Samples",
+                    dots: computeDots(pool, dotCount),
+                    selectionIds: ids
+                });
             }
             const activeGroups = groups.filter(g => g.dots.length > 0);
             if (activeGroups.length === 0) {
@@ -219,7 +266,21 @@ export class Visual implements IVisual {
 
             // ── Draw each group ────────────────────────────────────
             activeGroups.forEach((g, gi) => {
-                const gg = this.container.append("g").classed("group", true);
+                const gg = this.container.append("g").classed("group qd-group", true).datum(g);
+                if (g.selectionIds && g.selectionIds.length > 0) {
+                    gg.style("cursor", "pointer")
+                        .attr("tabindex", 0).attr("role", "button")
+                        .attr("aria-label", `${g.name} — click to filter`)
+                        .on("click", (event: MouseEvent) => {
+                            event.stopPropagation();
+                            const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                            this.selectionManager.select(g.selectionIds!, multi).then(() => this.applySelectionStyling());
+                        })
+                        .on("contextmenu", (event: MouseEvent) => {
+                            event.preventDefault(); event.stopPropagation();
+                            this.selectionManager.showContextMenu(g.selectionIds![0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                        });
+                }
                 const groupColor = (G > 1 && !showTh)
                     ? this.colorPalette.getColor(g.name).value
                     : baseColor;
@@ -313,6 +374,7 @@ export class Visual implements IVisual {
                 }
             }
 
+            this.applySelectionStyling();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

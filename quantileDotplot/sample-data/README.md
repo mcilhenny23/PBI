@@ -58,3 +58,11 @@ distributions next to each other like columns.
 - **Orientation** — Horizontal (dots stack up over a bottom axis) vs Vertical
   (dots stack rightward over a left axis).
 - **Fewer rows than Dot count** — the visual falls back to one dot per row.
+
+## Interactions
+
+- **Click any dotplot group** to filter every other visual on the page by every observation in that group.
+- **Ctrl / Shift-click** to add another group to the selection.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Interactions → Unselected opacity** controls how much non-selected groups fade.
