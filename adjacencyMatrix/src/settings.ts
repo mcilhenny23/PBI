@@ -161,10 +161,23 @@ class ClustersCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When another visual filters this matrix, non-highlighted cells fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     matrixCard = new MatrixCard();
     colorCard = new ColorCard();
     labelsCard = new LabelsCard();
     clustersCard = new ClustersCard();
-    cards = [this.matrixCard, this.colorCard, this.labelsCard, this.clustersCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.matrixCard, this.colorCard, this.labelsCard, this.clustersCard, this.interactionsCard];
 }

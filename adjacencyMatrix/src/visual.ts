@@ -11,6 +11,9 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -52,8 +55,9 @@ const numFmt = d3.format(",.4~g");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
@@ -69,6 +73,8 @@ export class Visual implements IVisual {
     private nodes: string[] = [];
     private order: number[] = [];
     private matrix: number[][] = [];
+    /** Per-node aggregated selection ids — every source-row identity touching each node. */
+    private nodeIds: ISelectionId[][] = [];
 
     /** Caches the seriation so styling changes don't re-cluster. */
     private clusterCache = new ComputeCache<{ order: number[]; groups: number[][] }>();
@@ -77,13 +83,24 @@ export class Visual implements IVisual {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.root = d3.select(options.element).append("div").classed("adj-matrix", true);
         this.canvas = this.root.append("canvas").classed("adj-canvas", true);
         this.svg = this.root.append("svg").classed("adj-svg", true);
         this.landing = this.svg.append("g").classed("adj-landing", true);
         this.overlay = this.svg.append("g").classed("adj-overlay", true);
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.canvas.style("opacity", hasSel ? String(dim) : "1");
     }
 
     public update(options: VisualUpdateOptions) {
@@ -138,12 +155,31 @@ export class Visual implements IVisual {
                 return i;
             };
             const edges: { s: number; t: number; w: number }[] = [];
+            const srcCat = cats[sIdx];
+            const nodeIdsPer: ISelectionId[][] = [];
             for (let r = 0; r < rows; r++) {
                 const sv = cats[sIdx].values[r], tv = cats[tIdx].values[r];
                 if (sv == null || tv == null) continue;
                 const w = wIdx >= 0 ? (safeNum(vals[wIdx].values[r]) ?? 0) : 1;
-                edges.push({ s: nodeIdx(String(sv)), t: nodeIdx(String(tv)), w });
+                const si = nodeIdx(String(sv)), ti = nodeIdx(String(tv));
+                edges.push({ s: si, t: ti, w });
+
+                // Aggregate row-level identity onto both endpoints so a click on
+                // either node selects every touching edge.
+                let rowId: ISelectionId | undefined;
+                try {
+                    rowId = this.host.createSelectionIdBuilder()
+                        .withCategory(srcCat, r)
+                        .createSelectionId();
+                } catch { /* skipped */ }
+                if (rowId) {
+                    if (!nodeIdsPer[si]) nodeIdsPer[si] = [];
+                    if (!nodeIdsPer[ti]) nodeIdsPer[ti] = [];
+                    nodeIdsPer[si].push(rowId);
+                    nodeIdsPer[ti].push(rowId);
+                }
             }
+            this.nodeIds = nodeIdsPer;
             const N = nodes.length;
             if (N === 0) {
                 this.renderLandingPage(width, height, true, true);
@@ -346,7 +382,35 @@ export class Visual implements IVisual {
                         coordinates: [px, py], isTouchEvent: false
                     });
                 })
-                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }))
+                .on("click", (event: MouseEvent) => {
+                    if (!this.hit) return;
+                    const [px, py] = d3.pointer(event, this.svg.node());
+                    const c = Math.floor((px - this.hit.left) / this.hit.cell);
+                    const r = Math.floor((py - this.hit.top) / this.hit.cell);
+                    if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) {
+                        this.selectionManager.clear().then(() => this.applyExternalDim());
+                        return;
+                    }
+                    event.stopPropagation();
+                    // Aggregate every edge id touching either endpoint node.
+                    const si = this.order[r], ti = this.order[c];
+                    const ids = [...(this.nodeIds[si] ?? []), ...(this.nodeIds[ti] ?? [])];
+                    if (ids.length === 0) return;
+                    const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                    this.selectionManager.select(ids, multi).then(() => this.applyExternalDim());
+                })
+                .on("contextmenu", (event: MouseEvent) => {
+                    if (!this.hit) return;
+                    event.preventDefault();
+                    const [px, py] = d3.pointer(event, this.svg.node());
+                    const c = Math.floor((px - this.hit.left) / this.hit.cell);
+                    const r = Math.floor((py - this.hit.top) / this.hit.cell);
+                    if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) return;
+                    const si = this.order[r];
+                    const ids = this.nodeIds[si] ?? [];
+                    this.selectionManager.showContextMenu(ids[0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                });
 
             this.events.renderingFinished(options);
         } catch (error) {
