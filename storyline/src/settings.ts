@@ -143,9 +143,22 @@ class LabelsCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "The plot dims when another visual filters the chart.",
+        value: 30
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     layoutCard = new LayoutCard();
     appearanceCard = new AppearanceCard();
     labelsCard = new LabelsCard();
-    cards = [this.layoutCard, this.appearanceCard, this.labelsCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.layoutCard, this.appearanceCard, this.labelsCard, this.interactionsCard];
 }
