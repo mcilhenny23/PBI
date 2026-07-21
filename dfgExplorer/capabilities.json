@@ -77,9 +77,16 @@
                 "edgeMaxWidth": { "type": { "numeric": true } },
                 "showEdgeLabel": { "type": { "bool": true } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

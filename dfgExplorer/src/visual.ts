@@ -12,6 +12,8 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -63,8 +65,9 @@ function fmtDuration(ms: number): string {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private mapDiv: d3.Selection<HTMLDivElement, unknown, null, undefined>;
@@ -92,7 +95,10 @@ export class Visual implements IVisual {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.root = d3.select(options.element).append("div").classed("dfg-root", true);
         this.mapDiv = this.root.append("div").classed("dfg-map", true);
@@ -100,6 +106,12 @@ export class Visual implements IVisual {
         this.svg = this.mapDiv.append("svg").classed("dfg-svg", true);
         this.landing = this.svg.append("g").classed("dfg-landing", true);
         this.plot = this.svg.append("g").classed("dfg-plot", true);
+
+        this.svg.on("click.clear", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            }
+        });
 
         // Arrowhead marker, recolored per render.
         const defs = this.svg.append("defs");
@@ -115,6 +127,14 @@ export class Visual implements IVisual {
             .append("path")
             .attr("d", "M 0 0 L 10 5 L 0 10 z")
             .attr("fill", "#999");
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.plot.attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
