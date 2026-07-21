@@ -167,8 +167,10 @@ export class Visual implements IVisual {
 
             // ── Build dies ─────────────────────────────────────────
             const n = cats[xIdx].values.length;
-            // Selection identity: use the first bound category column (X coord is always present).
-            const identityCat = cats[xIdx];
+            // Selection identity: chain every bound Grouping column so dies that
+            // differ only in Y (or wafer/bin) get distinct identities. Using X
+            // alone collapsed all dies at the same X onto one selection id.
+            const identityCats = [xIdx, yIdx, waferIdx, binIdx].filter(k => k >= 0).map(k => cats[k]);
             let dies: Die[] = [];
             for (let i = 0; i < n; i++) {
                 const dx = safeNum(cats[xIdx].values[i]);
@@ -176,9 +178,9 @@ export class Visual implements IVisual {
                 if (dx == null || dy == null) continue;          // non-numeric coords → skip
                 let selectionId: ISelectionId | undefined;
                 try {
-                    selectionId = this.host.createSelectionIdBuilder()
-                        .withCategory(identityCat, i)
-                        .createSelectionId();
+                    let builder = this.host.createSelectionIdBuilder();
+                    for (const c of identityCats) builder = builder.withCategory(c, i);
+                    selectionId = builder.createSelectionId();
                 } catch { /* skipped */ }
                 dies.push({
                     x: Math.round(dx), y: Math.round(dy),
