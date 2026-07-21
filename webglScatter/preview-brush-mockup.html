@@ -1,0 +1,215 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>WebGL Scatter — brush select mockup</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  #wrap { position: relative; width: 960px; height: 560px; }
+  canvas, svg { position: absolute; left: 0; top: 0; }
+</style></head>
+<body>
+<div id="wrap">
+  <canvas id="density" width="1600" height="900"></canvas>
+  <svg id="svg" width="960" height="560" viewBox="0 0 960 560"></svg>
+</div>
+
+<script>
+(function () {
+  const wrap = document.getElementById("wrap");
+  const dc = document.getElementById("density");
+  const svg = document.getElementById("svg");
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  const W = 960, H = 560;
+  const M = { top: 60, right: 40, bottom: 50, left: 60 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  // ── Title + subtitle ──
+  svg.appendChild(Object.assign(el("text", { x: M.left, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" }), { textContent: "WebGL Scatter — brush to select" }));
+  svg.appendChild(Object.assign(el("text", { x: M.left, y: 46, "font-size": 12, fill: "#666" }), { textContent: "Drag to draw a rectangle · release to filter every other visual by the enclosed points" }));
+
+  // ── Generate 30k points, seeded so the layout is reproducible ──
+  let s = 42;
+  function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
+  function box(mu, sig) { const u = rnd(), v = rnd(); return mu + sig * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  const pts = [];
+  // Main blob
+  for (let i = 0; i < 28000; i++) pts.push([box(0, 1), box(0, 1)]);
+  // Outlier cluster
+  for (let i = 0; i < 200; i++) pts.push([box(3.2, 0.35), box(2.5, 0.35)]);
+
+  // Domain
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < xMin) xMin = x; if (x > xMax) xMax = x;
+    if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+  }
+  const xPad = (xMax - xMin) * 0.03, yPad = (yMax - yMin) * 0.03;
+  const xd0 = xMin - xPad, xd1 = xMax + xPad;
+  const yd0 = yMin - yPad, yd1 = yMax + yPad;
+  const px = v => (v - xd0) / (xd1 - xd0) * plotW;
+  const py = v => plotH - (v - yd0) / (yd1 - yd0) * plotH;
+
+  // ── Position the density canvas over the plot area ──
+  dc.style.left = M.left + "px";
+  dc.style.top = M.top + "px";
+  dc.style.width = plotW + "px";
+  dc.style.height = plotH + "px";
+  const dpr = 2;
+  dc.width = plotW * dpr;
+  dc.height = plotH * dpr;
+  const ctx = dc.getContext("2d");
+
+  // ── Brush rectangle in DATA units — this is what the user drew ──
+  const brushX0 = -1.7, brushX1 = 1.7;
+  const brushY0 = -1.5, brushY1 = 1.5;
+
+  const inside = ([x, y]) => x >= brushX0 && x <= brushX1 && y >= brushY0 && y <= brushY1;
+
+  // ── Density pass — split into two passes (inside brush = bright, outside = dim) ──
+  const passInside = document.createElement("canvas");
+  passInside.width = dc.width; passInside.height = dc.height;
+  const cIn = passInside.getContext("2d");
+  cIn.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const passOutside = document.createElement("canvas");
+  passOutside.width = dc.width; passOutside.height = dc.height;
+  const cOut = passOutside.getContext("2d");
+  cOut.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const splatR = 6;
+  const gradIn = cIn.createRadialGradient(0, 0, 0, 0, 0, splatR);
+  gradIn.addColorStop(0, "rgba(255,255,255,0.32)");
+  gradIn.addColorStop(1, "rgba(255,255,255,0)");
+  const gradOut = cOut.createRadialGradient(0, 0, 0, 0, 0, splatR);
+  gradOut.addColorStop(0, "rgba(255,255,255,0.24)");
+  gradOut.addColorStop(1, "rgba(255,255,255,0)");
+  cIn.globalCompositeOperation = "lighter";
+  cOut.globalCompositeOperation = "lighter";
+
+  for (const p of pts) {
+    const x = px(p[0]), y = py(p[1]);
+    const c = inside(p) ? cIn : cOut;
+    const g = inside(p) ? gradIn : gradOut;
+    c.save(); c.translate(x, y); c.fillStyle = g; c.beginPath(); c.arc(0, 0, splatR, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+
+  // Sample viridis + a muted-blue ramp for outside
+  const viridis = [[68,1,84],[71,44,122],[59,81,139],[44,113,142],[33,144,141],[39,173,129],[92,200,99],[170,220,50],[253,231,37]];
+  const dimRamp = [[80,80,90],[100,100,110],[130,130,140],[160,160,170],[190,190,200]];
+  function ramp(r, t) { const i = Math.max(0, Math.min(r.length - 1, t * (r.length - 1))); const lo = Math.floor(i), hi = Math.min(r.length - 1, lo + 1); const f = i - lo; return [r[lo][0] + (r[hi][0] - r[lo][0]) * f, r[lo][1] + (r[hi][1] - r[lo][1]) * f, r[lo][2] + (r[hi][2] - r[lo][2]) * f]; }
+
+  const srcIn = cIn.getImageData(0, 0, dc.width, dc.height).data;
+  const srcOut = cOut.getImageData(0, 0, dc.width, dc.height).data;
+  const dst = ctx.createImageData(dc.width, dc.height);
+  let maxAin = 1, maxAout = 1;
+  for (let i = 3; i < srcIn.length; i += 4) if (srcIn[i] > maxAin) maxAin = srcIn[i];
+  for (let i = 3; i < srcOut.length; i += 4) if (srcOut[i] > maxAout) maxAout = srcOut[i];
+  for (let i = 0, j = 0; i < srcIn.length; i += 4, j += 4) {
+    const aIn = srcIn[i + 3], aOut = srcOut[i + 3];
+    if (aIn > 0) {
+      const tt = Math.log1p((aIn / maxAin) * 9) / Math.log(10);
+      const rgb = ramp(viridis, tt);
+      dst.data[j] = rgb[0]; dst.data[j + 1] = rgb[1]; dst.data[j + 2] = rgb[2];
+      dst.data[j + 3] = Math.min(255, Math.round(tt * 255));
+    } else if (aOut > 0) {
+      const tt = Math.log1p((aOut / maxAout) * 9) / Math.log(10);
+      const rgb = ramp(dimRamp, tt);
+      dst.data[j] = rgb[0]; dst.data[j + 1] = rgb[1]; dst.data[j + 2] = rgb[2];
+      dst.data[j + 3] = Math.min(110, Math.round(tt * 110)); // dimmed
+    }
+  }
+  ctx.putImageData(dst, 0, 0);
+
+  // ── Axes ──
+  const axG = el("g"); svg.appendChild(axG);
+  for (let v = Math.ceil(xd0); v <= Math.floor(xd1); v++) {
+    const x = M.left + px(v);
+    axG.appendChild(el("line", { x1: x, x2: x, y1: M.top + plotH, y2: M.top + plotH + 4, stroke: "#999" }));
+    const t = el("text", { x, y: M.top + plotH + 18, "text-anchor": "middle", "font-size": 11, fill: "#666" });
+    t.textContent = v; axG.appendChild(t);
+  }
+  for (let v = Math.ceil(yd0); v <= Math.floor(yd1); v++) {
+    const y = M.top + py(v);
+    axG.appendChild(el("line", { x1: M.left - 4, x2: M.left, y1: y, y2: y, stroke: "#999" }));
+    const t = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 11, fill: "#666" });
+    t.textContent = v; axG.appendChild(t);
+  }
+  axG.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH, stroke: "#999" }));
+  axG.appendChild(el("line", { x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH, stroke: "#999" }));
+
+  // ── Brush rectangle overlay ──
+  const rx0 = M.left + px(brushX0), rx1 = M.left + px(brushX1);
+  const ry0 = M.top + py(brushY1),  ry1 = M.top + py(brushY0);
+  // Semi-transparent fill inside the rectangle to reinforce the selection region
+  svg.appendChild(el("rect", {
+    x: rx0, y: ry0, width: rx1 - rx0, height: ry1 - ry0,
+    fill: "rgba(66, 135, 245, 0.08)",
+    stroke: "#4287f5", "stroke-width": 1.5, "stroke-dasharray": "5 3"
+  }));
+  // Corner handles
+  const handles = [[rx0, ry0], [rx1, ry0], [rx0, ry1], [rx1, ry1]];
+  for (const [hx, hy] of handles) {
+    svg.appendChild(el("rect", { x: hx - 4, y: hy - 4, width: 8, height: 8, fill: "#fff", stroke: "#4287f5", "stroke-width": 1.5 }));
+  }
+  // Edge midpoint handles (subtle)
+  const edges = [
+    [(rx0 + rx1) / 2, ry0], [(rx0 + rx1) / 2, ry1],
+    [rx0, (ry0 + ry1) / 2], [rx1, (ry0 + ry1) / 2]
+  ];
+  for (const [hx, hy] of edges) {
+    svg.appendChild(el("rect", { x: hx - 3, y: hy - 3, width: 6, height: 6, fill: "#fff", stroke: "#4287f5", "stroke-width": 1 }));
+  }
+
+  // ── Count of selected points ──
+  let insideCount = 0;
+  for (const p of pts) if (inside(p)) insideCount++;
+
+  // Selection info chip inside the top-right of the plot area
+  const chipX = M.left + plotW - 12;
+  const chipY = M.top + 12;
+  const chipG = el("g"); svg.appendChild(chipG);
+  const chipT = el("text", { x: chipX, y: chipY + 3, "text-anchor": "end", "font-size": 11, "font-weight": 600, fill: "#1a4a8f" });
+  chipT.textContent = `${insideCount.toLocaleString()} of ${pts.length.toLocaleString()} selected  ·  Enter to apply · Esc to cancel`;
+  chipG.appendChild(chipT);
+  const bb = chipT.getBBox();
+  const chipRect = el("rect", {
+    x: bb.x - 8, y: bb.y - 4, width: bb.width + 16, height: bb.height + 8,
+    rx: 3, fill: "#e8f0fe", stroke: "#4287f5", "stroke-width": 1
+  });
+  chipG.insertBefore(chipRect, chipT);
+
+  // ── Toolbar hint (bottom-left) showing brush mode chip ──
+  const modeG = el("g", { transform: `translate(${M.left + 8}, ${M.top + plotH - 22})` });
+  const modeT = el("text", { x: 24, y: 12, "font-size": 10, "font-weight": 600, fill: "#333" });
+  modeT.textContent = "Brush mode";
+  modeG.appendChild(modeT);
+  const modeBb = modeT.getBBox();
+  modeG.insertBefore(el("rect", {
+    x: modeBb.x - 20, y: modeBb.y - 3, width: modeBb.width + 26, height: modeBb.height + 6,
+    rx: 3, fill: "#f5f5f5", stroke: "#bbb"
+  }), modeT);
+  // Small cursor glyph inside the mode chip
+  modeG.appendChild(el("path", {
+    d: "M 0 6 h 8 v -3 l 6 5 l -6 5 v -3 h -8 z",
+    transform: "translate(2, 3)",
+    fill: "#666"
+  }));
+  svg.appendChild(modeG);
+
+  // ── Small honesty badge (existing feature) preserved in the corner ──
+  const honG = el("g", { transform: `translate(${M.left + 8}, ${M.top + 12})` });
+  const honT = el("text", { x: 8, y: 3, "dominant-baseline": "middle", "font-size": 10, "font-weight": 600, fill: "#333" });
+  honT.textContent = `n = 28,200  ·  density`;
+  honG.appendChild(honT);
+  const honBb = honT.getBBox();
+  honG.insertBefore(el("rect", {
+    x: honBb.x - 6, y: honBb.y - 2, width: honBb.width + 12, height: honBb.height + 4,
+    rx: 3, fill: "#f5f5f5", stroke: "#555"
+  }), honT);
+  svg.appendChild(honG);
+})();
+</script>
+</body></html>
