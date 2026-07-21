@@ -146,7 +146,7 @@ export class Visual implements IVisual {
         this.container = this.svg.append("g")
             .classed("fan-chart-container", true);
 
-        this.svg.on("click", (event: MouseEvent) => {
+        this.svg.on("click.clear", (event: MouseEvent) => {
             if (event.target === this.svg.node()) {
                 this.selectionManager.clear().then(() => this.applySelectionStyling());
             }
@@ -154,10 +154,10 @@ export class Visual implements IVisual {
     }
 
     private applySelectionStyling(): void {
-        // Fan chart is continuous — draws bands not individual bars.
-        // Dim the entire visual's non-selected regions by using clipPaths would be complex;
-        // simpler: when a selection is active, reduce all bands' opacity slightly and
-        // brighten the selected horizon marker.
+        // Fan chart is continuous — one filled selection band, whole-visual
+        // dim on external filter. The band highlight (fill on the selected
+        // horizon's hit rect) still contrasts against the dimmed backdrop
+        // because it uses fill, not opacity.
         const s = this.formattingSettings;
         if (!s) return;
         const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
@@ -168,8 +168,7 @@ export class Visual implements IVisual {
             const isSel = !!d?.selectionId && activeIds.some(a => a?.equals?.(d.selectionId!));
             rect.attr("fill", hasSel && isSel ? "rgba(66, 135, 245, 0.15)" : "transparent");
         });
-        // Dim the whole plot slightly when a selection is active elsewhere.
-        this.container.select(".gridlines").attr("opacity", hasSel ? dim : 1);
+        this.container.attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
