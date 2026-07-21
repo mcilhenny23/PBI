@@ -72,9 +72,16 @@
                 "taskLabelWidth":   { "type": { "numeric": true } },
                 "fontSize":         { "type": { "numeric": true } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

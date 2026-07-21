@@ -115,11 +115,24 @@ class HierarchyCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.showHierarchy, this.taskLabelWidth, this.fontSize];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When another visual filters this chart, non-highlighted tasks fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     timelineCard = new TimelineCard();
     barsCard = new BarsCard();
     dependenciesCard = new DependenciesCard();
     criticalCard = new CriticalCard();
     hierarchyCard = new HierarchyCard();
-    cards = [this.timelineCard, this.barsCard, this.dependenciesCard, this.criticalCard, this.hierarchyCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.timelineCard, this.barsCard, this.dependenciesCard, this.criticalCard, this.hierarchyCard, this.interactionsCard];
 }

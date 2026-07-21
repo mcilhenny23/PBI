@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_TODAY_COLOR, DEFAULT_ARROW_COLOR, DEFAULT_CRITICAL_COLOR } from "./settings";
@@ -35,6 +38,10 @@ interface TaskRow {
     predecessors: Predecessor[];
     isMilestone: boolean;
     category: string | null;
+    /** Per-row data-model identity — used for cross-visual filtering. */
+    selectionId?: ISelectionId;
+    /** True when a highlight column is present AND this row survives the filter. */
+    isHighlighted?: boolean;
 }
 
 interface TaskNode extends TaskRow {
@@ -130,7 +137,8 @@ function luminance(hex: string): number {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
+    private selectionManager: ISelectionManager;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
     private root: HTMLDivElement;
@@ -150,7 +158,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.root = options.element as HTMLDivElement;
         this.svg = d3.select(this.root).append("svg").classed("gantt-cpm", true);
@@ -158,6 +169,12 @@ export class Visual implements IVisual {
         this.header = this.svg.append("g").classed("g-header", true);
         this.taskList = this.svg.append("g").classed("g-tasklist", true);
         this.chart = this.svg.append("g").classed("g-chart", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -213,13 +230,28 @@ export class Visual implements IVisual {
         if (tIdx < 0 || sIdx < 0) return null;
 
         const out: TaskRow[] = [];
-        for (const r of table.rows) {
+        for (let rowIdx = 0; rowIdx < table.rows.length; rowIdx++) {
+            const r = table.rows[rowIdx];
             const name = r[tIdx];
             if (name == null || String(name).trim() === "") continue;
             const start = parseDate(r[sIdx]);
             if (!start) continue;
             const end = eIdx >= 0 ? parseDate(r[eIdx]) : null;
             const milestone = mIdx >= 0 ? parseBool(r[mIdx]) : (end == null);
+
+            // Row-level selection id via the table binder.
+            let selectionId: ISelectionId | undefined;
+            try {
+                selectionId = this.host.createSelectionIdBuilder()
+                    .withTable(table, rowIdx)
+                    .createSelectionId();
+            } catch { /* fall back to un-selectable row */ }
+
+            // Table dataView doesn't surface per-row highlight arrays the way categorical does.
+            // Cross-filtering from another visual removes rows from table.rows entirely,
+            // so any row we see is de-facto highlighted.
+            const isHighlighted = true;
+
             out.push({
                 name: String(name),
                 parent: pIdx >= 0 && r[pIdx] != null ? String(r[pIdx]) : null,
@@ -228,7 +260,9 @@ export class Visual implements IVisual {
                 progress: prIdx >= 0 ? normalizeProgress(r[prIdx]) : null,
                 predecessors: dIdx >= 0 ? parsePredecessors(r[dIdx] == null ? null : String(r[dIdx])) : [],
                 isMilestone: milestone,
-                category: cIdx >= 0 && r[cIdx] != null ? String(r[cIdx]) : null
+                category: cIdx >= 0 && r[cIdx] != null ? String(r[cIdx]) : null,
+                selectionId,
+                isHighlighted
             });
         }
         return out;
@@ -632,21 +666,95 @@ export class Visual implements IVisual {
             this.renderDependencies(flat, xScale, rowH, chartG, palette, showCritical, critColor);
         }
 
-        // ── Row hover for tooltip ──
+        // ── Row hover / click / context / keyboard ──
         const hitG = chartG.append("g").classed("hit-layer", true);
         flat.forEach((n, i) => {
-            hitG.append("rect")
+            const rect = hitG.append("rect")
                 .attr("x", chartX).attr("y", i * rowH)
                 .attr("width", chartW).attr("height", rowH)
                 .attr("fill", "transparent")
-                .on("mousemove", (event: MouseEvent) => {
-                    const [px, py] = d3.pointer(event, this.svg.node());
-                    this.tooltipService.show({
-                        dataItems: this.buildTooltip(n),
-                        identities: [], coordinates: [px, py], isTouchEvent: false
-                    });
-                })
-                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+                .attr("tabindex", n.selectionId ? 0 : -1)
+                .attr("role", "button")
+                .attr("aria-label", `${n.name}${n.isSummary ? " (phase)" : ""} — click to filter`)
+                .datum({ node: n });
+
+            rect.on("mousemove", (event: MouseEvent) => {
+                const [px, py] = d3.pointer(event, this.svg.node());
+                this.tooltipService.show({
+                    dataItems: this.buildTooltip(n),
+                    identities: n.selectionId ? [n.selectionId] : [],
+                    coordinates: [px, py], isTouchEvent: false
+                });
+            });
+            rect.on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+
+            if (!n.selectionId) return; // summaries or ill-formed rows can't cross-filter
+
+            rect.style("cursor", "pointer");
+            rect.on("click", (event: MouseEvent) => {
+                event.stopPropagation();
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(n.selectionId!, multi).then(() => this.applySelectionStyling());
+            });
+            rect.on("contextmenu", (event: MouseEvent) => {
+                event.preventDefault(); event.stopPropagation();
+                this.selectionManager.showContextMenu(n.selectionId!, { x: event.clientX, y: event.clientY });
+            });
+            rect.on("keydown", (event: KeyboardEvent) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                this.selectionManager.select(n.selectionId!, event.shiftKey).then(() => this.applySelectionStyling());
+            });
+        });
+
+        this.applySelectionStyling();
+    }
+
+    /**
+     * Fade non-selected / non-highlighted rows via the transparent hit-rects, which get
+     * an SVG group above them wrapping the bar layer so both bars and progress dim together.
+     * Cheaper approach: set opacity on the row's hit-rect fill AND on the row-associated
+     * bar/milestone; we do the latter via a data-index attribute assigned during render.
+     */
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.chart.selectAll<SVGRectElement, unknown>(".hit-layer rect").each(function (d) {
+            const data = d as { node: TaskNode } | undefined;
+            if (!data) return;
+            const n = data.node;
+            const isSel = !!n.selectionId && activeIds.some(a => eq(a, n.selectionId!));
+            const isHl = n.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            // Fade the row's siblings under the same transform — bars and milestones share the chart <g>.
+            (this as SVGRectElement).setAttribute("data-row-opacity", String(opacity));
+        });
+
+        // Apply the row's opacity to every child rect/path/circle in the bars group,
+        // matched by index (rows are drawn in the same flat order as the hit rects).
+        const rowOpacities: number[] = [];
+        this.chart.selectAll<SVGRectElement, unknown>(".hit-layer rect").each(function () {
+            rowOpacities.push(Number((this as SVGRectElement).getAttribute("data-row-opacity") ?? "1"));
+        });
+
+        // Bars group: children are appended per row in the same order; use the y-attribute
+        // to locate the row index (integer division by row height).
+        const rowH = Math.max(6, (s.barsCard.barHeight.value ?? 18) + Math.max(0, s.barsCard.rowPadding.value ?? 8));
+        this.chart.selectAll<SVGGraphicsElement, unknown>(".bars > *").each(function () {
+            const y = Number((this as SVGGraphicsElement).getAttribute("y")
+                ?? (this as SVGGraphicsElement).getAttribute("cy")
+                ?? 0);
+            const rowIdx = Math.floor(y / rowH);
+            const opacity = rowOpacities[rowIdx] ?? 1;
+            (this as SVGGraphicsElement).style.opacity = String(opacity);
         });
     }
 

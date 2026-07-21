@@ -37,3 +37,11 @@ Comma-separated task names. Each may carry `:TYPE` and `±N` lag in days:
 - `A, B:SS, C:FF+2` — three deps in one cell
 
 Unresolvable references are silently ignored (a future warning chip will list them).
+
+## Interactions
+
+- **Click** any task row to filter every other visual on the page by that task. Ctrl-click / Shift-click to add to the selection.
+- **Click empty space** to clear.
+- **Right-click** for the Power BI context menu (drill through, include / exclude).
+- **Tab** to focus a row, **Enter** or **Space** to select it via keyboard.
+- **Interactions → Unselected opacity**: when any selection is active, non-selected rows (bars, milestones, progress fills, summary brackets) fade to this value. The same dimming applies when *another* visual filters this chart.
