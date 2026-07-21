@@ -103,11 +103,24 @@ class ManualBinCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.width];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected bins fade to this opacity when a bin is selected or another visual filters this histogram.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     binningCard = new BinningCard();
     densityCard = new DensityCard();
     barsCard = new BarsCard();
     annotationsCard = new AnnotationsCard();
     manualBinCard = new ManualBinCard();
-    cards = [this.binningCard, this.densityCard, this.barsCard, this.annotationsCard, this.manualBinCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.binningCard, this.densityCard, this.barsCard, this.annotationsCard, this.manualBinCard, this.interactionsCard];
 }

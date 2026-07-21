@@ -12,13 +12,20 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_BAR_COLOR, DEFAULT_DENSITY_COLOR } from "./settings";
 
 const CAT_PALETTE = d3.schemeTableau10 as unknown as string[];
 
-interface RowData { value: number; group: string | null; }
+interface RowData {
+    value: number;
+    group: string | null;
+    selectionId?: ISelectionId;
+    isHighlighted: boolean;
+}
 interface RenderPalette {
     highContrast: boolean;
     bar: string;
@@ -121,6 +128,7 @@ export class Visual implements IVisual {
     private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -136,11 +144,40 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element).append("svg").classed("histogram-pro", true);
         this.landing = this.svg.append("g").classed("hp-landing", true);
         this.container = this.svg.append("g").classed("hp-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGRectElement, { ids?: ISelectionId[] }>("rect.hp-bin").each(function (d) {
+            const rect = d3.select(this);
+            const ids = d?.ids ?? [];
+            const isSel = ids.some(id => activeIds.some(a => eq(a, id)));
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            const base = Number((this as SVGRectElement).dataset.baseOpacity ?? "0.75");
+            rect.attr("fill-opacity", base * opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -175,13 +212,34 @@ export class Visual implements IVisual {
         const vIdx = findValueIndex(cat.values, "values");
         if (vIdx < 0) return null;
         const grpIdx = findCategoryIndex(cat.categories, "groupBy");
+        const obsIdx = findCategoryIndex(cat.categories, "obsKey");
+        const identityCat = obsIdx >= 0 ? cat.categories![obsIdx]
+                          : grpIdx >= 0 ? cat.categories![grpIdx]
+                          : null;
+        const highlights = cat.values[vIdx].highlights ?? null;
+
         const rows: RowData[] = [];
         const N = cat.values[vIdx].values.length;
         const grpVals = grpIdx >= 0 ? cat.categories![grpIdx].values : null;
         for (let i = 0; i < N; i++) {
             const v = safeNum(cat.values[vIdx].values[i]);
             if (v == null) continue;
-            rows.push({ value: v, group: grpVals ? String(grpVals[i]) : null });
+
+            let selectionId: ISelectionId | undefined;
+            if (identityCat) {
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(identityCat, i)
+                        .createSelectionId();
+                } catch { /* skipped */ }
+            }
+            const isHighlighted = highlights ? (highlights[i] != null) : true;
+
+            rows.push({
+                value: v,
+                group: grpVals ? String(grpVals[i]) : null,
+                selectionId, isHighlighted
+            });
         }
         return rows;
     }
@@ -317,13 +375,40 @@ export class Visual implements IVisual {
             groups.forEach(g => {
                 const bins = binByGroup.get(g)!;
                 const color = palette.highContrast ? palette.bar : (groups.length > 1 ? paletteFn(g) : barColor);
+                const groupSubset = g === "All" ? rows : rows.filter(r => (r.group ?? "All") === g);
                 barsG.append("g").selectAll("rect").data(bins)
                     .enter().append("rect")
+                    .attr("class", "hp-bin")
                     .attr("x", d => xScale(d.x0!) + 1)
                     .attr("y", d => yScale(barValueFor(d)))
                     .attr("width", d => Math.max(1, xScale(d.x1!) - xScale(d.x0!) - 2))
                     .attr("height", d => Math.max(0, yScale(0) - yScale(barValueFor(d))))
-                    .attr("fill", color).attr("fill-opacity", opacity);
+                    .attr("fill", color).attr("fill-opacity", opacity)
+                    .each(function (d) {
+                        // Collect selection ids for every row whose value falls in this bin.
+                        const lo = d.x0!, hi = d.x1!;
+                        const ids: ISelectionId[] = [];
+                        for (const r of groupSubset) {
+                            if (r.value >= lo && r.value < hi && r.selectionId) ids.push(r.selectionId);
+                        }
+                        (this as SVGRectElement).dataset.baseOpacity = String(opacity);
+                        // Store on the datum so applySelectionStyling can find them without a full re-scan.
+                        (d as unknown as { ids?: ISelectionId[] }).ids = ids;
+                    })
+                    .attr("tabindex", 0).attr("role", "button")
+                    .style("cursor", "pointer")
+                    .on("click", (event: MouseEvent, d) => {
+                        event.stopPropagation();
+                        const ids = (d as unknown as { ids?: ISelectionId[] }).ids ?? [];
+                        if (ids.length === 0) return;
+                        const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                        this.selectionManager.select(ids, multi).then(() => this.applySelectionStyling());
+                    })
+                    .on("contextmenu", (event: MouseEvent, d) => {
+                        event.preventDefault(); event.stopPropagation();
+                        const ids = (d as unknown as { ids?: ISelectionId[] }).ids ?? [];
+                        this.selectionManager.showContextMenu(ids[0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                    });
             });
         }
 
@@ -392,6 +477,8 @@ export class Visual implements IVisual {
         if (s.binningCard.showBinSlider.value) {
             this.renderBinSlider(plotW, plotH, width0, dMin, dMax, palette);
         }
+
+        this.applySelectionStyling();
     }
 
     private renderBinSlider(

@@ -24,3 +24,11 @@
 - **Density → Show KDE density curve** on: red smooth curve overlays the bars.
 - **Annotations → Fit normal N(μ,σ) overlay**: dashed comparison line — on the two-groups sample it visibly deviates from the actual bimodal shape.
 - **Bars → Group mode → Overlay / Facet / Stack** (with the two-groups sample).
+
+## Interactions
+
+- **Click a bin** to filter every other visual on the page by every observation whose value falls in that bin. Ctrl / Shift-click to add multiple bins.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Interactions → Unselected opacity** controls how much non-selected bins fade. The same dimming applies when *another* visual filters this histogram.
+- Cross-filter is enabled only for the **Overlay** group mode in v1; Facet and Stack modes get selection support in a future update.
