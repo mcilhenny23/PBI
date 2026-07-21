@@ -101,10 +101,23 @@ class HighlightsCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.benchmarkPanel];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected panels fade to this opacity when any selection is active.",
+        value: 30
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     gridCard = new GridCard();
     scalesCard = new ScalesCard();
     chartCard = new ChartCard();
     highlightsCard = new HighlightsCard();
-    cards = [this.gridCard, this.scalesCard, this.chartCard, this.highlightsCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.gridCard, this.scalesCard, this.chartCard, this.highlightsCard, this.interactionsCard];
 }

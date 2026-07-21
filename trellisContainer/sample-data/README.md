@@ -16,3 +16,11 @@
 - **Scales → Y scale → Shared within row**: rows share, columns are free. Balance between the two.
 - **Highlights → Benchmark panel** = `All Stores Avg`: the average curve is dashed-ghosted onto every other panel for one-glance comparisons.
 - **Chart → Chart type = Bar** with `Barpadding = 20`: same panels rendered as bar charts.
+
+## Interactions
+
+- **Click any panel** to filter every other visual on the page by that store. Ctrl / Shift-click to add.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Tab / Enter / Space** for keyboard-driven selection.
+- **Interactions → Unselected opacity** controls how much non-selected panels fade. The same dimming applies when *another* visual filters the trellis.

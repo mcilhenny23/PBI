@@ -11,6 +11,9 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -27,6 +30,8 @@ interface PanelData {
     axisMax: number;
     yMin: number;
     yMax: number;
+    selectionIds: ISelectionId[];
+    isHighlighted: boolean;
 }
 
 interface RenderPalette {
@@ -77,9 +82,10 @@ function getCurve(name: string): d3.CurveFactory {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -96,11 +102,43 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element).append("svg").classed("trellis-container", true);
         this.landing = this.svg.append("g").classed("tr-landing", true);
         this.container = this.svg.append("g").classed("tr-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGGElement, { panel?: PanelData }>(".tr-panel").each(function (d) {
+            const g = d3.select(this);
+            const panel = d?.panel;
+            if (!panel) return;
+            const localIds = panel.selectionIds ?? [];
+            const isSel = localIds.some(id => activeIds.some(a => eq(a, id)));
+            const isHl = panel.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            g.attr("opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -144,28 +182,50 @@ export class Visual implements IVisual {
         const axis   = cat.categories[axisIdx].values;
         const series = seriesIdx >= 0 ? cat.categories[seriesIdx].values : null;
         const values = cat.values[vIdx].values;
+        const highlights = cat.values[vIdx].highlights ?? null;
+        const panelCategory = cat.categories[panelIdx];
         const rows = panels.length;
 
-        const byPanel = new Map<string, Map<string, Array<{ axis: string; y: number }>>>();
+        interface PanelAggregator {
+            seriesMap: Map<string, Array<{ axis: string; y: number }>>;
+            selectionIds: ISelectionId[];
+            highlightedRows: number;
+            totalRows: number;
+        }
+        const byPanel = new Map<string, PanelAggregator>();
         for (let i = 0; i < rows; i++) {
             const p = String(panels[i]);
             const a = String(axis[i]);
             const s = series ? String(series[i]) : "value";
             const y = safeNum(values[i]);
             if (y == null) continue;
-            if (!byPanel.has(p)) byPanel.set(p, new Map());
-            const map = byPanel.get(p)!;
-            if (!map.has(s)) map.set(s, []);
-            map.get(s)!.push({ axis: a, y });
+
+            if (!byPanel.has(p)) byPanel.set(p, { seriesMap: new Map(), selectionIds: [], highlightedRows: 0, totalRows: 0 });
+            const agg = byPanel.get(p)!;
+            if (!agg.seriesMap.has(s)) agg.seriesMap.set(s, []);
+            agg.seriesMap.get(s)!.push({ axis: a, y });
+            agg.totalRows++;
+            if (highlights) {
+                if (highlights[i] != null) agg.highlightedRows++;
+            } else {
+                agg.highlightedRows++;
+            }
+
+            try {
+                const id = this.host.createSelectionIdBuilder()
+                    .withCategory(panelCategory, i)
+                    .createSelectionId();
+                agg.selectionIds.push(id);
+            } catch { /* skipped */ }
         }
 
         const out: PanelData[] = [];
-        for (const [p, sMap] of byPanel) {
+        for (const [p, agg] of byPanel) {
             const seriesList: PanelSeries[] = [];
             let total = 0;
             let yMin = Infinity, yMax = -Infinity;
             let axisMinIdx = Infinity, axisMaxIdx = -Infinity;
-            for (const [sname, pts] of sMap) {
+            for (const [sname, pts] of agg.seriesMap) {
                 seriesList.push({ name: sname, points: pts });
                 for (const pt of pts) {
                     total += pt.y;
@@ -173,11 +233,15 @@ export class Visual implements IVisual {
                     if (pt.y > yMax) yMax = pt.y;
                 }
             }
-            // Cheap axis ordering assumption: string sort; users get the natural order for dates/ints.
             const uniqueAxis = Array.from(new Set(seriesList.flatMap(s => s.points.map(p => p.axis)))).sort();
             axisMinIdx = 0;
             axisMaxIdx = uniqueAxis.length - 1;
-            out.push({ name: p, total, seriesList, axisMin: axisMinIdx, axisMax: axisMaxIdx, yMin, yMax });
+            out.push({
+                name: p, total, seriesList,
+                axisMin: axisMinIdx, axisMax: axisMaxIdx, yMin, yMax,
+                selectionIds: agg.selectionIds,
+                isHighlighted: highlights ? agg.highlightedRows > 0 : true
+            });
         }
         return out;
     }
@@ -256,12 +320,36 @@ export class Visual implements IVisual {
             const cx = i % cols, cy = Math.floor(i / cols);
             const ox = pad + cx * (pw + pad);
             const oy = pad + cy * (ph + pad);
-            const g = this.container.append("g").attr("transform", `translate(${ox}, ${oy})`);
+            const g = this.container.append("g")
+                .attr("class", "tr-panel")
+                .attr("transform", `translate(${ox}, ${oy})`)
+                .datum({ panel })
+                .attr("tabindex", 0).attr("role", "button")
+                .attr("aria-label", `${panel.name} panel — click to filter`);
 
-            // Frame
+            // Frame (also the click target)
             g.append("rect")
                 .attr("x", 0).attr("y", 0).attr("width", pw).attr("height", ph)
-                .attr("fill", palette.background).attr("stroke", palette.grid);
+                .attr("fill", palette.background).attr("stroke", palette.grid)
+                .style("cursor", "pointer");
+
+            g.on("click", (event: MouseEvent) => {
+                event.stopPropagation();
+                if (panel.selectionIds.length === 0) return;
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(panel.selectionIds, multi).then(() => this.applySelectionStyling());
+            });
+            g.on("contextmenu", (event: MouseEvent) => {
+                event.preventDefault(); event.stopPropagation();
+                const anchor = panel.selectionIds[0] ?? ({} as ISelectionId);
+                this.selectionManager.showContextMenu(anchor, { x: event.clientX, y: event.clientY });
+            });
+            g.on("keydown", (event: KeyboardEvent) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                if (panel.selectionIds.length === 0) return;
+                this.selectionManager.select(panel.selectionIds, event.shiftKey).then(() => this.applySelectionStyling());
+            });
 
             const plotL = 30, plotR = 6, plotT = titleH + 4, plotB = 16;
             const plotW = pw - plotL - plotR;
@@ -403,6 +491,8 @@ export class Visual implements IVisual {
             btn(width - pad - 54, "‹", this.page - 1);
             btn(width - pad - 26, "›", this.page + 1);
         }
+
+        this.applySelectionStyling();
     }
 
     private resolvePalette(): RenderPalette {
