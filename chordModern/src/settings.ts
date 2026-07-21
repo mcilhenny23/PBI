@@ -65,9 +65,22 @@ class GradientsCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.gradientRibbons];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-touched arcs and ribbons fade to this opacity when a selection is active.",
+        value: 20
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     chordCard = new ChordCard();
     arcsCard = new ArcsCard();
     gradientsCard = new GradientsCard();
-    cards = [this.chordCard, this.arcsCard, this.gradientsCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.chordCard, this.arcsCard, this.gradientsCard, this.interactionsCard];
 }

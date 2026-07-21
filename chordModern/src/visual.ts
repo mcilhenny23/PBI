@@ -11,6 +11,9 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 
 import { VisualFormattingSettingsModel } from "./settings";
 
@@ -26,7 +29,13 @@ interface RenderPalette {
     landingSub: string;
 }
 
-interface EdgeRaw { source: string; target: string; weight: number; }
+interface EdgeRaw {
+    source: string;
+    target: string;
+    weight: number;
+    selectionId?: ISelectionId;
+    isHighlighted: boolean;
+}
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -54,8 +63,10 @@ function luminance(hex: string): number {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -64,16 +75,51 @@ export class Visual implements IVisual {
     private defs: d3.Selection<SVGDefsElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
 
+    /** Aggregated selection ids indexed by node name (built each render). */
+    private idsByNode = new Map<string, ISelectionId[]>();
+    /** Selection ids indexed by "source→target" (for ribbon clicks). */
+    private idByEdgeKey = new Map<string, ISelectionId>();
+
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
+        this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element).append("svg").classed("chord-modern", true);
         this.defs = this.svg.append("defs");
         this.landing = this.svg.append("g").classed("cm-landing", true);
         this.container = this.svg.append("g").classed("cm-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 20) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGPathElement, { __ids?: ISelectionId[] }>(".arc, .ribbon").each(function (d) {
+            const path = d3.select(this);
+            const ids = d?.__ids ?? [];
+            const isSel = ids.some(id => activeIds.some(a => eq(a, id)));
+            const base = Number((this as SVGPathElement).dataset.baseOpacity ?? "1");
+            let opacity = base;
+            if (hasSel && !isSel) opacity = base * dim;
+            path.attr("fill-opacity", opacity).attr("stroke-opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -113,6 +159,8 @@ export class Visual implements IVisual {
         const src = cat.categories[sIdx].values;
         const tgt = cat.categories[tIdx].values;
         const wVals = cat.values[wIdx].values;
+        const wHighlights = cat.values[wIdx].highlights ?? null;
+        const srcCat = cat.categories[sIdx];
         const rows = src.length;
         const out: EdgeRaw[] = [];
         for (let i = 0; i < rows; i++) {
@@ -120,7 +168,17 @@ export class Visual implements IVisual {
             const t = tgt[i] == null ? null : String(tgt[i]);
             const w = safeNum(wVals[i]);
             if (!s || !t || w == null || w <= 0) continue;
-            out.push({ source: s, target: t, weight: w });
+
+            let selectionId: ISelectionId | undefined;
+            try {
+                selectionId = this.host.createSelectionIdBuilder()
+                    .withCategory(srcCat, i)
+                    .createSelectionId();
+            } catch { /* skipped */ }
+
+            const isHighlighted = wHighlights ? (wHighlights[i] != null) : true;
+
+            out.push({ source: s, target: t, weight: w, selectionId, isHighlighted });
         }
         return out;
     }
@@ -142,10 +200,19 @@ export class Visual implements IVisual {
 
         // Build the flow matrix expected by d3.chord / chordDirected.
         const matrix: number[][] = Array.from({ length: N }, () => new Array<number>(N).fill(0));
+        this.idsByNode = new Map();
+        this.idByEdgeKey = new Map();
         for (const e of edges) {
             const si = nameToIdx.get(e.source)!;
             const ti = nameToIdx.get(e.target)!;
             matrix[si][ti] += e.weight;
+            if (e.selectionId) {
+                if (!this.idsByNode.has(e.source)) this.idsByNode.set(e.source, []);
+                if (!this.idsByNode.has(e.target)) this.idsByNode.set(e.target, []);
+                this.idsByNode.get(e.source)!.push(e.selectionId);
+                this.idsByNode.get(e.target)!.push(e.selectionId);
+                this.idByEdgeKey.set(`${e.source}→${e.target}`, e.selectionId);
+            }
         }
 
         // Sort groups.
@@ -218,7 +285,38 @@ export class Visual implements IVisual {
             .attr("fill-opacity", ribbonOpacity)
             .attr("stroke", (d) => nodeColors[d.source.index])
             .attr("stroke-opacity", ribbonOpacity + 0.15)
-            .attr("stroke-width", 0.5);
+            .attr("stroke-width", 0.5)
+            .each(function (d) {
+                (this as SVGPathElement).dataset.baseOpacity = String(ribbonOpacity);
+                const src = names[d.source.index], tgt = names[d.target.index];
+                const id = this.parentElement?.parentElement ? undefined : undefined;
+                (d as unknown as { __ids?: ISelectionId[] }).__ids = [];
+                // Populated below via closure over `visual` self.
+                (d as unknown as { __src?: string; __tgt?: string }).__src = src;
+                (d as unknown as { __src?: string; __tgt?: string }).__tgt = tgt;
+            });
+
+        const self = this;
+        ribbons.each(function (d) {
+            const src = (d as unknown as { __src: string }).__src;
+            const tgt = (d as unknown as { __tgt: string }).__tgt;
+            const id = self.idByEdgeKey.get(`${src}→${tgt}`);
+            (d as unknown as { __ids?: ISelectionId[] }).__ids = id ? [id] : [];
+        });
+        ribbons.style("cursor", "pointer")
+            .attr("tabindex", 0).attr("role", "button")
+            .on("click", (event: MouseEvent, d) => {
+                event.stopPropagation();
+                const ids = (d as unknown as { __ids?: ISelectionId[] }).__ids ?? [];
+                if (ids.length === 0) return;
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(ids, multi).then(() => this.applySelectionStyling());
+            })
+            .on("contextmenu", (event: MouseEvent, d) => {
+                event.preventDefault(); event.stopPropagation();
+                const ids = (d as unknown as { __ids?: ISelectionId[] }).__ids ?? [];
+                this.selectionManager.showContextMenu(ids[0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+            });
 
         // Arcs (rendered on top of ribbons for a clean look).
         const arcs = this.container.append("g").classed("arcs", true)
@@ -229,7 +327,26 @@ export class Visual implements IVisual {
             .attr("d", (d) => arcGen(d) as string)
             .attr("fill", d => nodeColors[d.index])
             .attr("stroke", palette.highContrast ? palette.fg : palette.background)
-            .attr("stroke-width", 0.5);
+            .attr("stroke-width", 0.5)
+            .each(function (d) {
+                (this as SVGPathElement).dataset.baseOpacity = "1";
+                const nodeName = names[d.index];
+                (d as unknown as { __ids?: ISelectionId[] }).__ids = self.idsByNode.get(nodeName) ?? [];
+            });
+        arcs.style("cursor", "pointer")
+            .attr("tabindex", 0).attr("role", "button")
+            .on("click", (event: MouseEvent, d) => {
+                event.stopPropagation();
+                const ids = (d as unknown as { __ids?: ISelectionId[] }).__ids ?? [];
+                if (ids.length === 0) return;
+                const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                this.selectionManager.select(ids, multi).then(() => this.applySelectionStyling());
+            })
+            .on("contextmenu", (event: MouseEvent, d) => {
+                event.preventDefault(); event.stopPropagation();
+                const ids = (d as unknown as { __ids?: ISelectionId[] }).__ids ?? [];
+                this.selectionManager.showContextMenu(ids[0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+            });
 
         // Labels.
         const labelMode = String(s.arcsCard.labelMode.value?.value ?? "radial");
@@ -298,6 +415,8 @@ export class Visual implements IVisual {
                 identities: [], coordinates: [event.clientX, event.clientY], isTouchEvent: false
             });
         }).on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+
+        this.applySelectionStyling();
     }
 
     private resolvePalette(): RenderPalette {

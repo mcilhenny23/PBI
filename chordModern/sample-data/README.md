@@ -15,3 +15,11 @@ Bidirectional flows between six regions.
 - **Chord → Hover behavior = Isolate**: hovering a region hides every ribbon not touching it — great for focus.
 - **Gradients → Gradient-fill ribbons = true** (default): each ribbon fades from source color to target color.
 - **Arcs → Label mode = Horizontal**: force all labels upright — easier reading with < 12 groups.
+
+## Interactions
+
+- **Click an arc** to filter every other visual on the page by every flow touching that region. Ctrl / Shift-click to add.
+- **Click a ribbon** to filter by that specific source → target flow only.
+- **Right-click** either for the Power BI context menu (drill-through, include / exclude).
+- **Click empty space** to clear.
+- **Interactions → Unselected opacity** controls how much non-touched arcs and ribbons fade. The same dimming applies when *another* visual filters this chart.
