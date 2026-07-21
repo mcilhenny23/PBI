@@ -299,7 +299,12 @@ export class Visual implements IVisual {
                 const groupTitle = cols![cG].displayName || "Group";
                 const entityTitle = cols![cE].displayName || "Entity";
                 sel.on("mouseenter", (event: MouseEvent, d: Segment) => {
-                    sel.attr("stroke-opacity", s => s.entity === d.entity ? hiOp : dimOp);
+                    // If a peer visual is already dimming the whole container,
+                    // skip the per-line dim — otherwise container.opacity(dim) ×
+                    // stroke-opacity(dimOp) compounds to near-invisibility.
+                    // Hovered line still lifts to hiOp for a visible focus.
+                    const hasSel = this.selectionManager.getSelectionIds().length > 0;
+                    sel.attr("stroke-opacity", s => s.entity === d.entity ? hiOp : (hasSel ? baseOp : dimOp));
                 })
                     .on("mousemove", (event: MouseEvent, d: Segment) => {
                         const [px, py] = d3.pointer(event, this.svg.node());
