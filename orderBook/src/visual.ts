@@ -398,6 +398,7 @@ export class Visual implements IVisual {
                 })
                 .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
 
+            this.applyExternalDim();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

@@ -324,6 +324,7 @@ export class Visual implements IVisual {
 
             this.tooltip(axisTitle, members, actuals, axisCats, xScale, yScale);
 
+            this.applyExternalDim();
             this.events.renderingFinished(options);
         } catch (error) {
             this.stopLoop();

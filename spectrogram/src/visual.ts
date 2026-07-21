@@ -721,6 +721,7 @@ export class Visual implements IVisual {
             }
 
             this.attachTooltip(width, height, hasRate);
+            this.applyExternalDim();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

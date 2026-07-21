@@ -205,6 +205,7 @@ export class Visual implements IVisual {
                 this.rafId = requestAnimationFrame(this.tick);
             }
 
+            this.applyExternalDim();
             this.events.renderingFinished(options);
         } catch (error) {
             this.stopLoop();

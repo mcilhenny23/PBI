@@ -442,6 +442,11 @@ export class Visual implements IVisual {
             // ── Hover ──────────────────────────────────────────────
             this.attachTooltip(width, height, plotL, plotW, n, x, series, res, seriesLabels, m, motifs, discords);
 
+            // Honour a persistent selection restored before the first update() —
+            // registerOnSelectCallback fires early with settings still undefined,
+            // so the initial dim only lands here.
+            this.applyExternalDim();
+
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

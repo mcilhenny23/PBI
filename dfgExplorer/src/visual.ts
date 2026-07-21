@@ -191,6 +191,7 @@ export class Visual implements IVisual {
             }
 
             this.render();
+            this.applyExternalDim();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));
