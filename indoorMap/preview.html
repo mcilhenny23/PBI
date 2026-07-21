@@ -1,0 +1,113 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Indoor Map preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  #wrap { position: relative; width: 960px; height: 500px; padding: 60px 20px 20px 20px; box-sizing: border-box; }
+  canvas, svg { display: block; }
+  #stage { position: relative; }
+</style></head>
+<body>
+<div id="wrap">
+  <svg id="titleSvg" width="920" height="50" viewBox="0 0 920 50">
+    <text x="0" y="24" font-size="18" font-weight="600" fill="#1a1a2e">Indoor Map — warehouse picks heat + points</text>
+    <text x="0" y="42" font-size="12" fill="#666">PNG floor plan underlay · zone-colored points sized by pick count · Inferno heat overlay</text>
+  </svg>
+  <div id="stage" style="width: 920px; height: 420px;">
+    <img id="plan" src="sample-data/floorplan.png" style="position:absolute; left:100px; top:0; width:700px; height:320px; opacity: 1;">
+    <canvas id="heat" style="position:absolute; left:100px; top:0; width:700px; height:320px; pointer-events:none;" width="1400" height="640"></canvas>
+    <svg id="pts" width="920" height="420" viewBox="0 0 920 420" style="position:absolute; left:0; top:0;"></svg>
+  </div>
+</div>
+
+<script>
+(function () {
+  const rows = [
+    ["A-01",80,60,"Receiving",45], ["A-02",80,120,"Receiving",32],
+    ["B-01",180,60,"Storage",120], ["B-02",180,120,"Storage",98],
+    ["B-03",180,180,"Storage",110], ["B-04",180,240,"Storage",88],
+    ["C-01",280,60,"Storage",72], ["C-02",280,120,"Storage",190],
+    ["C-03",280,180,"Storage",205], ["C-04",280,240,"Storage",145],
+    ["D-01",380,60,"Packing",60], ["D-02",380,120,"Packing",55],
+    ["D-03",380,180,"Packing",48], ["D-04",380,240,"Packing",52],
+    ["E-01",480,60,"Shipping",220], ["E-02",480,120,"Shipping",235],
+    ["E-03",480,180,"Shipping",180], ["E-04",480,240,"Shipping",210],
+    ["F-01",580,120,"Shipping",190], ["F-02",580,240,"Shipping",165]
+  ];
+  const zoneColors = { Receiving:"#1f77b4", Storage:"#2ca02c", Packing:"#ff7f0e", Shipping:"#d62728" };
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+
+  // Coordinate transform: data (x,y) in image-space (700×320) → SVG (with image at x=100,y=0, size 700×320).
+  const IMG_X = 100, IMG_Y = 0, IMG_W = 700, IMG_H = 320;
+  const px = x => IMG_X + x / 700 * IMG_W;
+  const py = y => IMG_Y + y / 320 * IMG_H;
+
+  // Heat pass on the canvas.
+  const heat = document.getElementById("heat");
+  const dpr = 2;
+  heat.width = IMG_W * dpr; heat.height = IMG_H * dpr;
+  const acc = document.createElement("canvas"); acc.width = heat.width; acc.height = heat.height;
+  const accCtx = acc.getContext("2d");
+  accCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  accCtx.globalCompositeOperation = "lighter";
+  const R = 40;
+  const grad = accCtx.createRadialGradient(0, 0, 0, 0, 0, R);
+  grad.addColorStop(0, "rgba(255,255,255,0.5)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  const maxV = Math.max(...rows.map(r => r[4]));
+  for (const [, x, y, , v] of rows) {
+    const w = v / maxV;
+    accCtx.save();
+    accCtx.translate(x, y);
+    accCtx.globalAlpha = 0.15 + 0.85 * w;
+    accCtx.fillStyle = grad;
+    accCtx.beginPath(); accCtx.arc(0, 0, R, 0, Math.PI * 2); accCtx.fill();
+    accCtx.restore();
+  }
+  const ctx = heat.getContext("2d");
+  const src = accCtx.getImageData(0, 0, heat.width, heat.height).data;
+  const dst = ctx.createImageData(heat.width, heat.height);
+  // inferno ramp
+  const inferno = [[0,0,4],[40,11,84],[101,21,110],[159,42,99],[212,72,66],[245,125,21],[250,193,39],[252,255,164],[252,255,164]];
+  function ramp(t) {
+    const i = Math.max(0, Math.min(inferno.length - 1, t * (inferno.length - 1)));
+    const lo = Math.floor(i), hi = Math.min(inferno.length - 1, lo + 1);
+    const f = i - lo;
+    return [
+      inferno[lo][0] + (inferno[hi][0] - inferno[lo][0]) * f,
+      inferno[lo][1] + (inferno[hi][1] - inferno[lo][1]) * f,
+      inferno[lo][2] + (inferno[hi][2] - inferno[lo][2]) * f
+    ];
+  }
+  let maxA = 1;
+  for (let i = 3; i < src.length; i += 4) if (src[i] > maxA) maxA = src[i];
+  for (let i = 0, j = 0; i < src.length; i += 4, j += 4) {
+    const a = src[i + 3];
+    if (a === 0) { dst.data[j + 3] = 0; continue; }
+    let t = Math.log1p((a / maxA) * 9) / Math.log(10);
+    const rgb = ramp(t);
+    dst.data[j] = rgb[0]; dst.data[j + 1] = rgb[1]; dst.data[j + 2] = rgb[2];
+    dst.data[j + 3] = Math.min(255, Math.round(t * 255 * 0.55));
+  }
+  ctx.putImageData(dst, 0, 0);
+
+  // Points on top.
+  const svg = document.getElementById("pts");
+  for (const [name, x, y, zone, v] of rows) {
+    const r = Math.max(3, Math.sqrt(v / maxV) * 10);
+    svg.appendChild(el("circle", { cx: px(x), cy: py(y), r, fill: zoneColors[zone], "fill-opacity": 0.9, stroke: "#fff", "stroke-width": 1 }));
+  }
+  // Label a few hotspots.
+  const highlights = ["E-02", "C-03", "E-01", "B-01"];
+  for (const [name, x, y] of rows) {
+    if (!highlights.includes(name)) continue;
+    const t = el("text", {
+      x: px(x) + 12, y: py(y) + 4,
+      "font-size": 11, fill: "#333", stroke: "#fff", "stroke-width": 3, "paint-order": "stroke", "font-weight": 600
+    });
+    t.textContent = name;
+    svg.appendChild(t);
+  }
+})();
+</script>
+</body></html>

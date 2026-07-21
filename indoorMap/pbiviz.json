@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "indoorMap",
+        "displayName": "Indoor Map",
+        "guid": "indoorMap6B8C1E9D45B84A73B216D5F8A9C3E720",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Map points and heat onto an image floor plan / factory diagram / stadium layout — without needing geographic latitude and longitude. Base64 PNG or JPEG data URI as the underlay, arbitrary coordinate system, points or Gaussian heat overlay.",
+        "supportUrl": "https://github.com/jeffs-visuals/indoor-map",
+        "gitHubUrl": "https://github.com/jeffs-visuals/indoor-map"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

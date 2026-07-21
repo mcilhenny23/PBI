@@ -1,0 +1,102 @@
+{
+    "dataRoles": [
+        { "displayName": "X",           "name": "x",         "kind": "Measure",  "description": "In image coordinate units" },
+        { "displayName": "Y",           "name": "y",         "kind": "Measure" },
+        { "displayName": "Label",       "name": "label",     "kind": "Grouping" },
+        { "displayName": "Category",    "name": "colorBy",   "kind": "Grouping" },
+        { "displayName": "Value",       "name": "value",     "kind": "Measure",  "description": "Size (points) or heat intensity" },
+        { "displayName": "Floor Plan (base64)", "name": "imageData", "kind": "Grouping", "description": "Single-row column containing a raster data URI (data:image/png;base64,… or data:image/jpeg;base64,…). SVG is rejected." }
+    ],
+    "objects": {
+        "image": {
+            "properties": {
+                "coordinateSystem": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "top-left",    "displayName": "Top-left origin" },
+                            { "value": "bottom-left", "displayName": "Bottom-left origin" }
+                        ]
+                    }
+                },
+                "imageWidth":   { "type": { "numeric": true } },
+                "imageHeight":  { "type": { "numeric": true } },
+                "imageOpacity": { "type": { "numeric": true } }
+            }
+        },
+        "overlay": {
+            "properties": {
+                "overlayMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "points", "displayName": "Points" },
+                            { "value": "heat",   "displayName": "Heat" },
+                            { "value": "both",   "displayName": "Both" }
+                        ]
+                    }
+                },
+                "pointRadius":  { "type": { "numeric": true } },
+                "pointOpacity": { "type": { "numeric": true } },
+                "heatRadius":   { "type": { "numeric": true } },
+                "heatOpacity":  { "type": { "numeric": true } },
+                "colorRamp": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "viridis", "displayName": "Viridis" },
+                            { "value": "inferno", "displayName": "Inferno" },
+                            { "value": "blues",   "displayName": "Blues" },
+                            { "value": "turbo",   "displayName": "Turbo" }
+                        ]
+                    }
+                }
+            }
+        },
+        "labels": {
+            "properties": {
+                "labelMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "hover",  "displayName": "On hover" },
+                            { "value": "always", "displayName": "Always" },
+                            { "value": "never",  "displayName": "Never" }
+                        ]
+                    }
+                },
+                "fontSize": { "type": { "numeric": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                { "x": {"min":1,"max":1}, "y": {"min":1,"max":1}, "label":{"min":0,"max":1}, "colorBy":{"min":0,"max":1}, "value":{"min":0,"max":1}, "imageData":{"min":0,"max":1} }
+            ],
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "label" } },
+                        { "for": { "in": "colorBy" } },
+                        { "for": { "in": "imageData" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "x" } },
+                        { "for": { "in": "y" } },
+                        { "for": { "in": "value" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
