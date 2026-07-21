@@ -144,9 +144,22 @@ class AxisCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When another visual filters this chart, non-highlighted intervals fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     tracksCard = new TracksCard();
     intervalsCard = new IntervalsCard();
     axisCard = new AxisCard();
-    cards = [this.tracksCard, this.intervalsCard, this.axisCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.tracksCard, this.intervalsCard, this.axisCard, this.interactionsCard];
 }

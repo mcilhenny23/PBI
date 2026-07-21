@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -26,6 +29,7 @@ interface Interval {
     category: string | null;
     value: number | null;
     lane: number;
+    selectionId?: ISelectionId;
 }
 
 interface TrackLayout {
@@ -70,9 +74,10 @@ const numFmt = d3.format(",.4~g");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private colorPalette: ISandboxExtendedColorPalette;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
@@ -104,13 +109,24 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.colorPalette = options.host.colorPalette;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.root = d3.select(options.element).append("div").classed("itv-root", true);
         this.canvas = this.root.append("canvas").classed("itv-canvas", true);
         this.svg = this.root.append("svg").classed("itv-svg", true);
         this.landing = this.svg.append("g").classed("itv-landing", true);
         this.overlay = this.svg.append("g").classed("itv-overlay", true);
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.canvas.style("opacity", hasSel ? String(dim) : "1");
     }
 
     public update(options: VisualUpdateOptions) {
@@ -166,18 +182,28 @@ export class Visual implements IVisual {
             };
 
             const intervals: Interval[] = [];
-            for (const row of table.rows) {
+            for (let rowIdx = 0; rowIdx < table.rows.length; rowIdx++) {
+                const row = table.rows[rowIdx];
                 const start = safeNum(row[cStart]);
                 if (start == null) continue;
                 let end = cEnd >= 0 ? safeNum(row[cEnd]) : null;
                 if (end != null && end <= start) end = null;      // zero-duration → point event
+
+                let selectionId: ISelectionId | undefined;
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withTable(table, rowIdx)
+                        .createSelectionId();
+                } catch { /* skipped */ }
+
                 intervals.push({
                     track: cTrack >= 0 && row[cTrack] != null ? String(row[cTrack]) : "All",
                     start, end,
                     label: cLabel >= 0 && row[cLabel] != null ? String(row[cLabel]) : null,
                     category: cCat >= 0 && row[cCat] != null ? String(row[cCat]) : null,
-                    value: cVal >= 0 ? safeNum(row[cVal]) : null
-                    , lane: 0
+                    value: cVal >= 0 ? safeNum(row[cVal]) : null,
+                    lane: 0,
+                    selectionId
                 });
             }
             if (!intervals.length) {
@@ -430,7 +456,32 @@ export class Visual implements IVisual {
                 }
                 this.tooltipService.hide({ immediately: false, isTouchEvent: false });
             })
-            .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+            .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }))
+            .on("click", (event: MouseEvent) => {
+                const [px, py] = d3.pointer(event, this.svg.node());
+                for (let i = this.rendered.length - 1; i >= 0; i--) {
+                    const r = this.rendered[i];
+                    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+                        if (!r.d.selectionId) return;
+                        event.stopPropagation();
+                        const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                        this.selectionManager.select(r.d.selectionId, multi).then(() => this.applyExternalDim());
+                        return;
+                    }
+                }
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            })
+            .on("contextmenu", (event: MouseEvent) => {
+                event.preventDefault();
+                const [px, py] = d3.pointer(event, this.svg.node());
+                for (let i = this.rendered.length - 1; i >= 0; i--) {
+                    const r = this.rendered[i];
+                    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+                        this.selectionManager.showContextMenu(r.d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                        return;
+                    }
+                }
+            });
     }
 
     private fmtTime(v: number): string {
