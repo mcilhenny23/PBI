@@ -11,6 +11,8 @@ export const DEFAULT_DECREASE_COLOR = "#d62728";
 export const DEFAULT_ANCHOR_COLOR   = "#4472C4";
 export const DEFAULT_SUBTOTAL_COLOR = "#7f7f7f";
 export const DEFAULT_CONNECTOR_COLOR = "#999999";
+export const DEFAULT_BAR_BORDER_COLOR = "#333333";
+export const DEFAULT_LABEL_COLOR = "#2a2a2a";
 
 class StructureCard extends FormattingSettingsCard {
     firstStepIsAnchor = new formattingSettings.ToggleSwitch({
@@ -71,11 +73,26 @@ class BarsCard extends FormattingSettingsCard {
         description: "Gap between bars as a percentage of the step band.",
         value: 20
     });
+    cornerRadius = new formattingSettings.NumUpDown({
+        name: "cornerRadius", displayName: "Corner radius (px)",
+        description: "Round the bar corners. 0 = square.",
+        value: 2
+    });
+    barBorderWidth = new formattingSettings.NumUpDown({
+        name: "barBorderWidth", displayName: "Bar border width (px)",
+        description: "Stroke around each bar. 0 = no border.",
+        value: 0
+    });
+    barBorderColor = new formattingSettings.ColorPicker({
+        name: "barBorderColor", displayName: "Bar border color",
+        value: { value: DEFAULT_BAR_BORDER_COLOR }
+    });
 
     name: string = "bars";
     displayName: string = "Bars";
     slices: Array<FormattingSettingsSlice> = [
-        this.increaseColor, this.decreaseColor, this.anchorColor, this.subtotalColor, this.barPadding
+        this.increaseColor, this.decreaseColor, this.anchorColor, this.subtotalColor,
+        this.barPadding, this.cornerRadius, this.barBorderWidth, this.barBorderColor
     ];
 }
 
@@ -128,11 +145,23 @@ class LabelsCard extends FormattingSettingsCard {
     fontSize = new formattingSettings.NumUpDown({
         name: "fontSize", displayName: "Font size", value: 11
     });
+    labelBold = new formattingSettings.ToggleSwitch({
+        name: "labelBold", displayName: "Bold", value: false
+    });
+    labelItalic = new formattingSettings.ToggleSwitch({
+        name: "labelItalic", displayName: "Italic", value: false
+    });
+    labelColor = new formattingSettings.ColorPicker({
+        name: "labelColor", displayName: "Label color",
+        description: "Applied to outside labels. Inside labels stay white for contrast against the bar fill.",
+        value: { value: DEFAULT_LABEL_COLOR }
+    });
 
     name: string = "labels";
     displayName: string = "Labels";
     slices: Array<FormattingSettingsSlice> = [
-        this.showValueLabels, this.labelPosition, this.showDeltaSign, this.showPercentOfStart, this.fontSize
+        this.showValueLabels, this.labelPosition, this.showDeltaSign, this.showPercentOfStart,
+        this.fontSize, this.labelBold, this.labelItalic, this.labelColor
     ];
 }
 
@@ -146,19 +175,82 @@ class AxisCard extends FormattingSettingsCard {
     fontSize = new formattingSettings.NumUpDown({
         name: "fontSize", displayName: "Axis font size", value: 11
     });
+    includeZero = new formattingSettings.ToggleSwitch({
+        name: "includeZero", displayName: "Force axis to include zero",
+        description: "Extends the auto Y domain to always include 0. Useful for currency/count bridges.",
+        value: true
+    });
+
+    // Blank = auto. Pinning these lets several bridges share one scale.
+    yMinOverride = new formattingSettings.NumUpDown({
+        name: "yMinOverride", displayName: "Y min (blank = auto)",
+        description: "Pins the bottom of the Y axis. Ignored unless it is below the Y max.",
+        value: null
+    });
+    yMaxOverride = new formattingSettings.NumUpDown({
+        name: "yMaxOverride", displayName: "Y max (blank = auto)",
+        description: "Pins the top of the Y axis. Ignored unless it is above the Y min.",
+        value: null
+    });
 
     name: string = "axis";
     displayName: string = "Axis";
     slices: Array<FormattingSettingsSlice> = [
-        this.showYAxis, this.showGridlines, this.fontSize
+        this.showYAxis, this.showGridlines, this.fontSize, this.includeZero,
+        this.yMinOverride, this.yMaxOverride
     ];
 }
 
-export class VisualFormattingSettingsModel extends FormattingSettingsModel {
-    structureCard   = new StructureCard();
-    barsCard        = new BarsCard();
-    connectorsCard  = new ConnectorsCard();
-    labelsCard      = new LabelsCard();
-    axisCard        = new AxisCard();
-    cards = [this.structureCard, this.barsCard, this.connectorsCard, this.labelsCard, this.axisCard];
+class LegendCard extends FormattingSettingsCard {
+    showLegend = new formattingSettings.ToggleSwitch({
+        name: "showLegend",
+        displayName: "Show legend",
+        description: "Displays the breakdown categories (only when a Breakdown field is bound).",
+        value: true
+    });
+    legendPosition = new formattingSettings.ItemDropdown({
+        name: "legendPosition", displayName: "Position",
+        items: [
+            { value: "top",    displayName: "Top" },
+            { value: "right",  displayName: "Right" },
+            { value: "bottom", displayName: "Bottom" },
+            { value: "left",   displayName: "Left" }
+        ],
+        value: { value: "top", displayName: "Top" }
+    });
+    legendFontSize = new formattingSettings.NumUpDown({
+        name: "legendFontSize", displayName: "Legend font size", value: 10
+    });
+
+    name: string = "legend";
+    displayName: string = "Legend";
+    slices: Array<FormattingSettingsSlice> = [this.showLegend, this.legendPosition, this.legendFontSize];
 }
+
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "When another visual filters this chart, non-highlighted bars fade to this opacity.",
+        value: 25
+    });
+
+    name: string = "interactions";
+    displayName: string = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
+export class VisualFormattingSettingsModel extends FormattingSettingsModel {
+    structureCard    = new StructureCard();
+    barsCard         = new BarsCard();
+    connectorsCard   = new ConnectorsCard();
+    labelsCard       = new LabelsCard();
+    axisCard         = new AxisCard();
+    legendCard       = new LegendCard();
+    interactionsCard = new InteractionsCard();
+    cards = [
+        this.structureCard, this.barsCard, this.connectorsCard, this.labelsCard,
+        this.axisCard, this.legendCard, this.interactionsCard
+    ];
+}
+

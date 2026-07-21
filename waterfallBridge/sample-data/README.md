@@ -35,4 +35,24 @@ Each delta step has a Consumer / Enterprise breakdown row.
 - `Value` → **Value**
 - `StepType` → **Step Type**
 
-Each delta bar becomes a mini-stack of colored sub-deltas summing to the step total.
+Each delta bar becomes a mini-stack of colored sub-deltas summing to the step total. A legend for the breakdown categories appears above the chart — customize its position via **Legend → Position** (top / right / bottom / left).
+
+## Interactions
+
+- **Click** any bar (or breakdown segment) to filter every other visual on the page by that step.
+- **Ctrl-click** (or Shift-click) to add to the selection.
+- **Click empty space** to clear.
+- **Right-click** for the Power BI context menu (drill through, include / exclude).
+- Non-selected bars fade to the opacity set by **Interactions → Unselected opacity**.
+- When *another* visual filters this chart, the same fade applies to the non-highlighted bars.
+
+## Format-pane polish additions
+
+- **Bars → Corner radius** — round the bar corners.
+- **Bars → Bar border width / color** — outline every bar (useful for reports in dark themes).
+- **Axis → Force axis to include zero** — extends the Y domain to always include 0.
+- **Axis → Y min / Y max** — pin either bound; leave blank for auto. Pinning both lets several bridges share one scale.
+- **Labels → Bold / Italic / Label color** — full typography control.
+- **Legend → Show / Position / Font size** — hide, reposition, or resize the breakdown legend.
+- **Interactions → Unselected opacity** — how much non-selected bars fade during cross-highlighting.
+

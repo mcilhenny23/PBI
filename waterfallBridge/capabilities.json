@@ -48,7 +48,10 @@
                 "decreaseColor": { "type": { "fill": { "solid": { "color": true } } } },
                 "anchorColor":   { "type": { "fill": { "solid": { "color": true } } } },
                 "subtotalColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "barPadding":    { "type": { "numeric": true } }
+                "barPadding":    { "type": { "numeric": true } },
+                "cornerRadius":  { "type": { "numeric": true } },
+                "barBorderWidth":{ "type": { "numeric": true } },
+                "barBorderColor":{ "type": { "fill": { "solid": { "color": true } } } }
             }
         },
         "connectors": {
@@ -79,18 +82,47 @@
                 },
                 "showDeltaSign":     { "type": { "bool": true } },
                 "showPercentOfStart":{ "type": { "bool": true } },
-                "fontSize":          { "type": { "numeric": true } }
+                "fontSize":          { "type": { "numeric": true } },
+                "labelBold":         { "type": { "bool": true } },
+                "labelItalic":       { "type": { "bool": true } },
+                "labelColor":        { "type": { "fill": { "solid": { "color": true } } } }
             }
         },
         "axis": {
             "properties": {
                 "showYAxis":     { "type": { "bool": true } },
                 "showGridlines": { "type": { "bool": true } },
-                "fontSize":      { "type": { "numeric": true } }
+                "fontSize":      { "type": { "numeric": true } },
+                "includeZero":   { "type": { "bool": true } },
+                "yMinOverride":  { "type": { "numeric": true } },
+                "yMaxOverride":  { "type": { "numeric": true } }
+            }
+        },
+        "legend": {
+            "properties": {
+                "showLegend":     { "type": { "bool": true } },
+                "legendPosition": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "top",    "displayName": "Top" },
+                            { "value": "right",  "displayName": "Right" },
+                            { "value": "bottom", "displayName": "Bottom" },
+                            { "value": "left",   "displayName": "Left" }
+                        ]
+                    }
+                },
+                "legendFontSize": { "type": { "numeric": true } }
+            }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
             }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,
