@@ -21,3 +21,11 @@ Power BI will aggregate the numeric columns; make sure ASP and Margin are set to
 - **Table → Show totals row** with **Totals position = Bottom** for the totals footer.
 
 Column headers are click-sortable.
+
+## Interactions
+
+- **Click any row** to filter every other visual on the page by that product. Ctrl / Shift-click to add.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** (below the last row) to clear.
+- **Tab / Enter / Space** for keyboard-driven selection.
+- **Interactions → Unselected opacity** controls how much non-selected rows fade. The same dimming applies when *another* visual filters this table.

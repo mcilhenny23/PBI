@@ -9,6 +9,9 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 
 import { VisualFormattingSettingsModel, DEFAULT_SPARK_COLOR, DEFAULT_BANDING } from "./settings";
 
@@ -25,6 +28,8 @@ interface RowRecord {
     label: string;
     cells: Array<number | null>;   // one per column (aligned to columns[])
     sparkline: number[] | null;    // present when sparkline series bound
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -68,19 +73,26 @@ function evaluateRule(cellValue: number | null, op: string, threshold: number): 
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
+    private host: IVisualHost;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
     private root: HTMLDivElement;
     private container: HTMLDivElement;
     private landing: HTMLDivElement;
+    private currentMatrixLevels: powerbi.DataViewHierarchyLevel[] = [];
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
+        this.host = options.host;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
         this.root = options.element as HTMLDivElement;
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.container = document.createElement("div");
         this.container.className = "at-container";
@@ -89,6 +101,35 @@ export class Visual implements IVisual {
         this.landing = document.createElement("div");
         this.landing.className = "at-landing";
         this.root.appendChild(this.landing);
+
+        // Click on the container background (not on a row) clears the selection.
+        this.container.addEventListener("click", (event: MouseEvent) => {
+            const t = event.target as HTMLElement;
+            if (t.tagName !== "TR" && !t.closest("tr")) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 40) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.querySelectorAll<HTMLTableRowElement>("tr[data-row]").forEach(tr => {
+            const row = (tr as unknown as { __row?: RowRecord }).__row;
+            if (!row) return;
+            const isSel = !!row.selectionId && activeIds.some(a => eq(a, row.selectionId!));
+            const isHl = row.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            tr.style.opacity = String(opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -116,6 +157,7 @@ export class Visual implements IVisual {
     private parseMatrix(dv?: powerbi.DataView): { columns: ColumnSpec[]; rows: RowRecord[] } | null {
         const m = dv?.matrix;
         if (!m || !m.rows || !m.rows.root || m.valueSources.length === 0) return null;
+        this.currentMatrixLevels = m.rows.levels;
         const sources = m.valueSources;
         // Column specs — one per value source. Detect sparkline column: the source whose role is 'sparkValue'.
         const columns: ColumnSpec[] = sources.map((src, i) => ({
@@ -160,7 +202,15 @@ export class Visual implements IVisual {
                 }
             }
 
-            rows.push({ label, cells, sparkline });
+            // Row-level selection identity from the matrix node.
+            let selectionId: ISelectionId | undefined;
+            try {
+                selectionId = this.host.createSelectionIdBuilder()
+                    .withMatrixNode(rowNode, this.currentMatrixLevels)
+                    .createSelectionId();
+            } catch { /* skipped */ }
+
+            rows.push({ label, cells, sparkline, selectionId, isHighlighted: true });
         }
         return { columns, rows };
     }
@@ -275,6 +325,33 @@ export class Visual implements IVisual {
             const tr = document.createElement("tr");
             if (isTotal) tr.className = "at-total";
             else if (altBand && s.tableCard.rowBanding.value) tr.style.background = bandingColor;
+
+            // Wire interactions on non-total rows only.
+            if (!isTotal) {
+                tr.setAttribute("data-row", "true");
+                (tr as unknown as { __row: RowRecord }).__row = r;
+                if (r.selectionId) {
+                    tr.style.cursor = "pointer";
+                    tr.setAttribute("tabindex", "0");
+                    tr.setAttribute("role", "button");
+                    tr.setAttribute("aria-label", `Row ${r.label} — click to filter`);
+                    tr.addEventListener("click", (event: MouseEvent) => {
+                        event.stopPropagation();
+                        const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                        this.selectionManager.select(r.selectionId!, multi).then(() => this.applySelectionStyling());
+                    });
+                    tr.addEventListener("contextmenu", (event: MouseEvent) => {
+                        event.preventDefault(); event.stopPropagation();
+                        this.selectionManager.showContextMenu(r.selectionId!, { x: event.clientX, y: event.clientY });
+                    });
+                    tr.addEventListener("keydown", (event: KeyboardEvent) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        this.selectionManager.select(r.selectionId!, event.shiftKey).then(() => this.applySelectionStyling());
+                    });
+                }
+            }
+
             const tdLabel = document.createElement("td");
             tdLabel.className = "at-td at-td-row";
             tdLabel.textContent = r.label;
@@ -320,6 +397,7 @@ export class Visual implements IVisual {
             }
         };
         buildBody();
+        this.applySelectionStyling();
     }
 
     /**

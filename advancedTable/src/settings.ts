@@ -112,9 +112,22 @@ class TableCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.showTotals, this.totalsPosition, this.fontSize, this.rowBanding, this.bandingColor, this.stickyHeader];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected rows fade to this opacity when a row is selected or another visual filters this table.",
+        value: 40
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     sparklinesCard = new SparklinesCard();
     rulesCard = new RulesCard();
     tableCard = new TableCard();
-    cards = [this.sparklinesCard, this.rulesCard, this.tableCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.sparklinesCard, this.rulesCard, this.tableCard, this.interactionsCard];
 }
