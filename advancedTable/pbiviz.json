@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "advancedTable",
+        "displayName": "Advanced Table",
+        "guid": "advancedTableB3D5C7F14E8A492FA916C0E5D8A7B34E",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "DOM-based virtualized table with two features the native one can't do inline: sparkline cells (line/bar/area/win-loss) driven by a nested time series, and up to three icon-rule slots that prefix numeric cells with ▲▼●✓✗ per threshold.",
+        "supportUrl": "https://github.com/jeffs-visuals/advanced-table",
+        "gitHubUrl": "https://github.com/jeffs-visuals/advanced-table"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

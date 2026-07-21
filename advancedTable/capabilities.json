@@ -1,0 +1,139 @@
+{
+    "dataRoles": [
+        { "displayName": "Rows",             "name": "rows",       "kind": "Grouping" },
+        { "displayName": "Values",           "name": "columns",    "kind": "Measure" },
+        { "displayName": "Sparkline Axis",   "name": "sparkAxis",  "kind": "Grouping", "description": "Time / horizon field for sparkline cells" },
+        { "displayName": "Sparkline Value",  "name": "sparkValue", "kind": "Measure" }
+    ],
+    "objects": {
+        "sparklines": {
+            "properties": {
+                "sparkType": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "line",     "displayName": "Line" },
+                            { "value": "bar",      "displayName": "Bar" },
+                            { "value": "area",     "displayName": "Area" },
+                            { "value": "win-loss", "displayName": "Win / Loss" }
+                        ]
+                    }
+                },
+                "sparkWidth":     { "type": { "numeric": true } },
+                "sparkHeight":    { "type": { "numeric": true } },
+                "sparkColor":     { "type": { "fill": { "solid": { "color": true } } } },
+                "highlightLast":  { "type": { "bool": true } },
+                "showMinMaxDots": { "type": { "bool": true } }
+            }
+        },
+        "rules": {
+            "properties": {
+                "rule1Column":   { "type": { "text": true } },
+                "rule1Operator": {
+                    "type": {
+                        "enumeration": [
+                            { "value": ">",  "displayName": ">" },
+                            { "value": "<",  "displayName": "<" },
+                            { "value": ">=", "displayName": "≥" },
+                            { "value": "<=", "displayName": "≤" },
+                            { "value": "=",  "displayName": "=" }
+                        ]
+                    }
+                },
+                "rule1Value":    { "type": { "numeric": true } },
+                "rule1Icon":     {
+                    "type": {
+                        "enumeration": [
+                            { "value": "▲", "displayName": "Up ▲" },
+                            { "value": "▼", "displayName": "Down ▼" },
+                            { "value": "●", "displayName": "Dot ●" },
+                            { "value": "■", "displayName": "Square ■" },
+                            { "value": "✓", "displayName": "Check ✓" },
+                            { "value": "✗", "displayName": "Cross ✗" }
+                        ]
+                    }
+                },
+                "rule1Color":    { "type": { "fill": { "solid": { "color": true } } } },
+                "rule2Column":   { "type": { "text": true } },
+                "rule2Operator": {
+                    "type": {
+                        "enumeration": [
+                            { "value": ">",  "displayName": ">" },
+                            { "value": "<",  "displayName": "<" },
+                            { "value": ">=", "displayName": "≥" },
+                            { "value": "<=", "displayName": "≤" },
+                            { "value": "=",  "displayName": "=" }
+                        ]
+                    }
+                },
+                "rule2Value":    { "type": { "numeric": true } },
+                "rule2Icon":     {
+                    "type": {
+                        "enumeration": [
+                            { "value": "▲", "displayName": "Up ▲" },
+                            { "value": "▼", "displayName": "Down ▼" },
+                            { "value": "●", "displayName": "Dot ●" },
+                            { "value": "■", "displayName": "Square ■" },
+                            { "value": "✓", "displayName": "Check ✓" },
+                            { "value": "✗", "displayName": "Cross ✗" }
+                        ]
+                    }
+                },
+                "rule2Color":    { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "table": {
+            "properties": {
+                "showTotals":     { "type": { "bool": true } },
+                "totalsPosition": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "top",    "displayName": "Top" },
+                            { "value": "bottom", "displayName": "Bottom" }
+                        ]
+                    }
+                },
+                "fontSize":       { "type": { "numeric": true } },
+                "rowBanding":     { "type": { "bool": true } },
+                "bandingColor":   { "type": { "fill": { "solid": { "color": true } } } },
+                "stickyHeader":   { "type": { "bool": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                {
+                    "rows": { "min": 1, "max": 1 },
+                    "columns": { "min": 1 },
+                    "sparkAxis": { "min": 0, "max": 1 },
+                    "sparkValue": { "min": 0, "max": 1 }
+                }
+            ],
+            "matrix": {
+                "rows": {
+                    "select": [
+                        { "for": { "in": "rows" } },
+                        { "for": { "in": "sparkAxis" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "window": { "count": 30000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "columns" } },
+                        { "for": { "in": "sparkValue" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}

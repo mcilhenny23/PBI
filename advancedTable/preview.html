@@ -1,0 +1,121 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Advanced Table preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; color: #222; padding: 20px 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; color: #1a1a2e; }
+  .sub { font-size: 12px; color: #666; margin: 0 0 14px; }
+  table { border-collapse: collapse; font-size: 13px; width: 100%; }
+  th { padding: 6px 12px; text-align: right; color: #555; font-weight: 600; border-bottom: 2px solid #ccc; background: #fafafa; }
+  th.left { text-align: left; }
+  td { padding: 6px 12px; text-align: right; border-bottom: 1px solid #f0f0f0; font-variant-numeric: tabular-nums; }
+  td.left { text-align: left; }
+  tr.band td { background: #f7f7f7; }
+  tr.total td { font-weight: 700; background: #eef1f7; border-top: 2px solid #ccd; border-bottom: 2px solid #ccd; }
+  .glyph { display: inline-block; margin-right: 4px; font-weight: 900; }
+</style></head>
+<body>
+<h1>Advanced Table — sparkline column + icon rules</h1>
+<p class="sub">One row per product · Revenue trend rendered inline as a mini SVG · ▼ marks negative margin months · ▲ marks high-margin products</p>
+
+<table id="tbl"></table>
+
+<script>
+(function () {
+  function box(mu, sig) { const u = Math.random(), v = Math.random(); return mu + sig * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function seed(n) { let x = Math.sin(n * 137.5) * 10000; return x - Math.floor(x); }
+  const products = ["Widget A","Widget B","Widget C","Gadget X","Gadget Y","Gadget Z","Sprocket 100","Sprocket 200","Cog Pro","Cog Lite"];
+  const rows = [];
+  for (let i = 0; i < products.length; i++) {
+    const p = products[i];
+    const baseRev = 8000 + seed(i) * 12000;
+    const asp = 15 + seed(i + 10) * 25;
+    const marginBase = -0.05 + seed(i + 20) * 0.35;
+    const spark = [];
+    let total = 0;
+    for (let m = 0; m < 12; m++) {
+      const trend = 1 + (m / 12) * (seed(i * 12 + m) - 0.3) * 0.3;
+      const seas = 1 + Math.sin(m / 12 * Math.PI * 2 + seed(i)) * 0.15;
+      const rev = baseRev * trend * seas + (seed(i * 100 + m) - 0.5) * 1500;
+      spark.push(Math.round(rev));
+      total += rev;
+    }
+    const units = Math.round(total / asp);
+    rows.push({ p, revenue: Math.round(total), units, asp: +asp.toFixed(2), margin: +marginBase.toFixed(3), spark });
+  }
+  // Sort by revenue desc for a nicer preview.
+  rows.sort((a, b) => b.revenue - a.revenue);
+
+  // Build header.
+  const tbl = document.getElementById("tbl");
+  const thead = document.createElement("thead");
+  tbl.appendChild(thead);
+  thead.innerHTML = `<tr>
+      <th class="left">Product</th>
+      <th>Revenue</th>
+      <th>Units</th>
+      <th>ASP</th>
+      <th>Margin</th>
+      <th>Revenue trend ▁▂▃</th>
+    </tr>`;
+
+  const tbody = document.createElement("tbody");
+  tbl.appendChild(tbody);
+
+  function spark(vs, w, h) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width", w); svg.setAttribute("height", h); svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const pad = 2, iw = w - 2 * pad, ih = h - 2 * pad, N = vs.length;
+    const min = Math.min(...vs), max = Math.max(...vs), r = (max - min) || 1;
+    const xAt = i => pad + (i / (N - 1)) * iw;
+    const yAt = v => pad + ih - (v - min) / r * ih;
+    let d = `M ${xAt(0)} ${yAt(vs[0])}`;
+    for (let i = 1; i < N; i++) d += ` L ${xAt(i)} ${yAt(vs[i])}`;
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d); path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "#4472C4"); path.setAttribute("stroke-width", "1.4"); path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    // Last dot
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", xAt(N - 1)); c.setAttribute("cy", yAt(vs[N - 1]));
+    c.setAttribute("r", 2); c.setAttribute("fill", "#4472C4");
+    svg.appendChild(c);
+    return svg;
+  }
+
+  rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    if (i % 2 === 1) tr.className = "band";
+    const marginPct = (r.margin * 100).toFixed(1) + "%";
+    let iconHtml = "";
+    if (r.margin < 0) iconHtml = `<span class="glyph" style="color:#d62728">▼</span>`;
+    else if (r.margin >= 0.20) iconHtml = `<span class="glyph" style="color:#2ca02c">▲</span>`;
+    tr.innerHTML = `
+      <td class="left">${r.p}</td>
+      <td>$${r.revenue.toLocaleString()}</td>
+      <td>${r.units.toLocaleString()}</td>
+      <td>$${r.asp.toFixed(2)}</td>
+      <td>${iconHtml} ${marginPct}</td>
+      <td></td>`;
+    tr.lastElementChild.appendChild(spark(r.spark, 120, 24));
+    tbody.appendChild(tr);
+  });
+
+  // Totals row
+  const totRev = rows.reduce((a, r) => a + r.revenue, 0);
+  const totUnits = rows.reduce((a, r) => a + r.units, 0);
+  const avgAsp = (rows.reduce((a, r) => a + r.asp, 0) / rows.length).toFixed(2);
+  const avgMargin = (rows.reduce((a, r) => a + r.margin, 0) / rows.length * 100).toFixed(1) + "%";
+  const tr = document.createElement("tr");
+  tr.className = "total";
+  tr.innerHTML = `
+    <td class="left">Total</td>
+    <td>$${totRev.toLocaleString()}</td>
+    <td>${totUnits.toLocaleString()}</td>
+    <td>$${avgAsp}</td>
+    <td>${avgMargin}</td>
+    <td></td>`;
+  tbody.appendChild(tr);
+})();
+</script>
+</body></html>
