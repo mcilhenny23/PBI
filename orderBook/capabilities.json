@@ -80,9 +80,16 @@
                 "showPriceAxis": { "type": { "bool": true } },
                 "fontSize": { "type": { "formatting": { "fontSize": true } } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

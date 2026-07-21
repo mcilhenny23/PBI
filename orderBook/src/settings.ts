@@ -164,10 +164,23 @@ class AxesCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "The heatmap dims when another visual filters the chart.",
+        value: 30
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     heatmapCard = new HeatmapCard();
     tradeOverlayCard = new TradeOverlayCard();
     referenceLinesCard = new ReferenceLinesCard();
     axesCard = new AxesCard();
-    cards = [this.heatmapCard, this.tradeOverlayCard, this.referenceLinesCard, this.axesCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.heatmapCard, this.tradeOverlayCard, this.referenceLinesCard, this.axesCard, this.interactionsCard];
 }

@@ -11,6 +11,8 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -67,8 +69,9 @@ const volFmt = d3.format(",.4~s");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private root: d3.Selection<HTMLDivElement, unknown, null, undefined>;
     private canvas: d3.Selection<HTMLCanvasElement, unknown, null, undefined>;
@@ -93,13 +96,30 @@ export class Visual implements IVisual {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.root = d3.select(options.element).append("div").classed("ob-root", true);
         this.canvas = this.root.append("canvas").classed("ob-canvas", true);
         this.svg = this.root.append("svg").classed("ob-svg", true);
         this.landing = this.svg.append("g").classed("ob-landing", true);
         this.overlay = this.svg.append("g").classed("ob-overlay", true);
+
+        this.svg.on("click.clear", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            }
+        });
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.canvas.style("opacity", hasSel ? String(dim) : "1");
     }
 
     public update(options: VisualUpdateOptions) {
