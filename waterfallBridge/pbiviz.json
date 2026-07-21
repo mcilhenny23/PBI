@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "waterfallBridge",
+        "displayName": "Waterfall Bridge",
+        "guid": "waterfallBridge7A4F2D3E9B814C6A80C1E5F8D9A6B24C",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Multi-measure waterfall / bridge chart. Decompose Actual → drivers → Budget across multiple measures or a Steps column. Anchors, deltas, subtotals, connectors, and an unexplained-variance chip when the bridge doesn't tie out.",
+        "supportUrl": "https://github.com/jeffs-visuals/waterfall-bridge",
+        "gitHubUrl": "https://github.com/jeffs-visuals/waterfall-bridge"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

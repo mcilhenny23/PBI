@@ -1,0 +1,9 @@
+Step,Category,Value,StepType
+Actual FY24,,100,anchor
+Price effect,Consumer,8,delta
+Price effect,Enterprise,4,delta
+Volume effect,Consumer,-3,delta
+Volume effect,Enterprise,-2,delta
+Mix effect,Consumer,1,delta
+Mix effect,Enterprise,2,delta
+Budget FY25,,110,anchor

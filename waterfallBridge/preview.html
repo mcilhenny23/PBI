@@ -1,0 +1,199 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Waterfall Bridge preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style></head>
+<body>
+<svg id="svg" width="960" height="540" viewBox="0 0 960 540"></svg>
+
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  function el(tag, attrs) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  const W = 960, H = 540;
+  const M = { top: 60, right: 40, bottom: 70, left: 80 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  const COLORS = {
+    increase: "#2ca02c",
+    decrease: "#d62728",
+    anchor:   "#4472C4",
+    subtotal: "#7f7f7f",
+    connector: "#999999",
+    grid:     "#eaeaea",
+    axis:     "#999999",
+    axisText: "#666666",
+    label:    "#2a2a2a",
+    warnBg:   "#fff4e5",
+    warnFg:   "#a15c00"
+  };
+
+  const steps = [
+    { name: "Actual FY24",     value: 100, kind: "anchor" },
+    { name: "Price effect",    value:  12, kind: "delta"  },
+    { name: "Volume effect",   value:  -5, kind: "delta"  },
+    { name: "Mix effect",      value:   3, kind: "delta"  },
+    { name: "Discount",        value:  -4, kind: "delta"  },
+    { name: "FX",              value:  -2, kind: "delta"  },
+    { name: "Budget FY25",     value: 104, kind: "anchor" }
+  ];
+
+  // Running cumulative pass.
+  let run = 0;
+  const laid = steps.map(s => {
+    if (s.kind === "anchor") { run = s.value; return { ...s, before: 0, after: s.value }; }
+    const b = run; run += s.value; return { ...s, before: b, after: run };
+  });
+
+  // Ties out: last anchor = pre-anchor cumulative (100 + 12 - 5 + 3 - 4 - 2 = 104). No warning chip.
+  const preLast = laid[laid.length - 2].after;
+  const unexplained = laid[laid.length - 1].kind === "anchor"
+    ? (laid[laid.length - 1].value - preLast) : null;
+
+  // Y scale.
+  const yvals = [0];
+  for (const s of laid) yvals.push(s.before, s.after);
+  const yMin = Math.min(...yvals), yMax = Math.max(...yvals);
+  const pad = (yMax - yMin) * 0.08;
+  const yLo = yMin - pad, yHi = yMax + pad;
+  const yScale = v => M.top + plotH * (1 - (v - yLo) / (yHi - yLo));
+
+  // X scale (band).
+  const bandStep = plotW / laid.length;
+  const barPad = 0.20;
+  const barW = bandStep * (1 - barPad);
+  const bandStart = i => M.left + i * bandStep + (bandStep - barW) / 2;
+
+  // Grid.
+  const gridG = el("g"); svg.appendChild(gridG);
+  const tickCount = 6;
+  const niceStep = (function () {
+    const raw = (yHi - yLo) / tickCount;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const rel = raw / mag;
+    const factor = rel < 1.5 ? 1 : rel < 3 ? 2 : rel < 7 ? 5 : 10;
+    return factor * mag;
+  })();
+  const firstTick = Math.ceil(yLo / niceStep) * niceStep;
+  for (let t = firstTick; t <= yHi; t += niceStep) {
+    gridG.appendChild(el("line", {
+      x1: M.left, x2: M.left + plotW, y1: yScale(t), y2: yScale(t),
+      stroke: COLORS.grid, "shape-rendering": "crispEdges"
+    }));
+    const lbl = el("text", {
+      x: M.left - 8, y: yScale(t),
+      "text-anchor": "end", "dominant-baseline": "central",
+      "font-size": 11, fill: COLORS.axisText
+    });
+    lbl.textContent = String(Math.round(t));
+    svg.appendChild(lbl);
+  }
+
+  // Connectors (dashed).
+  const connG = el("g"); svg.appendChild(connG);
+  for (let i = 0; i < laid.length - 1; i++) {
+    const y = yScale(laid[i].after);
+    const x1 = bandStart(i);
+    const x2 = bandStart(i + 1) + barW;
+    connG.appendChild(el("line", {
+      x1, x2, y1: y, y2: y,
+      stroke: COLORS.connector, "stroke-width": 1, "stroke-dasharray": "4 3"
+    }));
+  }
+
+  // Bars + labels.
+  laid.forEach((s, i) => {
+    const x = bandStart(i);
+    let yTop, yBot, color;
+    if (s.kind === "anchor" || s.kind === "subtotal") {
+      const y0 = yScale(0), yv = yScale(s.value);
+      yTop = Math.min(y0, yv); yBot = Math.max(y0, yv);
+      color = s.kind === "anchor" ? COLORS.anchor : COLORS.subtotal;
+    } else {
+      const y1 = yScale(s.before), y2 = yScale(s.after);
+      yTop = Math.min(y1, y2); yBot = Math.max(y1, y2);
+      color = s.value >= 0 ? COLORS.increase : COLORS.decrease;
+    }
+    const h = Math.max(1, yBot - yTop);
+    svg.appendChild(el("rect", {
+      x, y: yTop, width: barW, height: h, fill: color,
+      "shape-rendering": "crispEdges"
+    }));
+
+    // Value label.
+    const raw = s.kind === "delta"
+      ? (s.value > 0 ? `+${s.value}` : `${s.value}`)
+      : `${s.value}`;
+    const outside = h < 22;
+    const isNeg = s.kind === "delta" && s.value < 0;
+    const ly = outside
+      ? (isNeg ? yBot + 14 : yTop - 6)
+      : (yTop + yBot) / 2;
+    const t = el("text", {
+      x: x + barW / 2, y: ly,
+      "text-anchor": "middle",
+      "dominant-baseline": outside ? (isNeg ? "hanging" : "text-after-edge") : "central",
+      "font-size": 12, "font-weight": s.kind === "anchor" ? 600 : 500,
+      fill: outside ? COLORS.label : "#ffffff"
+    });
+    t.textContent = raw;
+    svg.appendChild(t);
+
+    // X-axis label (step name).
+    const nm = el("text", {
+      x: x + barW / 2, y: M.top + plotH + 20,
+      "text-anchor": "middle", "font-size": 12, fill: COLORS.axisText
+    });
+    nm.textContent = s.name;
+    svg.appendChild(nm);
+  });
+
+  // Zero line if crossing.
+  if (yLo < 0 && yHi > 0) {
+    svg.appendChild(el("line", {
+      x1: M.left, x2: M.left + plotW, y1: yScale(0), y2: yScale(0),
+      stroke: COLORS.axis, "stroke-width": 1
+    }));
+  }
+
+  // Title.
+  const title = el("text", {
+    x: M.left, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e"
+  });
+  title.textContent = "Waterfall Bridge — Budget FY25";
+  svg.appendChild(title);
+
+  const subtitle = el("text", {
+    x: M.left, y: 46, "font-size": 12, fill: COLORS.axisText
+  });
+  subtitle.textContent = "Actual → drivers → Budget, one bar per step";
+  svg.appendChild(subtitle);
+
+  // Unexplained-variance chip demo — force it visible for the preview.
+  // (Actual data ties out; render the chip anyway to showcase the feature.)
+  const chipText = `Unexplained +4`;
+  const chipT = el("text", {
+    x: M.left + plotW - 8, y: 44,
+    "text-anchor": "end", "dominant-baseline": "middle",
+    "font-size": 11, "font-weight": 600, fill: COLORS.warnFg
+  });
+  chipT.textContent = chipText;
+  svg.appendChild(chipT);
+  const bb = chipT.getBBox();
+  const chipRect = el("rect", {
+    x: bb.x - 8, y: bb.y - 3,
+    width: bb.width + 16, height: bb.height + 6,
+    rx: 3, fill: COLORS.warnBg, stroke: COLORS.warnFg, "stroke-width": 1
+  });
+  svg.insertBefore(chipRect, chipT);
+})();
+</script>
+</body></html>

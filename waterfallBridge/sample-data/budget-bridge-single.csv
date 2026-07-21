@@ -1,0 +1,7 @@
+Step,Value,StepType
+Actual FY24,100,anchor
+Price effect,12,delta
+Volume effect,-5,delta
+Mix effect,3,delta
+FX,-2,delta
+Budget FY25,110,anchor
