@@ -364,7 +364,12 @@ export class Visual implements IVisual {
             // *up* a column shows at which scales a pattern exists at all —
             // which is the actual answer to "what should m be?".
             if (multiLength && pan) {
-                this.renderPanHeatmap(pan, plotL, profY, plotW, profH, m, width, height);
+                // The scan is capped at MAX_MULTI_POINTS so the heatmap covers only the
+                // scanned prefix — stretching it across the full plotW would make column
+                // positions disagree with the series line and motif markers above.
+                const heatX = x(0);
+                const heatW = Math.max(0, x(pan.n - 1) - x(0));
+                this.renderPanHeatmap(pan, heatX, profY, heatW, profH, m, width, height);
             } else {
             const profArea = d3.area<number>()
                 .defined(d => Number.isFinite(d))
