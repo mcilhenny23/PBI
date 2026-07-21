@@ -9,6 +9,9 @@ import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructor
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -60,7 +63,8 @@ function mulberry32(seed: number): () => number {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -91,11 +95,20 @@ export class Visual implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
         this.svg = d3.select(options.element).append("svg").classed("hops", true);
         this.landing = this.svg.append("g").classed("hops-landing", true);
         this.container = this.svg.append("g").classed("hops-container", true);
+
+        this.svg.on("click.clear", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            }
+        });
 
         // Hover pause — set a flag the loop reads (never mutate DOM here).
         this.svg
@@ -105,6 +118,20 @@ export class Visual implements IVisual {
         // Stop advancing when the tab/visual is hidden (saves CPU, avoids drift).
         this.visibilityHandler = () => { this.docHidden = document.hidden; };
         document.addEventListener("visibilitychange", this.visibilityHandler);
+    }
+
+    /**
+     * HOPs is a running animation over ensembles — there's no single element the user "selects".
+     * Applying selection styling means dimming the whole ensemble layer when a cross-highlight
+     * from another visual is active, and leaving the outcome line at full opacity as an anchor.
+     */
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.container.attr("opacity", hasSel ? dim : 1);
+        this.outcomeLayer?.attr("opacity", 1);   // outcome overlay stays legible
     }
 
     public update(options: VisualUpdateOptions) {
