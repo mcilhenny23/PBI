@@ -136,9 +136,22 @@ class ColorScaleCard extends FormattingSettingsCard {
     ];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Non-selected points fade to this opacity.",
+        value: 25
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     triangleCard = new TriangleCard();
     pointsCard = new PointsCard();
     colorScaleCard = new ColorScaleCard();
-    cards = [this.triangleCard, this.pointsCard, this.colorScaleCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.triangleCard, this.pointsCard, this.colorScaleCard, this.interactionsCard];
 }

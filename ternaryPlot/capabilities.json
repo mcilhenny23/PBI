@@ -62,9 +62,16 @@
                 "colorScaleLow": { "type": { "fill": { "solid": { "color": true } } } },
                 "colorScaleHigh": { "type": { "fill": { "solid": { "color": true } } } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

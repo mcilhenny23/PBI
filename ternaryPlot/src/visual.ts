@@ -11,6 +11,9 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -27,6 +30,8 @@ interface TernaryPoint {
     rawC: number;
     colorVal: number | null;
     sizeVal: number | null;
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 interface Pt { x: number; y: number; }
@@ -57,8 +62,9 @@ const pctFmt = d3.format(".1~f");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
     private landing: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -72,7 +78,10 @@ export class Visual implements IVisual {
         this.events = options.host.eventService;
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element)
             .append("svg")
@@ -83,6 +92,33 @@ export class Visual implements IVisual {
 
         this.container = this.svg.append("g")
             .classed("ternary-plot-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGCircleElement, TernaryPoint>("circle.point").each(function (d) {
+            const c = d3.select(this);
+            const isSel = !!d?.selectionId && activeIds.some(a => eq(a, d.selectionId!));
+            const isHl = d?.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            const base = Number((this as SVGCircleElement).dataset.baseOpacity ?? "0.85");
+            c.attr("fill-opacity", base * opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -148,11 +184,22 @@ export class Visual implements IVisual {
                     continue;                                 // off, and doesn't sum to 1 → skip
                 }
 
+                let selectionId: ISelectionId | undefined;
+                if (labelCol) {
+                    try {
+                        selectionId = this.host.createSelectionIdBuilder()
+                            .withCategory(labelCol, i)
+                            .createSelectionId();
+                    } catch { /* skipped */ }
+                }
+                const aHighlights = vals[aIdx].highlights ?? null;
+                const isHighlighted = aHighlights ? (aHighlights[i] != null) : true;
                 points.push({
                     label: labelCol ? String(labelCol.values[i]) : "Point",
                     a, b, c, rawA, rawB, rawC,
                     colorVal: colorIdx >= 0 ? safeNum(vals[colorIdx].values[i]) : null,
-                    sizeVal: sizeIdx >= 0 ? safeNum(vals[sizeIdx].values[i]) : null
+                    sizeVal: sizeIdx >= 0 ? safeNum(vals[sizeIdx].values[i]) : null,
+                    selectionId, isHighlighted
                 });
             }
 
@@ -287,7 +334,7 @@ export class Visual implements IVisual {
                 const r = sizeScale && p.sizeVal != null ? sizeScale(p.sizeVal) : baseR;
                 const fill = colorScale && p.colorVal != null ? colorScale(p.colorVal) : baseColor;
 
-                gPts.append("circle")
+                const circleSel = gPts.append("circle")
                     .datum(p)
                     .classed("point", true)
                     .attr("cx", pos.x).attr("cy", pos.y).attr("r", r)
@@ -302,6 +349,20 @@ export class Visual implements IVisual {
                         });
                     })
                     .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+                (circleSel.node() as SVGCircleElement).dataset.baseOpacity = String(opacity);
+                if (p.selectionId) {
+                    circleSel.style("cursor", "pointer")
+                        .on("click", (event: MouseEvent, d: TernaryPoint) => {
+                            event.stopPropagation();
+                            if (!d.selectionId) return;
+                            const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                            this.selectionManager.select(d.selectionId, multi).then(() => this.applySelectionStyling());
+                        })
+                        .on("contextmenu", (event: MouseEvent, d: TernaryPoint) => {
+                            event.preventDefault(); event.stopPropagation();
+                            this.selectionManager.showContextMenu(d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                        });
+                }
 
                 if (pts.showLabels.value) {
                     gPts.append("text")
@@ -323,6 +384,7 @@ export class Visual implements IVisual {
                 );
             }
 
+            this.applySelectionStyling();
             this.events.renderingFinished(options);
         } catch (error) {
             this.events.renderingFailed(options, String(error));

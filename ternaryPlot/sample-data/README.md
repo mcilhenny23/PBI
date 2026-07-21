@@ -67,3 +67,12 @@ capita shows the classic development gradient.
 - **Gridline divisions** — try 5, 10, or 20.
 - **Color Scale** card — change the low/high colors of the gradient.
 - Hover any point for the exact raw values and their percentages.
+
+## Interactions
+
+Requires the **Label** field for cross-filtering.
+
+- **Click a point** to filter every other visual on the page by that observation. Ctrl / Shift-click to add.
+- **Right-click** for the Power BI context menu.
+- **Click empty space** to clear.
+- **Interactions → Unselected opacity** controls how much non-selected points fade.
