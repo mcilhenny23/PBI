@@ -103,9 +103,22 @@ class ExpansionCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.defaultExpansion, this.connectorStyle];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Sibling nodes fade to this opacity when a node is selected or when another visual filters this chart.",
+        value: 30
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     nodesCard = new NodesCard();
     sortingCard = new SortingCard();
     expansionCard = new ExpansionCard();
-    cards = [this.nodesCard, this.sortingCard, this.expansionCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.nodesCard, this.sortingCard, this.expansionCard, this.interactionsCard];
 }

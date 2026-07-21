@@ -20,3 +20,15 @@ Region × Product × Segment with a Sales measure and a Margin measure (some neg
 ## Click behavior
 
 Click any node to expand — the tree walks down using whichever level you're currently at (Region → Product → Segment in order). Clicking a node at a shallower level truncates the deeper path.
+
+## Interactions
+
+Clicking a node does **two** things:
+1. Expands the tree along that path (existing behavior).
+2. Cross-filters every other visual on the page to that node's slice (Region:West, or Region:West × Product:Gadgets, or the full leaf path).
+
+Additional:
+- **Ctrl / Shift-click** to add to the selection instead of replacing.
+- **Right-click** for the Power BI context menu (drill through, include / exclude).
+- **Click empty space** to clear the selection (the expansion path stays).
+- Non-selected sibling nodes fade to **Interactions → Unselected opacity**. The same dimming applies when *another* visual filters this tree.

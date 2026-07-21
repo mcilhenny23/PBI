@@ -12,6 +12,9 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel, DEFAULT_BAR_COLOR } from "./settings";
@@ -29,6 +32,8 @@ interface TreeNode {
     raw?: powerbi.DataViewMatrixNode;
     pctOfParent: number | null;
     pctOfTotal: number | null;
+    selectionId?: ISelectionId;
+    isHighlighted?: boolean;
 }
 
 interface RenderPalette {
@@ -62,9 +67,10 @@ function luminance(hex: string): number {
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
+    private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -84,11 +90,43 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
         this.svg = d3.select(options.element).append("svg").classed("decomp-tree", true);
         this.landing = this.svg.append("g").classed("dt-landing", true);
         this.container = this.svg.append("g").classed("dt-container", true);
+
+        this.svg.on("click", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applySelectionStyling());
+            }
+        });
+    }
+
+    private applySelectionStyling(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.05, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
+        const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+        const hasSel = activeIds.length > 0;
+        const eq = (a: ISelectionId, b: ISelectionId) =>
+            (a as { equals?: (b: ISelectionId) => boolean }).equals?.(b) ?? false;
+
+        this.container.selectAll<SVGGElement, unknown>(".node").each(function (d) {
+            const g = d3.select(this);
+            const data = d as { node?: TreeNode } | TreeNode | undefined;
+            const n = (data as { node?: TreeNode })?.node ?? (data as TreeNode);
+            if (!n) return;
+            const isSel = !!n.selectionId && activeIds.some(a => eq(a, n.selectionId!));
+            const isHl = n.isHighlighted !== false;
+            let opacity = 1;
+            if (hasSel && !isSel) opacity = dim;
+            if (!isHl) opacity = Math.min(opacity, dim);
+            g.attr("opacity", opacity);
+        });
     }
 
     public update(options: VisualUpdateOptions) {
@@ -135,6 +173,8 @@ export class Visual implements IVisual {
         if (!m || !m.rows || !m.rows.root || m.valueSources.length === 0) return false;
         this.matrixRoot = m.rows.root;
         this.matrixLevels = m.rows.levels.map(l => l.sources[0].displayName);
+        // Cache the raw hierarchy levels — needed by createSelectionIdBuilder.withMatrixNode.
+        (this as unknown as { _matrixLevelsCache?: powerbi.DataViewHierarchyLevel[] })._matrixLevelsCache = m.rows.levels;
         // Total value = sum of top-level children's first value.
         this.totalValue = 0;
         const kids = m.rows.root.children ?? [];
@@ -154,6 +194,17 @@ export class Visual implements IVisual {
         const nodeH = Math.max(14, s.nodesCard.barHeight.value ?? 28);
         const colW = 180;
         const gap = 40;
+        const matrixLevels = (this as unknown as { _matrixLevelsCache?: powerbi.DataViewHierarchyLevel[] })._matrixLevelsCache
+            ?? null;
+
+        // Bundle a per-matrix-node selection id builder.
+        const makeSelId = (raw: powerbi.DataViewMatrixNode): ISelectionId | undefined => {
+            try {
+                return this.host.createSelectionIdBuilder()
+                    .withMatrixNode(raw, matrixLevels ?? [])
+                    .createSelectionId();
+            } catch { return undefined; }
+        };
 
         // Walk the matrix following expansionPath, collecting one "column" at each level with the child list.
         const columns: TreeNode[][] = [];
@@ -161,7 +212,8 @@ export class Visual implements IVisual {
             name: "Total", levelName: "Total", levelIdx: -1,
             value: this.totalValue, secondary: null,
             children: [], raw: this.matrixRoot,
-            pctOfParent: 1, pctOfTotal: 1
+            pctOfParent: 1, pctOfTotal: 1,
+            selectionId: undefined  // root selects nothing (would be "no filter")
         };
         columns.push([rootNode]);
 
@@ -183,7 +235,8 @@ export class Visual implements IVisual {
                     children: [],
                     raw: k,
                     pctOfParent: cursorParent.value ? v / cursorParent.value : 0,
-                    pctOfTotal:  this.totalValue ? v / this.totalValue : 0
+                    pctOfTotal:  this.totalValue ? v / this.totalValue : 0,
+                    selectionId: makeSelId(k)
                 };
             });
             const sorted = this.applySort(nodes, levelName);
@@ -341,13 +394,35 @@ export class Visual implements IVisual {
                 }
             }
 
-            // Click → expand this node (advance the path to this level).
+            // Click → expand this node (advance the path) AND cross-filter by its selection id.
             if (p.node.levelIdx >= 0) {
                 g.attr("cursor", "pointer");
-                g.on("click", () => {
+                g.datum({ node: p.node });
+                g.classed("node", true);
+                g.attr("tabindex", 0).attr("role", "button")
+                    .attr("aria-label", `${p.node.levelName}: ${p.node.name}, click to expand and filter`);
+                g.on("click", (event: MouseEvent) => {
+                    event.stopPropagation();
                     // Truncate path to this level's depth, then push this node.
                     this.expansionPath = this.expansionPath.slice(0, p.node.levelIdx);
                     this.expansionPath.push(p.node.name);
+                    // Cross-filter downstream visuals by the clicked node.
+                    if (p.node.selectionId) {
+                        const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+                        this.selectionManager.select(p.node.selectionId, multi);
+                    }
+                    this.render(width, height, palette);
+                });
+                g.on("contextmenu", (event: MouseEvent) => {
+                    event.preventDefault(); event.stopPropagation();
+                    this.selectionManager.showContextMenu(p.node.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                });
+                g.on("keydown", (event: KeyboardEvent) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    this.expansionPath = this.expansionPath.slice(0, p.node.levelIdx);
+                    this.expansionPath.push(p.node.name);
+                    if (p.node.selectionId) this.selectionManager.select(p.node.selectionId, event.shiftKey);
                     this.render(width, height, palette);
                 });
                 g.on("mousemove", (event: MouseEvent) => {
@@ -384,6 +459,8 @@ export class Visual implements IVisual {
                 .attr("font-size", "10px").attr("fill", palette.axisText)
                 .text("• Scroll horizontally to see more");
         }
+
+        this.applySelectionStyling();
     }
 
     private applySort(nodes: TreeNode[], levelName: string): TreeNode[] {
