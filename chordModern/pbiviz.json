@@ -1,0 +1,26 @@
+{
+    "visual": {
+        "name": "chordModern",
+        "displayName": "Chord Modern",
+        "guid": "chordModern9F82E4C1A65D48738E90B4C2D5F6A7B8",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "Modern chord diagram. Undirected or directed (asymmetric ribbons with arrowhead taper), gradient-fill ribbons from source arc color to target arc color, hover isolation / highlight, and radial labels with min-angle auto-hide. Edge-list input, same as Adjacency Matrix.",
+        "supportUrl": "https://github.com/jeffs-visuals/chord-modern",
+        "gitHubUrl": "https://github.com/jeffs-visuals/chord-modern"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@example.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}

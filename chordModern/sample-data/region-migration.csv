@@ -1,0 +1,17 @@
+Source,Target,Weight
+North America,Europe,120
+North America,Asia,95
+North America,Latin America,60
+Europe,North America,85
+Europe,Asia,140
+Europe,Africa,55
+Asia,North America,105
+Asia,Europe,160
+Asia,Africa,40
+Africa,Europe,70
+Africa,Asia,45
+Africa,Latin America,20
+Latin America,North America,90
+Latin America,Europe,50
+Oceania,Asia,30
+Oceania,North America,25

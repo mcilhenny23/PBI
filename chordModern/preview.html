@@ -1,0 +1,89 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Chord Modern preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style>
+<script src="node_modules/d3/dist/d3.min.js"></script>
+</head>
+<body>
+<svg id="svg" width="900" height="700" viewBox="0 0 900 700"></svg>
+<script>
+(function () {
+  const svg = d3.select("#svg");
+  svg.append("text").attr("x", 20).attr("y", 26).attr("font-size", 18).attr("font-weight", 600).attr("fill", "#1a1a2e")
+    .text("Chord Modern — inter-region migration flows");
+  svg.append("text").attr("x", 20).attr("y", 44).attr("font-size", 12).attr("fill", "#666")
+    .text("Gradient ribbons fade source-color → target-color · radial labels · undirected");
+
+  const edges = [
+    ["North America","Europe",120], ["North America","Asia",95], ["North America","Latin America",60],
+    ["Europe","North America",85], ["Europe","Asia",140], ["Europe","Africa",55],
+    ["Asia","North America",105], ["Asia","Europe",160], ["Asia","Africa",40],
+    ["Africa","Europe",70], ["Africa","Asia",45], ["Africa","Latin America",20],
+    ["Latin America","North America",90], ["Latin America","Europe",50],
+    ["Oceania","Asia",30], ["Oceania","North America",25]
+  ];
+  const nameToIdx = new Map();
+  for (const [s, t] of edges) { if (!nameToIdx.has(s)) nameToIdx.set(s, nameToIdx.size); if (!nameToIdx.has(t)) nameToIdx.set(t, nameToIdx.size); }
+  const N = nameToIdx.size;
+  const names = new Array(N);
+  for (const [n, i] of nameToIdx) names[i] = n;
+  const matrix = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (const [s, t, w] of edges) matrix[nameToIdx.get(s)][nameToIdx.get(t)] += w;
+
+  const chord = d3.chord().padAngle((3 * Math.PI) / 180).sortGroups(d3.descending).sortSubgroups(d3.descending);
+  const chordData = chord(matrix);
+
+  const cx = 450, cy = 380;
+  const outerR = 260, innerR = outerR - 16;
+
+  const g = svg.append("g").attr("transform", `translate(${cx}, ${cy})`);
+  const defs = svg.append("defs");
+  const paletteFn = d3.scaleOrdinal().range(d3.schemeTableau10.concat(d3.schemeSet2));
+  const colors = names.map((_, i) => paletteFn(i));
+
+  // Gradient defs.
+  chordData.forEach((c, i) => {
+    const grad = defs.append("linearGradient")
+      .attr("id", `cm-grad-${i}`)
+      .attr("gradientUnits", "userSpaceOnUse")
+      .attr("x1", cx + Math.cos((c.source.startAngle + c.source.endAngle) / 2 - Math.PI / 2) * innerR)
+      .attr("y1", cy + Math.sin((c.source.startAngle + c.source.endAngle) / 2 - Math.PI / 2) * innerR)
+      .attr("x2", cx + Math.cos((c.target.startAngle + c.target.endAngle) / 2 - Math.PI / 2) * innerR)
+      .attr("y2", cy + Math.sin((c.target.startAngle + c.target.endAngle) / 2 - Math.PI / 2) * innerR);
+    grad.append("stop").attr("offset", "0%").attr("stop-color", colors[c.source.index]);
+    grad.append("stop").attr("offset", "100%").attr("stop-color", colors[c.target.index]);
+  });
+
+  // Ribbons.
+  const ribbonGen = d3.ribbon().radius(innerR - 1);
+  g.append("g").selectAll("path").data(chordData).enter().append("path")
+    .attr("d", ribbonGen)
+    .attr("fill", (_, i) => `url(#cm-grad-${i})`)
+    .attr("fill-opacity", 0.65)
+    .attr("stroke", d => colors[d.source.index])
+    .attr("stroke-opacity", 0.8)
+    .attr("stroke-width", 0.5)
+    .style("mix-blend-mode", "multiply");
+
+  // Arcs.
+  const arcGen = d3.arc().innerRadius(innerR).outerRadius(outerR);
+  g.append("g").selectAll("path").data(chordData.groups).enter().append("path")
+    .attr("d", arcGen).attr("fill", d => colors[d.index]).attr("stroke", "#fff").attr("stroke-width", 0.5);
+
+  // Labels (radial).
+  chordData.groups.forEach(gr => {
+    const mid = (gr.startAngle + gr.endAngle) / 2 - Math.PI / 2;
+    const R = outerR + 8;
+    const x = Math.cos(mid) * R, y = Math.sin(mid) * R;
+    const leftSide = mid > Math.PI / 2 || mid < -Math.PI / 2;
+    const rot = (mid * 180) / Math.PI + (leftSide ? 180 : 0);
+    g.append("text")
+      .attr("transform", `translate(${x}, ${y}) rotate(${rot})`)
+      .attr("dy", 4).attr("text-anchor", leftSide ? "end" : "start")
+      .attr("font-size", 12).attr("fill", "#333").text(names[gr.index]);
+  });
+})();
+</script>
+</body></html>

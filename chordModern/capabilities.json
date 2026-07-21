@@ -1,0 +1,85 @@
+{
+    "dataRoles": [
+        { "displayName": "Source", "name": "source", "kind": "Grouping" },
+        { "displayName": "Target", "name": "target", "kind": "Grouping" },
+        { "displayName": "Weight", "name": "weight", "kind": "Measure" }
+    ],
+    "objects": {
+        "chord": {
+            "properties": {
+                "directed":   { "type": { "bool": true } },
+                "padAngle":   { "type": { "numeric": true } },
+                "sortGroups": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "size-desc",    "displayName": "Size descending" },
+                            { "value": "alphabetical", "displayName": "Alphabetical" },
+                            { "value": "data-order",   "displayName": "Data order" }
+                        ]
+                    }
+                },
+                "ribbonOpacity": { "type": { "numeric": true } },
+                "hoverMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "highlight-connected", "displayName": "Highlight connected" },
+                            { "value": "isolate",             "displayName": "Isolate (hide others)" }
+                        ]
+                    }
+                }
+            }
+        },
+        "arcs": {
+            "properties": {
+                "arcThickness":     { "type": { "numeric": true } },
+                "labelMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "radial",     "displayName": "Radial (default)" },
+                            { "value": "horizontal", "displayName": "Horizontal" },
+                            { "value": "hidden",     "displayName": "Hidden" }
+                        ]
+                    }
+                },
+                "minLabelAngle": { "type": { "numeric": true } },
+                "fontSize":      { "type": { "numeric": true } }
+            }
+        },
+        "gradients": {
+            "properties": {
+                "gradientRibbons": { "type": { "bool": true } }
+            }
+        }
+    },
+    "supportsLandingPage": true,
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    },
+    "dataViewMappings": [
+        {
+            "conditions": [
+                { "source": { "min": 1, "max": 1 }, "target": { "min": 1, "max": 1 }, "weight": { "min": 1, "max": 1 } }
+            ],
+            "categorical": {
+                "categories": {
+                    "select": [
+                        { "for": { "in": "source" } },
+                        { "for": { "in": "target" } }
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": { "count": 10000 }
+                    }
+                },
+                "values": {
+                    "select": [
+                        { "for": { "in": "weight" } }
+                    ]
+                }
+            }
+        }
+    ],
+    "privileges": []
+}
