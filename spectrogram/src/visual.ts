@@ -170,6 +170,7 @@ export class Visual implements IVisual {
             const O = this.formattingSettings.orderTrackingCard;
             const D = this.formattingSettings.displayCard;
             const A = this.formattingSettings.alarmBandsCard;
+            const H = this.formattingSettings.harmonicCursorsCard;
             const X = this.formattingSettings.axisCard;
 
             const width = options.viewport.width;
@@ -493,6 +494,48 @@ export class Visual implements IVisual {
                             .attr("stroke-width", 1);
                     }
                 }
+
+                // ── Harmonic cursors ───────────────────────────────
+                // Hz mode only — a fixed-Hz line drawn on an orders axis would
+                // migrate across orders every frame (since Hz = order * RPM/60
+                // and RPM varies), which is either confusing or wrong depending
+                // on what the user thought "harmonics of 60 Hz" meant. Orders
+                // mode has its own multiples-of-shaft axis via order markers.
+                if (H.showHarmonics.value && !this.ordersMode && hasRate
+                        && H.fundamentalHz.value && H.fundamentalHz.value > 0) {
+                    const f0 = H.fundamentalHz.value;
+                    const nH = Math.max(1, Math.min(50, Math.round(H.harmonicCount.value ?? 5)));
+                    const col = H.harmonicColor.value.value;
+                    const toY = (f: number): number => {
+                        if (this.logFreq) {
+                            const c = Math.max(f, fLow);
+                            return py + panelH - (Math.log(c / fLow) / Math.log(nyquist / fLow)) * panelH;
+                        }
+                        return py + panelH - (f / nyquist) * panelH;
+                    };
+                    for (let k = 1; k <= nH; k++) {
+                        const f = f0 * k;
+                        if (f > nyquist) break;
+                        const yy = toY(f);
+                        if (!Number.isFinite(yy)) continue;
+                        this.overlay.append("line")
+                            .attr("x1", plotX).attr("x2", plotX + plotW)
+                            .attr("y1", yy).attr("y2", yy)
+                            .attr("stroke", col)
+                            .attr("stroke-width", k === 1 ? 1.4 : 1)
+                            .attr("stroke-dasharray", k === 1 ? "6 3" : "3 3")
+                            .attr("opacity", k === 1 ? 0.95 : 0.75);
+                        if (H.showLabels.value) {
+                            this.overlay.append("text")
+                                .attr("x", plotX + 4).attr("y", yy - 2)
+                                .attr("font-size", `${Math.max(9, fs - 1)}px`)
+                                .attr("fill", col)
+                                .attr("stroke", "rgba(0,0,0,0.6)").attr("stroke-width", 2.5)
+                                .attr("paint-order", "stroke")
+                                .text(k === 1 ? `${f0}×1 = ${f0.toFixed(1)} Hz` : `${k}× (${f.toFixed(1)} Hz)`);
+                        }
+                    }
+                }
             });
 
             // ── Time axis (shared, under the last panel) ───────────
@@ -589,6 +632,25 @@ export class Visual implements IVisual {
                         });
                     }
                     items.push({ displayName: "Magnitude", value: `${db.toFixed(1)} dB` });
+
+                    // If harmonic cursors are on and this cell sits within ±one
+                    // bin of a multiple of the fundamental, tell the user which
+                    // multiple — the whole point of the cursors is to answer
+                    // "is that peak a harmonic of the one I anchored on?"
+                    const H2 = this.formattingSettings.harmonicCursorsCard;
+                    if (H2.showHarmonics.value && !this.ordersMode && hasRate
+                            && H2.fundamentalHz.value && H2.fundamentalHz.value > 0) {
+                        const hoveredHz = b * this.sampleRate / spec.windowSize;
+                        const f0 = H2.fundamentalHz.value;
+                        const k = Math.round(hoveredHz / f0);
+                        if (k >= 1 && k <= 50) {
+                            const hzPerBin = this.sampleRate / spec.windowSize;
+                            if (Math.abs(hoveredHz - k * f0) <= hzPerBin) {
+                                items.push({ displayName: "Harmonic", value: `${k}× fundamental` });
+                            }
+                        }
+                    }
+
                     this.tooltipService.show({
                         dataItems: items, identities: [],
                         coordinates: [px, py], isTouchEvent: false

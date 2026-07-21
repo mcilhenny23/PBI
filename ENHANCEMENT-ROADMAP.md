@@ -39,7 +39,7 @@ Four themes recur:
 ## 3. Spectrogram — vibration & acoustics
 
 - **✅ Order tracking** *(B)* — bind an **RPM** column and switch **Order Tracking → Y axis** to Orders. For each frame the y-axis is rescaled by `RPM/60` (per-frame mean RPM, computed at render time from the cached FFT), so a component at order *o* sits at row *o* regardless of shaft speed. Verified on the run-up sample: the 1×, 3× and 5.5× bands smear as curved diagonals in Hz mode and collapse to flat lines in Orders mode. Alarm bands are re-read as orders when the mode is on, so a "vibration above 3×" alarm survives a run-up unchanged. Order-marker lines (comma-separated list) overlay each requested order for eyeballing.
-- **▶ Harmonic cursors** *(B)* — mark 1×, 2×, 3× of a fundamental. This is literally how analysts diagnose faults.
+- **✅ Harmonic cursors** *(B)* — **Harmonic Cursors → Show** + fundamental (Hz) draws a dashed line on the fundamental and integer multiples 2×, 3×, … up to *N* (or Nyquist). Verified against the machine-vibration sample: fundamental=120 has the 1× peak 136× above the halfway-point background and 2× at 27×, while 3× and 4× sit on empty space — the cursor tells you which multiples are real. Tooltip picks up "*k*× fundamental" when the hover cell is within one bin of a multiple. Hz-only by design — Orders mode has its own multiples-of-shaft axis via order markers.
 - **▶ Band-power trending** *(C)* — energy in a frequency band over time, which is the metric alarms are actually built on.
 - **○ Peak hold / averaging** — settle a noisy display.
 - **○ Waterfall (3D) view** — the alternative conventional presentation.

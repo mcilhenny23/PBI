@@ -43,6 +43,19 @@ line chart of raw amplitude completely hides.
 Then turn on **Alarm Bands** with low 380 / high 460 to flag the band the fault
 sweeps into.
 
+**Harmonic cursors — is the 240 Hz band really a harmonic?** Turn on
+**Harmonic Cursors → Show**, set **Fundamental (Hz)** to `120`, leave
+**Harmonics** at `5`. Dashed lines land on the 120 Hz fundamental and 240,
+360, 480 Hz above it. The bright band at 240 Hz sits **exactly** on the 2×
+line (27× above the halfway-point background) — confirming it as a harmonic
+of the same mechanical source, not a separate component. The 3× and 4×
+lines sit on empty space, which is the equally-useful negative result: this
+source has two real harmonics, no more. Now set the fundamental to `200`:
+the developing-fault streak starts on the 1× line at t=2s and slides *off*
+it as it climbs — that's the signature of a swept fault, not a stationary
+harmonic set. Hover the 240 Hz peak with cursors on: the tooltip adds
+**Harmonic: 2× fundamental**.
+
 ---
 
 ## 2 · Tone and chirp — a clean reference

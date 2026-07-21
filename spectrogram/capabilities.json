@@ -109,6 +109,15 @@
                 "alarmBand1Color": { "type": { "fill": { "solid": { "color": true } } } }
             }
         },
+        "harmonicCursors": {
+            "properties": {
+                "showHarmonics": { "type": { "bool": true } },
+                "fundamentalHz": { "type": { "numeric": true } },
+                "harmonicCount": { "type": { "numeric": true } },
+                "harmonicColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "showLabels": { "type": { "bool": true } }
+            }
+        },
         "axis": {
             "properties": {
                 "showTimeAxis": { "type": { "bool": true } },

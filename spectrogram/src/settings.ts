@@ -204,6 +204,60 @@ class AlarmBandsCard extends FormattingSettingsCard {
 }
 
 /**
+ * Harmonic Cursors — dashed lines at integer multiples of a fundamental
+ * frequency. The core diagnostic move in vibration analysis: put the cursor
+ * on a peak, then check whether partner peaks land on 2×, 3×, 4× — if they
+ * do the peaks share a source, if they don't they don't.
+ *
+ * Hz mode only; Orders mode's order-markers list already covers this and a
+ * fixed-Hz line would smear across orders anyway.
+ */
+class HarmonicCursorsCard extends FormattingSettingsCard {
+    showHarmonics = new formattingSettings.ToggleSwitch({
+        name: "showHarmonics",
+        displayName: "Show harmonic cursors",
+        description: "Hz mode only. Orders mode uses Order Tracking → Order markers instead.",
+        value: false
+    });
+
+    fundamentalHz = new formattingSettings.NumUpDown({
+        name: "fundamentalHz",
+        displayName: "Fundamental (Hz)",
+        description: "Frequency to anchor the cursors on. Set to the Hz of a peak you're investigating and watch whether other peaks fall on the multiples.",
+        value: 0
+    });
+
+    harmonicCount = new formattingSettings.NumUpDown({
+        name: "harmonicCount",
+        displayName: "Harmonics to draw",
+        description: "How many multiples (2×, 3×, …) beyond the fundamental. The fundamental itself is always drawn.",
+        value: 5
+    });
+
+    harmonicColor = new formattingSettings.ColorPicker({
+        name: "harmonicColor",
+        displayName: "Cursor color",
+        value: { value: "#ff9500" }
+    });
+
+    showLabels = new formattingSettings.ToggleSwitch({
+        name: "showLabels",
+        displayName: "Show n× labels",
+        value: true
+    });
+
+    name: string = "harmonicCursors";
+    displayName: string = "Harmonic Cursors";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showHarmonics,
+        this.fundamentalHz,
+        this.harmonicCount,
+        this.harmonicColor,
+        this.showLabels
+    ];
+}
+
+/**
  * Axis — units and labels.
  */
 class AxisCard extends FormattingSettingsCard {
@@ -259,7 +313,8 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     orderTrackingCard = new OrderTrackingCard();
     displayCard = new DisplayCard();
     alarmBandsCard = new AlarmBandsCard();
+    harmonicCursorsCard = new HarmonicCursorsCard();
     axisCard = new AxisCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.fftCard, this.orderTrackingCard, this.displayCard, this.alarmBandsCard, this.axisCard, this.interactionsCard];
+    cards = [this.fftCard, this.orderTrackingCard, this.displayCard, this.alarmBandsCard, this.harmonicCursorsCard, this.axisCard, this.interactionsCard];
 }
