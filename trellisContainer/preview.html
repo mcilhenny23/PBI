@@ -1,0 +1,127 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Trellis Container preview</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", sans-serif; }
+  svg  { display: block; }
+</style></head>
+<body>
+<svg id="svg" width="1100" height="560" viewBox="0 0 1100 560"></svg>
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  function el(tag, attrs) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+
+  // Title
+  const t = el("text", { x: 20, y: 28, "font-size": 18, "font-weight": 600, fill: "#1a1a2e" });
+  t.textContent = "Trellis Container — 12 stores × 12 months, shared Y, benchmark ghost";
+  svg.appendChild(t);
+  const sub = el("text", { x: 20, y: 46, "font-size": 12, fill: "#666" });
+  sub.textContent = "Every panel comparable on the same scale · dashed 'All Stores Avg' benchmark ghosted onto each";
+  svg.appendChild(sub);
+
+  const stores = ["Store 01","Store 02","Store 03","Store 04","Store 05","Store 06","Store 07","Store 08","Store 09","Store 10","Store 11","Store 12"];
+  const T = 12;
+  function seed(n) { let x = Math.sin(n * 137.5) * 10000; return x - Math.floor(x); }
+  const panels = stores.map((name, si) => {
+    const base = 40 + seed(si) * 60;
+    const seas = 20 + seed(si + 100) * 30;
+    const pts = [];
+    for (let i = 0; i < T; i++) {
+      const y = base + Math.sin(i / T * Math.PI * 2) * seas + (seed(si * T + i) - 0.5) * 15;
+      pts.push({ i, y: Math.max(10, y) });
+    }
+    const total = pts.reduce((a, p) => a + p.y, 0);
+    return { name, pts, total };
+  }).sort((a, b) => b.total - a.total);
+
+  // Benchmark = average across stores.
+  const bench = [];
+  for (let i = 0; i < T; i++) {
+    let sum = 0;
+    for (const p of panels) sum += p.pts[i].y;
+    bench.push({ i, y: sum / panels.length });
+  }
+
+  // Shared Y across all panels.
+  let yMin = Infinity, yMax = -Infinity;
+  for (const p of panels) for (const q of p.pts) { if (q.y < yMin) yMin = q.y; if (q.y > yMax) yMax = q.y; }
+  for (const q of bench) { if (q.y < yMin) yMin = q.y; if (q.y > yMax) yMax = q.y; }
+  const yPad = (yMax - yMin) * 0.05;
+  yMin -= yPad; yMax += yPad;
+
+  const cols = 4, rows = 3;
+  const pad = 12;
+  const availW = 1100 - 40;
+  const availH = 560 - 80;
+  const pw = Math.floor((availW - pad * (cols + 1)) / cols);
+  const ph = Math.floor((availH - pad * (rows + 1)) / rows);
+
+  const gO = el("g", { transform: `translate(20, 60)` });
+  svg.appendChild(gO);
+
+  panels.forEach((panel, idx) => {
+    const cx = idx % cols, cy = Math.floor(idx / cols);
+    const ox = pad + cx * (pw + pad);
+    const oy = pad + cy * (ph + pad);
+    const g = el("g", { transform: `translate(${ox}, ${oy})` });
+    gO.appendChild(g);
+
+    // Frame
+    g.appendChild(el("rect", { x: 0, y: 0, width: pw, height: ph, fill: "#fff", stroke: "#e6e6e6" }));
+
+    // Title + total.
+    const title = el("text", { x: 6, y: 14, "font-size": 11, "font-weight": 600, fill: "#333" });
+    title.textContent = panel.name;
+    g.appendChild(title);
+    const tot = el("text", { x: pw - 6, y: 14, "text-anchor": "end", "font-size": 9, fill: "#888" });
+    tot.textContent = panel.total.toFixed(0);
+    g.appendChild(tot);
+
+    // Plot area.
+    const plotL = 26, plotR = 4, plotT = 20, plotB = 12;
+    const plotW = pw - plotL - plotR;
+    const plotH = ph - plotT - plotB;
+    const xScale = i => plotL + (i / (T - 1)) * plotW;
+    const yScale = y => plotT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+    // Y axis on first column only.
+    if (cx === 0) {
+      const ticks = 3;
+      for (let k = 0; k <= ticks; k++) {
+        const v = yMin + (yMax - yMin) * k / ticks;
+        const y = yScale(v);
+        const lbl = el("text", { x: plotL - 2, y: y + 3, "text-anchor": "end", "font-size": 9, fill: "#888" });
+        lbl.textContent = v.toFixed(0);
+        g.appendChild(lbl);
+      }
+    }
+
+    // Bottom axis: first + last labels.
+    const monthNames = ["Jan","","","Apr","","","Jul","","","Oct","","Dec"];
+    for (let i = 0; i < T; i++) {
+      if (!monthNames[i]) continue;
+      const l = el("text", { x: xScale(i), y: ph - 2, "text-anchor": "middle", "font-size": 8, fill: "#999" });
+      l.textContent = monthNames[i];
+      g.appendChild(l);
+    }
+
+    // Benchmark ghost — draw first so real series overlays.
+    function pathFrom(pts) {
+      let d = `M ${xScale(pts[0].i)} ${yScale(pts[0].y)}`;
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1], p1 = pts[i];
+        const midX = (xScale(p0.i) + xScale(p1.i)) / 2;
+        d += ` C ${midX} ${yScale(p0.y)}, ${midX} ${yScale(p1.y)}, ${xScale(p1.i)} ${yScale(p1.y)}`;
+      }
+      return d;
+    }
+    g.appendChild(el("path", { d: pathFrom(bench), fill: "none", stroke: "#a0a0a0", "stroke-width": 1.2, "stroke-dasharray": "2 2", "stroke-opacity": 0.8 }));
+
+    // Panel series.
+    const colors = ["#4E79A7","#F28E2B","#59A14F","#EDC948","#B07AA1","#76B7B2","#E15759","#9C755F","#8CD17D","#B6992D","#D37295","#79706E"];
+    g.appendChild(el("path", { d: pathFrom(panel.pts), fill: "none", stroke: colors[idx % colors.length], "stroke-width": 1.6 }));
+  });
+})();
+</script>
+</body></html>
