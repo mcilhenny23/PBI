@@ -58,9 +58,25 @@
                 "fontSize":   { "type": { "numeric": true } },
                 "showSampleWarningBadge": { "type": { "bool": true } }
             }
+        },
+        "interactions": {
+            "properties": {
+                "selectionMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "off",   "displayName": "Off" },
+                            { "value": "brush", "displayName": "Brush (drag a rectangle)" },
+                            { "value": "click", "displayName": "Click nearest point" }
+                        ]
+                    }
+                },
+                "dimUnselectedOpacity": { "type": { "numeric": true } }
+            }
         }
     },
     "supportsLandingPage": true,
+    "supportsHighlight": true,
+    "supportsMultiVisualSelection": true,
     "tooltips": {
         "supportedTypes": {
             "default": true,

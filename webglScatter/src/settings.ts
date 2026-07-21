@@ -76,10 +76,32 @@ class AxesCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [this.showAxes, this.fontSize, this.showSampleWarningBadge];
 }
 
+class InteractionsCard extends FormattingSettingsCard {
+    selectionMode = new formattingSettings.ItemDropdown({
+        name: "selectionMode", displayName: "Selection mode",
+        items: [
+            { value: "off",   displayName: "Off" },
+            { value: "brush", displayName: "Brush (drag a rectangle)" },
+            { value: "click", displayName: "Click nearest point" }
+        ],
+        value: { value: "brush", displayName: "Brush (drag a rectangle)" }
+    });
+    dimUnselectedOpacity = new formattingSettings.NumUpDown({
+        name: "dimUnselectedOpacity",
+        displayName: "Unselected opacity (%)",
+        description: "Points outside the brush (or non-highlighted by another visual) fade to this opacity.",
+        value: 15
+    });
+    name = "interactions";
+    displayName = "Interactions";
+    slices: Array<FormattingSettingsSlice> = [this.selectionMode, this.dimUnselectedOpacity];
+}
+
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     modeCard = new ModeCard();
     pointsCard = new PointsCard();
     densityCard = new DensityCard();
     axesCard = new AxesCard();
-    cards = [this.modeCard, this.pointsCard, this.densityCard, this.axesCard];
+    interactionsCard = new InteractionsCard();
+    cards = [this.modeCard, this.pointsCard, this.densityCard, this.axesCard, this.interactionsCard];
 }

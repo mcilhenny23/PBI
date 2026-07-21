@@ -27,3 +27,28 @@ Every render displays `n = X · <mode>` in the corner. This is the honesty featu
 ## WebGL not available?
 
 Some corporate GPO configurations disable WebGL. The visual detects this and falls back to Canvas 2D points (capped at 50k), and the badge appends `Canvas fallback (WebGL blocked)`.
+
+## Interactions
+
+Bind the `Details` field (any unique row identifier) to enable cross-visual filtering.
+
+### Brush mode (default)
+
+- **Drag** anywhere on the plot to draw a rectangular selection. A live chip shows `X of Y selected` while you drag.
+- **Release** to commit — the enclosed points' identities are pushed to Power BI's selection manager, and every other visual on the page filters to that subset.
+- **Ctrl-click / Shift-click and drag** to add to the current selection.
+- **Click without dragging** to clear the selection.
+- Points **outside** the brush rectangle dim to `Interactions → Unselected opacity` in real time — the WebGL vertex shader applies the mask, so this stays 60fps even at 500k points.
+
+### Click mode
+
+- **Click** near any point to filter by that single row. Uses the same quadtree as tooltips, so hits within ~20px snap to the nearest point.
+- **Right-click** for the Power BI context menu.
+
+### Off
+
+- No selection is issued. Use this when the visual is a purely exploratory summary.
+
+### Cross-highlight from other visuals
+
+When another visual on the page filters this scatter, non-highlighted points fade to `Interactions → Unselected opacity`. The dim is per-vertex via the shader, so it's cheap even at high N.

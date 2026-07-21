@@ -15,6 +15,8 @@ import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import DataView = powerbi.DataView;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 
 import { VisualFormattingSettingsModel } from "./settings";
 
@@ -26,6 +28,8 @@ interface DataPoint {
     colorId: number;   // index into categoryLabels
     size: number | null;
     label: string | null;
+    selectionId?: ISelectionId;
+    highlighted?: boolean;    // present when another visual is cross-filtering this one
 }
 
 interface RenderPalette {
@@ -93,21 +97,39 @@ const VERT_SRC = `#version 300 es
 precision highp float;
 in vec2 a_position;
 in float a_color;
+in float a_highlight;      // 1.0 = highlighted / no external filter, 0.0 = dimmed by another visual
 uniform vec2 u_scale;
 uniform vec2 u_offset;
 uniform float u_pointSize;
 uniform float u_dpr;
+uniform vec4 u_brushRect;  // x0, y0, x1, y1 in data coords (only when u_brushActive > 0.5)
+uniform float u_brushActive;
+uniform float u_dimAlpha;  // scale factor for non-highlighted / non-brushed points (0..1)
 flat out int v_color;
+out float v_alphaScale;
 void main() {
     vec2 clip = (a_position * u_scale + u_offset) * 2.0 - 1.0;
     gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
     gl_PointSize = u_pointSize * u_dpr;
     v_color = int(a_color);
+
+    // Combine external-highlight dimming with brush dimming (both scale the fragment alpha).
+    float highlightScale = mix(u_dimAlpha, 1.0, a_highlight);
+    float brushScale = 1.0;
+    if (u_brushActive > 0.5) {
+        float inside = step(u_brushRect.x, a_position.x) *
+                       step(a_position.x, u_brushRect.z) *
+                       step(u_brushRect.y, a_position.y) *
+                       step(a_position.y, u_brushRect.w);
+        brushScale = mix(u_dimAlpha, 1.0, inside);
+    }
+    v_alphaScale = highlightScale * brushScale;
 }`;
 
 const FRAG_SRC = `#version 300 es
 precision highp float;
 flat in int v_color;
+in float v_alphaScale;
 uniform vec3 u_palette[16];
 uniform float u_alpha;
 out vec4 outColor;
@@ -116,7 +138,7 @@ void main() {
     float r = dot(p, p);
     if (r > 0.25) discard;
     vec3 col = u_palette[v_color];
-    outColor = vec4(col, u_alpha);
+    outColor = vec4(col, u_alpha * v_alphaScale);
 }`;
 
 // ── Visual ─────────────────────────────────────────────────────
@@ -144,8 +166,15 @@ export class Visual implements IVisual {
     private glProg: WebGLProgram | null = null;
     private posBuf: WebGLBuffer | null = null;
     private colBuf: WebGLBuffer | null = null;
+    private hlBuf: WebGLBuffer | null = null;
     private glReady = false;
     private webglBlocked = false;
+
+    // Selection
+    private selectionManager: ISelectionManager;
+    private brushG: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+    private brushRect: [number, number, number, number] | null = null;  // x0, y0, x1, y1 in DATA coords
+    private brushCountChip: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 
     // State
     private data: DataPoint[] = [];
@@ -158,7 +187,12 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
+        this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
+
+        this.selectionManager.registerOnSelectCallback(() => {
+            if (this.glReady) this.redrawWebGL();
+        });
 
         this.root = options.element as HTMLDivElement;
         this.container = document.createElement("div");
@@ -233,6 +267,7 @@ export class Visual implements IVisual {
             this.glProg = prog;
             this.posBuf = gl.createBuffer();
             this.colBuf = gl.createBuffer();
+            this.hlBuf = gl.createBuffer();
             this.glReady = true;
         } catch {
             this.webglBlocked = true;
@@ -296,6 +331,15 @@ export class Visual implements IVisual {
         const colVals = colIdx >= 0 ? cat.categories![colIdx].values : null;
         const rows = values[xIdx].values.length;
 
+        // Highlights come through on the X (or Y) value column when another visual
+        // cross-filters this one. Null means "not highlighted → dim".
+        const xHighlights = values[xIdx].highlights ?? null;
+
+        // Selection identity: prefer the Details category, fall back to the colorBy category.
+        const identityCat = detIdx >= 0 ? cat.categories![detIdx]
+                          : colIdx >= 0 ? cat.categories![colIdx]
+                          : null;
+
         const labelMap = new Map<string, number>();
         const labels: string[] = [];
         const idFor = (v: string) => {
@@ -313,7 +357,19 @@ export class Visual implements IVisual {
             const cval = colVals ? String(colVals[i]) : "All";
             const colorId = idFor(cval);
             const label = detVals ? String(detVals[i]) : null;
-            out.push({ x, y, colorId, size, label });
+
+            let selectionId: ISelectionId | undefined;
+            if (identityCat) {
+                try {
+                    selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(identityCat, i)
+                        .createSelectionId();
+                } catch { /* fall back to un-selectable point */ }
+            }
+            const hl = xHighlights ? xHighlights[i] : null;
+            const highlighted = xHighlights ? (hl != null) : true;
+
+            out.push({ x, y, colorId, size, label, selectionId, highlighted });
         }
         return { data: out, labels };
     }
@@ -386,6 +442,7 @@ export class Visual implements IVisual {
         const py = (v: number) => yScale(v) - margin.top;
 
         // ── Render by mode ──
+        this.lastRenderParams = { plotW, plotH, xScale, yScale, palette, dpr };
         if (mode === "points") {
             if (this.glReady) {
                 this.uploadBuffers();
@@ -467,6 +524,157 @@ export class Visual implements IVisual {
                 .attr("rx", 3)
                 .attr("fill", palette.badgeBg).attr("stroke", palette.badgeFg).attr("stroke-width", 1);
         }
+
+        // ── Selection: brush overlay or click-nearest ──
+        const selectionMode = String(s.interactionsCard.selectionMode.value?.value ?? "brush");
+        if (selectionMode === "brush" && mode === "points") {
+            this.setupBrush(hit, margin.left, margin.top, plotW, plotH, xScale, yScale, palette);
+        } else if (selectionMode === "click") {
+            this.setupClickSelect(hit, xScale, yScale);
+        } else {
+            // Off — make sure the hit rect can still clear on click.
+            hit.on("click", (event: MouseEvent) => {
+                if (event.shiftKey || event.ctrlKey || event.metaKey) return;
+                this.selectionManager.clear();
+            });
+        }
+    }
+
+    /**
+     * Attach a d3.brush to the SVG hit layer. During drag the brush rect is stored
+     * in data coords and pushed to the WebGL shader via u_brushRect so points outside
+     * the rectangle dim in real time. On brush-end the enclosed points are collected
+     * (linear scan of the parsed `this.data`) and committed via SelectionManager.
+     */
+    private setupBrush(
+        hit: d3.Selection<SVGRectElement, unknown, null, undefined>,
+        offX: number, offY: number, plotW: number, plotH: number,
+        xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>,
+        palette: RenderPalette
+    ): void {
+        // Remove any previous brush + chip (the SVG overlay was already cleared).
+        this.brushG = this.overlay.append("g").classed("wgs-brush", true)
+            .attr("transform", `translate(${offX}, ${offY})`);
+        // Hide the default tooltip hit rect when brush mode is active — d3.brush installs its own.
+        hit.style("pointer-events", "none");
+
+        const brush = d3.brush<unknown>()
+            .extent([[0, 0], [plotW, plotH]])
+            .on("brush", (event) => this.onBrushMove(event.selection as [[number, number], [number, number]] | null, xScale, yScale, offX, offY, plotW, plotH, palette))
+            .on("end", (event) => this.onBrushEnd(event.selection as [[number, number], [number, number]] | null, event.sourceEvent as MouseEvent | undefined, xScale, yScale));
+        this.brushG.call(brush);
+
+        // Style the brush handles to match the mockup: dashed outline, subtle fill.
+        this.brushG.selectAll(".selection")
+            .attr("fill", "rgba(66, 135, 245, 0.08)")
+            .attr("stroke", "#4287f5").attr("stroke-width", 1.5).attr("stroke-dasharray", "5 3");
+
+        // Prepare the info chip (rendered / repositioned during brush move).
+        this.brushCountChip = this.overlay.append("g").classed("wgs-brush-chip", true).style("display", "none");
+        const chipText = this.brushCountChip.append("text")
+            .attr("y", 3).attr("dominant-baseline", "middle")
+            .attr("font-family", "Segoe UI, sans-serif")
+            .attr("font-size", "11px").attr("font-weight", 600)
+            .attr("fill", "#1a4a8f");
+        // Chip backdrop drawn first (behind the text).
+        this.brushCountChip.insert("rect", "text")
+            .attr("rx", 3).attr("fill", "#e8f0fe").attr("stroke", "#4287f5").attr("stroke-width", 1);
+        chipText.text("0 selected");
+    }
+
+    private onBrushMove(
+        selection: [[number, number], [number, number]] | null,
+        xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>,
+        offX: number, offY: number, plotW: number, plotH: number,
+        _palette: RenderPalette
+    ): void {
+        if (!selection) {
+            this.brushRect = null;
+            this.brushCountChip?.style("display", "none");
+            this.redrawWebGL();
+            return;
+        }
+        const [[px0, py0], [px1, py1]] = selection;
+        // px/py are already in the brush group's local coords (plot-relative). Invert via the scales:
+        // the scales expect SVG-space, so add the offset before inverting.
+        const xd0 = xScale.invert(px0 + offX);
+        const xd1 = xScale.invert(px1 + offX);
+        const yd0 = yScale.invert(py1 + offY);   // y flipped
+        const yd1 = yScale.invert(py0 + offY);
+        this.brushRect = [xd0, yd0, xd1, yd1];
+
+        // Count enclosed points (fast — single linear pass on the parsed array).
+        let n = 0;
+        for (const p of this.data) {
+            if (p.x >= xd0 && p.x <= xd1 && p.y >= yd0 && p.y <= yd1) n++;
+        }
+        // Update the chip position + text.
+        if (this.brushCountChip) {
+            const cx = offX + plotW - 12;
+            const cy = offY + 14;
+            this.brushCountChip.style("display", null)
+                .attr("transform", `translate(${cx}, ${cy})`);
+            const text = this.brushCountChip.select<SVGTextElement>("text")
+                .text(`${d3.format(",")(n)} of ${d3.format(",")(this.data.length)} selected`)
+                .attr("text-anchor", "end")
+                .attr("x", 0);
+            const bb = text.node()!.getBBox();
+            this.brushCountChip.select("rect")
+                .attr("x", bb.x - 8).attr("y", bb.y - 4)
+                .attr("width", bb.width + 16).attr("height", bb.height + 8);
+        }
+        // Repaint WebGL layer with the new brush uniform so points outside dim in real time.
+        this.redrawWebGL();
+    }
+
+    private onBrushEnd(
+        selection: [[number, number], [number, number]] | null,
+        sourceEvent: MouseEvent | undefined,
+        _xScale: d3.ScaleLinear<number, number>, _yScale: d3.ScaleLinear<number, number>
+    ): void {
+        if (!selection) {
+            // Empty brush click — clear the selection.
+            this.brushRect = null;
+            this.brushCountChip?.style("display", "none");
+            this.selectionManager.clear().then(() => this.redrawWebGL());
+            return;
+        }
+        const [xd0, yd0, xd1, yd1] = this.brushRect!;
+        const ids: ISelectionId[] = [];
+        for (const p of this.data) {
+            if (p.x >= xd0 && p.x <= xd1 && p.y >= yd0 && p.y <= yd1 && p.selectionId) {
+                ids.push(p.selectionId);
+            }
+        }
+        if (ids.length === 0) return;
+        const multi = !!(sourceEvent && (sourceEvent.ctrlKey || sourceEvent.metaKey || sourceEvent.shiftKey));
+        this.selectionManager.select(ids, multi).then(() => this.redrawWebGL());
+    }
+
+    private setupClickSelect(
+        hit: d3.Selection<SVGRectElement, unknown, null, undefined>,
+        xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>
+    ): void {
+        hit.on("click", (event: MouseEvent) => {
+            if (!this.quadtree) return;
+            const [mx, my] = d3.pointer(event, this.svg.node());
+            const p = this.quadtree.find(mx, my, 20);
+            if (!p?.selectionId) {
+                this.selectionManager.clear().then(() => this.redrawWebGL());
+                return;
+            }
+            const multi = event.ctrlKey || event.metaKey || event.shiftKey;
+            this.selectionManager.select(p.selectionId, multi).then(() => this.redrawWebGL());
+        });
+        hit.on("contextmenu", (event: MouseEvent) => {
+            if (!this.quadtree) return;
+            event.preventDefault(); event.stopPropagation();
+            const [mx, my] = d3.pointer(event, this.svg.node());
+            const p = this.quadtree.find(mx, my, 20);
+            this.selectionManager.showContextMenu(p?.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+        });
+        // Silence pointer conflicts — using d3.pointer directly, no brush layer.
+        hit.style("pointer-events", "all");
     }
 
     private uploadBuffers(): void {
@@ -475,15 +683,19 @@ export class Visual implements IVisual {
         const N = this.data.length;
         const pos = new Float32Array(N * 2);
         const col = new Float32Array(N);
+        const hl  = new Float32Array(N);
         for (let i = 0; i < N; i++) {
             pos[i * 2]     = this.data[i].x;
             pos[i * 2 + 1] = this.data[i].y;
             col[i] = this.data[i].colorId;
+            hl[i]  = this.data[i].highlighted === false ? 0 : 1;
         }
         gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf!);
         gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.colBuf!);
         gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.hlBuf!);
+        gl.bufferData(gl.ARRAY_BUFFER, hl, gl.DYNAMIC_DRAW);
     }
 
     private renderWebGLPoints(
@@ -504,12 +716,16 @@ export class Visual implements IVisual {
         gl.useProgram(prog);
         const aPos = gl.getAttribLocation(prog, "a_position");
         const aCol = gl.getAttribLocation(prog, "a_color");
+        const aHl  = gl.getAttribLocation(prog, "a_highlight");
         gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf!);
         gl.enableVertexAttribArray(aPos);
         gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.colBuf!);
         gl.enableVertexAttribArray(aCol);
         gl.vertexAttribPointer(aCol, 1, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.hlBuf!);
+        gl.enableVertexAttribArray(aHl);
+        gl.vertexAttribPointer(aHl, 1, gl.FLOAT, false, 0, 0);
 
         // Map data → plot-local (0..1) → clip in vert shader.
         // clip = (a_pos * u_scale + u_offset) * 2 - 1; y flipped in shader.
@@ -524,6 +740,17 @@ export class Visual implements IVisual {
         gl.uniform1f(gl.getUniformLocation(prog, "u_dpr"), dpr);
         gl.uniform1f(gl.getUniformLocation(prog, "u_alpha"), Math.max(0.05, Math.min(1, (s.pointsCard.pointOpacity.value ?? 60) / 100)));
 
+        // Brush uniforms — feed the current brush rect (or zeros when inactive).
+        const brush = this.brushRect;
+        gl.uniform1f(gl.getUniformLocation(prog, "u_brushActive"), brush ? 1 : 0);
+        gl.uniform4f(gl.getUniformLocation(prog, "u_brushRect"),
+            brush ? brush[0] : 0, brush ? brush[1] : 0,
+            brush ? brush[2] : 0, brush ? brush[3] : 0);
+
+        // Dim scale — points outside the brush / non-highlighted fade to this alpha multiplier.
+        const dim = Math.max(0.02, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 15) / 100));
+        gl.uniform1f(gl.getUniformLocation(prog, "u_dimAlpha"), dim);
+
         // Palette uniform (16 slots).
         const paletteArr = new Float32Array(16 * 3);
         for (let i = 0; i < 16; i++) {
@@ -537,6 +764,20 @@ export class Visual implements IVisual {
 
         gl.drawArrays(gl.POINTS, 0, this.data.length);
     }
+
+    /** Repaint the WebGL layer using the last render's parameters — invoked by the brush during drag. */
+    private redrawWebGL(): void {
+        if (!this.glReady || !this.lastRenderParams) return;
+        const p = this.lastRenderParams;
+        this.renderWebGLPoints(p.plotW, p.plotH, p.xScale, p.yScale, p.palette, p.dpr);
+    }
+
+    /** Snapshot of the parameters needed to redraw the point layer during a brush drag. */
+    private lastRenderParams: {
+        plotW: number; plotH: number;
+        xScale: d3.ScaleLinear<number, number>; yScale: d3.ScaleLinear<number, number>;
+        palette: RenderPalette; dpr: number;
+    } | null = null;
 
     private renderCanvasPoints(
         plotW: number, plotH: number, dpr: number,
