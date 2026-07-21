@@ -11,6 +11,8 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -27,8 +29,9 @@ const numFmt = d3.format(",.4~g");
 
 export class Visual implements IVisual {
     private events: IVisualEventService;
-    private host: powerbi.extensibility.visual.IVisualHost;
+    private host: IVisualHost;
     private tooltipService: ITooltipService;
+    private selectionManager: ISelectionManager;
 
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private defs: d3.Selection<SVGDefsElement, unknown, null, undefined>;
@@ -73,6 +76,22 @@ export class Visual implements IVisual {
 
         this.visibilityHandler = () => { this.docHidden = document.hidden; };
         document.addEventListener("visibilitychange", this.visibilityHandler);
+
+        this.selectionManager = options.host.createSelectionManager();
+        this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
+        this.svg.on("click.clear", (event: MouseEvent) => {
+            if (event.target === this.svg.node()) {
+                this.selectionManager.clear().then(() => this.applyExternalDim());
+            }
+        });
+    }
+
+    private applyExternalDim(): void {
+        const s = this.formattingSettings;
+        if (!s) return;
+        const dim = Math.max(0.1, Math.min(1, ((s as unknown as { interactionsCard?: { dimUnselectedOpacity: { value: number } } }).interactionsCard?.dimUnselectedOpacity.value ?? 30) / 100));
+        const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        this.scene.attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
