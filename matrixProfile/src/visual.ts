@@ -170,7 +170,13 @@ export class Visual implements IVisual {
             const n = series.length;
 
             let m = Math.max(4, Math.round(P.windowLength.value || 50));
-            if (n < m * 2) {
+            const exclusionPct = P.exclusionZone.value ?? 50;
+            const multiLength = String(P.windowMode.value?.value ?? "fixed") === "multi";
+
+            // In multi mode the user explicitly asked the scan to pick m, so
+            // guarding against the *fixed* windowLength is misleading —
+            // panMatrixProfile filters out impossible lengths on its own.
+            if (!multiLength && n < m * 2) {
                 this.renderMessage(width, height, "Series too short",
                     `Need at least ${m * 2} points for a window length of ${m}.`,
                     `This series has ${n}. Lower the window length or add more data.`);
@@ -184,8 +190,6 @@ export class Visual implements IVisual {
             // zone, so recolouring or resizing must never trigger it. Motif and
             // discord extraction stays outside the cache: it is O(n) and lets
             // the highlight mode respond instantly.
-            const exclusionPct = P.exclusionZone.value ?? 50;
-            const multiLength = String(P.windowMode.value?.value ?? "fixed") === "multi";
 
             // Multi-length scans every candidate m, so it costs O(lengths · n²).
             // The series is capped harder here than in fixed mode to keep that
@@ -219,8 +223,14 @@ export class Visual implements IVisual {
                 ? (pan.scans.find(sc => sc.m === m)?.result ?? null)
                 : this.profileCache.get(key, () => stomp(series, m, exclusion));
             if (!res) {
-                this.renderMessage(width, height, "Cannot compute profile",
-                    "Check the window length against the series length.", "");
+                if (multiLength) {
+                    this.renderMessage(width, height, "Multi-length scan failed",
+                        `No candidate window length fit this ${n}-point series.`,
+                        "Try widening min/max window, or add more data.");
+                } else {
+                    this.renderMessage(width, height, "Cannot compute profile",
+                        "Check the window length against the series length.", "");
+                }
                 this.events.renderingFinished(options);
                 return;
             }
