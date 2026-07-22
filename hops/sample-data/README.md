@@ -62,6 +62,38 @@ and the visual falls back to its original behaviour — no data change needed.
 
 ---
 
+## Fan overlay — HOPs + static prediction interval
+
+Turn on **Fan Overlay → Show fan overlay**. Percentile bands are drawn
+across the ensemble as stacked shaded regions with the median dashed on
+top; the animated outcome then flickers *inside* the envelope. This is the
+argued-effective combination — the fan communicates specific probability
+ranges, the animation communicates the shape of one plausible way it plays
+out.
+
+Defaults draw **50 / 80 / 95%** central intervals. Verified against this
+file:
+
+| Month | Median | 50% band | 80% band | 95% band | 95% width |
+|---|---:|---|---|---|---:|
+| Jan | 99.5  | 97.5 – 102.2 | 95.6 – 104.2 | 95.2 – 106.7 | 11.5 |
+| Jun | 105.0 | 99.5 – 107.7 | 92.0 – 115.2 | 91.7 – 126.6 | 34.9 |
+| Dec | 114.3 | 107.9 – 127.5 | 103.8 – 132.8 | 98.6 – 135.2 | 36.6 |
+
+The 95% band widens **3.2×** from Jan to Dec — the classic fan shape,
+uncertainty compounds forward. The six historical months' actuals all
+land inside the 80% band, which is the calibration check: if actuals kept
+straying outside the middle 80%, the ensemble would be under-dispersed
+(over-confident) and you'd know to distrust the future part of the fan
+too.
+
+Change **Bands** to any comma-separated central percentages, e.g. `68, 95`
+for one-sigma / two-sigma style, or a single `90` for a minimal envelope.
+Turn **Show median line** off if the extra dashed line adds clutter — the
+outcome frame is usually the useful anchor.
+
+---
+
 ## Things to try
 
 - **Frame rate** — 1 fps (slow pulse, easy to track individual outcomes) up to

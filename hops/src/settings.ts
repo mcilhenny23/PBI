@@ -150,6 +150,67 @@ class AxesCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Fan Overlay — a static prediction-interval envelope drawn behind the
+ * animation. HOPs alone show *plausible* outcomes one at a time; the fan
+ * shows the *aggregate* spread as shaded percentile bands (50%, 80%, 95%
+ * by default). Combined, the animation grounds the shape of each outcome
+ * while the fan communicates specific probability ranges the report reader
+ * can quote.
+ */
+class FanCard extends FormattingSettingsCard {
+    showFan = new formattingSettings.ToggleSwitch({
+        name: "showFan",
+        displayName: "Show fan overlay",
+        description: "Draws percentile bands across the ensemble so the animation flickers over a stable envelope. Only meaningful with several draws.",
+        value: false
+    });
+
+    percentileList = new formattingSettings.TextInput({
+        name: "percentileList",
+        displayName: "Bands",
+        description: "Comma-separated central intervals, in percent. 80 means the 10th–90th percentile band. Widest is drawn palest.",
+        value: "50, 80, 95",
+        placeholder: "50, 80, 95"
+    });
+
+    fanColor = new formattingSettings.ColorPicker({
+        name: "fanColor",
+        displayName: "Fan color",
+        value: { value: "#4682B4" }
+    });
+
+    fanOpacity = new formattingSettings.NumUpDown({
+        name: "fanOpacity",
+        displayName: "Innermost band opacity (%)",
+        description: "The narrowest band draws at this opacity; wider bands fade toward transparent.",
+        value: 35
+    });
+
+    showMedian = new formattingSettings.ToggleSwitch({
+        name: "showMedian",
+        displayName: "Show median line",
+        value: true
+    });
+
+    medianColor = new formattingSettings.ColorPicker({
+        name: "medianColor",
+        displayName: "Median color",
+        value: { value: "#1f4e79" }
+    });
+
+    name: string = "fan";
+    displayName: string = "Fan Overlay";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showFan,
+        this.percentileList,
+        this.fanColor,
+        this.fanOpacity,
+        this.showMedian,
+        this.medianColor
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -165,7 +226,8 @@ class InteractionsCard extends FormattingSettingsCard {
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     animationCard = new AnimationCard();
     linesCard = new LinesCard();
+    fanCard = new FanCard();
     axesCard = new AxesCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.animationCard, this.linesCard, this.axesCard, this.interactionsCard];
+    cards = [this.animationCard, this.linesCard, this.fanCard, this.axesCard, this.interactionsCard];
 }

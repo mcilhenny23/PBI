@@ -54,6 +54,16 @@
                 }
             }
         },
+        "fan": {
+            "properties": {
+                "showFan": { "type": { "bool": true } },
+                "percentileList": { "type": { "text": true } },
+                "fanColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "fanOpacity": { "type": { "numeric": true } },
+                "showMedian": { "type": { "bool": true } },
+                "medianColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
         "axes": {
             "properties": {
                 "showXAxis": { "type": { "bool": true } },

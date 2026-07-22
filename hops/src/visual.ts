@@ -146,6 +146,7 @@ export class Visual implements IVisual {
                 .populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews?.[0]);
             const anim = this.formattingSettings.animationCard;
             const lines = this.formattingSettings.linesCard;
+            const fan = this.formattingSettings.fanCard;
             const axes = this.formattingSettings.axesCard;
 
             const width = options.viewport.width;
@@ -292,6 +293,117 @@ export class Visual implements IVisual {
                     .attr("y1", d => yScale(d)).attr("y2", d => yScale(d))
                     .attr("stroke", "#e0e0e0").attr("stroke-width", 1)
                     .attr("shape-rendering", "crispEdges");
+            }
+
+            // ── Fan overlay ────────────────────────────────────────
+            // Per-axis-point percentiles across the ensemble, drawn as
+            // stacked filled bands from widest (pale) to narrowest (opaque).
+            // Sits behind trails and the animated line so the animation
+            // reads as one plausible outcome moving through the envelope.
+            if (fan.showFan.value && members.length >= 2) {
+                const raw = String(fan.percentileList.value ?? "");
+                const bands = raw.split(/[,;]+/)
+                    .map(s => parseFloat(s.trim()))
+                    .filter(v => Number.isFinite(v) && v > 0 && v < 100)
+                    .sort((a, b) => b - a);   // widest first
+                if (bands.length > 0) {
+                    const nAx = axisCats.length;
+                    // Per-axis sort of member values, once. Points where every
+                    // member is null are excluded from the band — the fan just
+                    // gaps there rather than pulling a percentile to zero.
+                    const perAxis: (Float64Array | null)[] = new Array(nAx);
+                    for (let i = 0; i < nAx; i++) {
+                        const vs: number[] = [];
+                        for (const m of members) {
+                            const v = m.values[i];
+                            if (v != null) vs.push(v);
+                        }
+                        if (vs.length === 0) { perAxis[i] = null; continue; }
+                        vs.sort((a, b) => a - b);
+                        perAxis[i] = Float64Array.from(vs);
+                    }
+                    // Empirical quantile: linear interpolation between order
+                    // statistics. Standard, matches d3.quantile.
+                    const quantile = (sorted: Float64Array, q: number): number => {
+                        const n = sorted.length;
+                        if (n === 1) return sorted[0];
+                        const h = (n - 1) * q;
+                        const lo = Math.floor(h), hi = Math.min(n - 1, lo + 1);
+                        return sorted[lo] + (h - lo) * (sorted[hi] - sorted[lo]);
+                    };
+
+                    // Base fill opacity for the narrowest band; wider bands
+                    // fade toward transparent so the innermost is the loudest.
+                    const baseOp = Math.max(0.05, Math.min(1, (fan.fanOpacity.value ?? 35) / 100));
+                    const fanG = this.ensembleLayer.append("g").classed("fan", true);
+
+                    // A single filled path per band: top edge along the upper
+                    // quantile L→R, then bottom edge along the lower quantile
+                    // R→L. Gaps (axis points where every member is null) close
+                    // the current sub-band.
+                    for (let bi = 0; bi < bands.length; bi++) {
+                        const p = bands[bi] / 100;
+                        const qHi = 0.5 + p / 2;
+                        const qLo = 0.5 - p / 2;
+                        // Widest band uses the base opacity; each narrower one
+                        // stacks another baseOp/N of alpha so the innermost
+                        // reads roughly baseOp visually. Approximation, but
+                        // reads well and avoids computing an exact solve.
+                        const bandOp = baseOp * (bi + 1) / bands.length;
+
+                        // Walk each run of non-null axis points; emit one
+                        // closed subpath per run.
+                        let d = "";
+                        let runStart = -1;
+                        const flush = (endIdx: number): void => {
+                            if (runStart < 0 || endIdx < runStart) return;
+                            // Top edge left→right.
+                            let top = "";
+                            for (let i = runStart; i <= endIdx; i++) {
+                                const cx = xScale(axisCats[i])!;
+                                const yy = yScale(quantile(perAxis[i]!, qHi));
+                                top += (i === runStart ? `M ${cx.toFixed(1)}` : ` L ${cx.toFixed(1)}`) + `,${yy.toFixed(1)}`;
+                            }
+                            // Bottom edge right→left.
+                            let bot = "";
+                            for (let i = endIdx; i >= runStart; i--) {
+                                const cx = xScale(axisCats[i])!;
+                                const yy = yScale(quantile(perAxis[i]!, qLo));
+                                bot += ` L ${cx.toFixed(1)},${yy.toFixed(1)}`;
+                            }
+                            d += top + bot + " Z ";
+                        };
+                        for (let i = 0; i < nAx; i++) {
+                            if (perAxis[i]) {
+                                if (runStart < 0) runStart = i;
+                            } else if (runStart >= 0) {
+                                flush(i - 1); runStart = -1;
+                            }
+                        }
+                        if (runStart >= 0) flush(nAx - 1);
+
+                        if (d) fanG.append("path")
+                            .attr("d", d).attr("fill", fan.fanColor.value.value)
+                            .attr("fill-opacity", bandOp)
+                            .attr("stroke", "none");
+                    }
+
+                    // Optional median line drawn on top of the bands.
+                    if (fan.showMedian.value) {
+                        const medPts = axisCats.map((c, i) => ({
+                            cx: xScale(c)!,
+                            v: perAxis[i] ? quantile(perAxis[i]!, 0.5) : null
+                        }));
+                        fanG.append("path")
+                            .datum(medPts)
+                            .attr("d", lineGen)
+                            .attr("fill", "none")
+                            .attr("stroke", fan.medianColor.value.value)
+                            .attr("stroke-width", 1.5)
+                            .attr("stroke-linejoin", "round")
+                            .attr("stroke-dasharray", "4 3");
+                    }
+                }
             }
 
             // Trail ghosts (created before outcome so they sit beneath it).
