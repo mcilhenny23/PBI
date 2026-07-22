@@ -137,6 +137,15 @@
                 "showLabels": { "type": { "bool": true } }
             }
         },
+        "peakHold": {
+            "properties": {
+                "showPeakHold": { "type": { "bool": true } },
+                "peakStrip": { "type": { "numeric": true } },
+                "showMean": { "type": { "bool": true } },
+                "peakColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "meanColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
         "axis": {
             "properties": {
                 "showTimeAxis": { "type": { "bool": true } },

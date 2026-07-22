@@ -54,6 +54,24 @@ the first six seconds, then jumps to **−14 dB** as the fault sweeps in. A
 heatmap itself, not just the trend line — so the alarm criterion is visible
 where the fault lives.
 
+**Peak hold — did anything bright ever happen at each frequency?** Turn on
+**Peak Hold → Show peak hold**. A strip on the right of the heatmap plots
+per-row **max** magnitude (peak) across every frame, with the **mean**
+overlaid as a dashed line. Verified on this file:
+
+- **120 Hz fundamental** — peak −0.0 dB, mean −0.3 dB → **gap 0.3 dB** →
+  steady-state tone, present in every frame.
+- **440 Hz fault** — peak −2.1 dB, mean −28.6 dB → **gap 26.5 dB** →
+  transient! The fault only exists in the last few frames but the peak
+  strip captures its full height — a signature the animated heatmap
+  paints briefly and then paints over.
+
+Reading the strip that way — **peak-mean gap** — is what turns peak hold
+into a diagnostic rather than a decoration. Small gap = something living
+here all the time. Large gap = a burst you'd otherwise miss. Turn **Also
+show mean** off if the mean line clutters the strip and you only care
+about the envelope.
+
 **Harmonic cursors — is the 240 Hz band really a harmonic?** Turn on
 **Harmonic Cursors → Show**, set **Fundamental (Hz)** to `120`, leave
 **Harmonics** at `5`. Dashed lines land on the 120 Hz fundamental and 240,

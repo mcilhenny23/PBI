@@ -166,6 +166,57 @@ class DisplayCard extends FormattingSettingsCard {
 }
 
 /**
+ * Peak Hold — a right-side companion strip showing max magnitude per
+ * frequency (or per order) across the full time window. A running spectrogram
+ * flickers past transient events; peak-hold catches the loudest hit at each
+ * band and holds it, so a millisecond spike still shows up as a peak on the
+ * strip.
+ */
+class PeakHoldCard extends FormattingSettingsCard {
+    showPeakHold = new formattingSettings.ToggleSwitch({
+        name: "showPeakHold",
+        displayName: "Show peak hold",
+        description: "Reserves a strip on the right of the heatmap plotting per-row peak (max) and optionally mean magnitude across all frames.",
+        value: false
+    });
+
+    peakStrip = new formattingSettings.NumUpDown({
+        name: "peakStrip",
+        displayName: "Strip width (px)",
+        value: 80
+    });
+
+    showMean = new formattingSettings.ToggleSwitch({
+        name: "showMean",
+        displayName: "Also show mean",
+        description: "Overlays the per-row mean magnitude as a fainter line — peaks that sit close to the mean are steady-state, peaks well above are transients.",
+        value: true
+    });
+
+    peakColor = new formattingSettings.ColorPicker({
+        name: "peakColor",
+        displayName: "Peak color",
+        value: { value: "#d97706" }
+    });
+
+    meanColor = new formattingSettings.ColorPicker({
+        name: "meanColor",
+        displayName: "Mean color",
+        value: { value: "#888888" }
+    });
+
+    name: string = "peakHold";
+    displayName: string = "Peak Hold";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showPeakHold,
+        this.peakStrip,
+        this.showMean,
+        this.peakColor,
+        this.meanColor
+    ];
+}
+
+/**
  * Alarm Bands — highlight a frequency range of interest.
  */
 class AlarmBandsCard extends FormattingSettingsCard {
@@ -362,7 +413,8 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     displayCard = new DisplayCard();
     alarmBandsCard = new AlarmBandsCard();
     harmonicCursorsCard = new HarmonicCursorsCard();
+    peakHoldCard = new PeakHoldCard();
     axisCard = new AxisCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.fftCard, this.orderTrackingCard, this.displayCard, this.alarmBandsCard, this.harmonicCursorsCard, this.axisCard, this.interactionsCard];
+    cards = [this.fftCard, this.orderTrackingCard, this.displayCard, this.alarmBandsCard, this.harmonicCursorsCard, this.peakHoldCard, this.axisCard, this.interactionsCard];
 }

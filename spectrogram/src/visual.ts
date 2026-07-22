@@ -187,6 +187,7 @@ export class Visual implements IVisual {
             const D = this.formattingSettings.displayCard;
             const A = this.formattingSettings.alarmBandsCard;
             const H = this.formattingSettings.harmonicCursorsCard;
+            const PH = this.formattingSettings.peakHoldCard;
             const X = this.formattingSettings.axisCard;
 
             const width = options.viewport.width;
@@ -294,7 +295,15 @@ export class Visual implements IVisual {
                 bottom: X.showTimeAxis.value ? this.margin.bottom : 12,
                 left: X.showFreqAxis.value ? this.margin.left : 12
             };
-            const plotX = m.left, plotW = Math.max(10, width - m.left - m.right);
+            // Reserve a slice on the right of the plot for the peak-hold
+            // strip when it's on. Kept as a constant so plotW is stable across
+            // renders — the FFT and heatmap don't need to know about it.
+            const peakOn = PH.showPeakHold.value;
+            const peakW = peakOn ? Math.max(30, Math.min(200, PH.peakStrip.value ?? 80)) : 0;
+            const peakGap = peakOn ? 8 : 0;
+
+            const plotX = m.left, plotW = Math.max(10, width - m.left - m.right - peakW - peakGap);
+            const peakX = plotX + plotW + peakGap;
             const totalH = Math.max(10, height - m.top - m.bottom);
             const gap = specs.length > 1 ? 18 : 0;
             const panelH = (totalH - gap * (specs.length - 1)) / specs.length;
@@ -438,6 +447,113 @@ export class Visual implements IVisual {
                 }
                 octx.putImageData(img, 0, 0);
                 ctx.drawImage(off, 0, 0, spec.numWindows, rows, plotX, py, plotW, heatH);
+
+                // ── Peak hold ─────────────────────────────────────
+                // Right-side companion strip: per-row peak (max) and mean
+                // magnitude across every frame in the panel. Peak surfaces
+                // transients the animated map flickers past; mean gives the
+                // steady-state baseline for comparison.
+                if (peakOn) {
+                    const peakArr = new Float32Array(rows);
+                    const meanArr = new Float32Array(rows);
+                    const cntArr = new Uint32Array(rows);
+                    for (let r = 0; r < rows; r++) {
+                        const u = rows > 1 ? (rows - 1 - r) / (rows - 1) : 0;
+                        if (this.ordersMode && framedRpm) {
+                            const order = u * this.maxOrder;
+                            let mx = 0, sum = 0, n = 0;
+                            for (let w = 0; w < spec.numWindows; w++) {
+                                const rpm = framedRpm[w];
+                                if (!Number.isFinite(rpm) || rpm <= 0) continue;
+                                const bin = Math.round(order * rpm / 60 / hzPerBin);
+                                if (bin < 0 || bin > binMax) continue;
+                                const mag = spec.data[w * spec.numBins + bin];
+                                if (mag > mx) mx = mag;
+                                sum += mag; n++;
+                            }
+                            peakArr[r] = mx;
+                            meanArr[r] = n > 0 ? sum / n : 0;
+                            cntArr[r] = n;
+                        } else {
+                            let bin: number;
+                            if (this.logFreq) bin = Math.round(binMin * Math.pow(binMax / binMin, u));
+                            else bin = Math.round(u * binMax);
+                            bin = Math.max(0, Math.min(binMax, bin));
+                            let mx = 0, sum = 0;
+                            for (let w = 0; w < spec.numWindows; w++) {
+                                const mag = spec.data[w * spec.numBins + bin];
+                                if (mag > mx) mx = mag;
+                                sum += mag;
+                            }
+                            peakArr[r] = mx;
+                            meanArr[r] = spec.numWindows > 0 ? sum / spec.numWindows : 0;
+                            cntArr[r] = spec.numWindows;
+                        }
+                    }
+
+                    // Same magnitude scaling as the heatmap so a peak of the
+                    // same colour on the strip means the same dB reading.
+                    const toX = (mag: number): number => {
+                        let t: number;
+                        if (useDb) {
+                            const db = 20 * Math.log10(Math.max(mag, 1e-12) / peak);
+                            t = (db - dbMin) / (dbMax - dbMin || 1);
+                        } else {
+                            t = mag / peak;
+                        }
+                        t = t < 0 ? 0 : t > 1 ? 1 : t;
+                        return peakX + t * peakW;
+                    };
+
+                    // Background so the strip reads as a distinct panel.
+                    this.overlay.append("rect")
+                        .attr("x", peakX).attr("y", py)
+                        .attr("width", peakW).attr("height", heatH)
+                        .attr("fill", "#fafafa").attr("stroke", "#ddd").attr("stroke-width", 0.5);
+
+                    const rowH = heatH / rows;
+                    // Peak: filled path traced from left edge along each row.
+                    // Drawn as a single path so 500 rows don't turn into 500
+                    // DOM nodes.
+                    let dPeak = `M ${peakX},${py + heatH}`;
+                    let dMean = `M ${peakX},${py + heatH}`;
+                    for (let r = rows - 1; r >= 0; r--) {
+                        const yy = py + r * rowH;
+                        const noData = cntArr[r] === 0;
+                        dPeak += ` L ${noData ? peakX : toX(peakArr[r])},${yy}`;
+                        dMean += ` L ${noData ? peakX : toX(meanArr[r])},${yy}`;
+                    }
+                    dPeak += ` L ${peakX},${py}`;
+                    this.overlay.append("path")
+                        .attr("d", dPeak).attr("fill", PH.peakColor.value.value)
+                        .attr("fill-opacity", 0.25)
+                        .attr("stroke", PH.peakColor.value.value).attr("stroke-width", 1);
+
+                    if (PH.showMean.value) {
+                        this.overlay.append("path")
+                            .attr("d", dMean).attr("fill", "none")
+                            .attr("stroke", PH.meanColor.value.value).attr("stroke-width", 1)
+                            .attr("stroke-dasharray", "3 2").attr("opacity", 0.8);
+                    }
+
+                    // Scale hint at the top and bottom of the strip.
+                    this.overlay.append("text")
+                        .attr("x", peakX).attr("y", py + heatH - 2)
+                        .attr("font-size", `${Math.max(8, fs - 3)}px`)
+                        .attr("fill", "#888")
+                        .text(useDb ? `${dbMin}dB` : "0");
+                    this.overlay.append("text")
+                        .attr("x", peakX + peakW - 2).attr("y", py + heatH - 2)
+                        .attr("text-anchor", "end")
+                        .attr("font-size", `${Math.max(8, fs - 3)}px`)
+                        .attr("fill", "#888")
+                        .text(useDb ? `${dbMax}dB` : "max");
+                    this.overlay.append("text")
+                        .attr("x", peakX).attr("y", py + fs)
+                        .attr("font-size", `${Math.max(8, fs - 3)}px`)
+                        .attr("fill", "#555").attr("font-weight", 600)
+                        .text("peak hold");
+                }
 
                 // Panel label for small multiples.
                 if (specs.length > 1 && s.name) {
