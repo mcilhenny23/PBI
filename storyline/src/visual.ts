@@ -94,6 +94,16 @@ export class Visual implements IVisual {
             const A = this.formattingSettings.appearanceCard;
             const LB = this.formattingSettings.labelsCard;
 
+            // High contrast: the palette can't encode entity/group categories,
+            // so all data marks collapse to the foreground and lines rely on
+            // hover-focus + labels to disambiguate.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
+            const hcMuted = hc ? hcFg : "#666";
+            const hcMuted2 = hc ? hcFg : "#888";
+            const hcTitle = hc ? hcFg : "#555";
+            const hcLabel = hc ? hcFg : "#444";
+
             const width = options.viewport.width;
             const height = options.viewport.height;
             this.svg.attr("width", width).attr("height", height);
@@ -188,7 +198,7 @@ export class Visual implements IVisual {
             // ── Colors ─────────────────────────────────────────────
             const colorBy = String(A.colorBy.value?.value ?? "entity");
             const colorFor = (entity: string, group: string): string =>
-                this.colorPalette.getColor(colorBy === "group" ? group : entity).value;
+                hc ? hcFg : this.colorPalette.getColor(colorBy === "group" ? group : entity).value;
 
             // ── Group bands (behind the lines) ─────────────────────
             const tension = Math.max(0, Math.min(100, L.lineTension.value ?? 50)) / 100 * 0.5;
@@ -212,7 +222,7 @@ export class Visual implements IVisual {
                         const d = smoothPath(top, tension) + smoothPathTail(bot, tension) + " Z";
                         bg.append("path")
                             .attr("d", d)
-                            .attr("fill", this.colorPalette.getColor(group).value)
+                            .attr("fill", hc ? hcFg : this.colorPalette.getColor(group).value)
                             .attr("fill-opacity", 0.08)
                             .attr("stroke", "none");
                         run = [];
@@ -229,7 +239,7 @@ export class Visual implements IVisual {
                         .attr("x", m.left - 8)
                         .attr("y", y((firstBand.y0 + firstBand.y1) / 2))
                         .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-                        .attr("font-size", `${fs}px`).attr("font-weight", 600).attr("fill", "#666")
+                        .attr("font-size", `${fs}px`).attr("font-weight", 600).attr("fill", hcMuted)
                         .text(group);
                 }
             }
@@ -292,7 +302,7 @@ export class Visual implements IVisual {
                     lg.append("text")
                         .attr("x", x(last) + 6).attr("y", y(pos.get(last)!))
                         .attr("dominant-baseline", "middle")
-                        .attr("font-size", `${fs}px`).attr("fill", "#444")
+                        .attr("font-size", `${fs}px`).attr("fill", hcLabel)
                         .text(e);
                 }
             }
@@ -304,7 +314,7 @@ export class Visual implements IVisual {
                 ax.append("text")
                     .attr("x", x(t)).attr("y", m.top - 10)
                     .attr("text-anchor", "middle")
-                    .attr("font-size", `${fs}px`).attr("fill", "#888")
+                    .attr("font-size", `${fs}px`).attr("fill", hcMuted2)
                     .text(res.times[t]);
             }
 
@@ -403,7 +413,14 @@ export class Visual implements IVisual {
         // (stayed) ribbons and cross-source (moved) ribbons visually cluster
         // together, so a churny time slice reads immediately as "lots of
         // different source colours flowing in".
-        const colorFor = (group: string): string => this.colorPalette.getColor(group).value;
+        const hc = this.colorPalette.isHighContrast === true;
+        const hcFg = this.colorPalette.foreground?.value || "#000000";
+        const hcMuted = hc ? hcFg : "#666";
+        const hcMuted2 = hc ? hcFg : "#888";
+        const hcTitle = hc ? hcFg : "#555";
+        const hcLabel = hc ? hcFg : "#444";
+        const colorFor = (group: string): string =>
+            hc ? hcFg : this.colorPalette.getColor(group).value;
         const tension = Math.max(0, Math.min(100, L.lineTension.value ?? 50)) / 100 * 0.5;
 
         // ── Ribbons ────────────────────────────────────────────
@@ -476,7 +493,7 @@ export class Visual implements IVisual {
                         .attr("text-anchor", s.tIdx === 0 ? "end" : "start")
                         .attr("dominant-baseline", "middle")
                         .attr("font-size", `${Math.max(9, fs - 2)}px`)
-                        .attr("fill", "#666")
+                        .attr("fill", hcMuted)
                         .text(`${g.count}`);
                 }
             }
@@ -491,7 +508,7 @@ export class Visual implements IVisual {
                     .attr("x", m.left - 20)
                     .attr("y", (y(g.y0) + y(g.y1)) / 2)
                     .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-                    .attr("font-size", `${fs}px`).attr("font-weight", 600).attr("fill", "#555")
+                    .attr("font-size", `${fs}px`).attr("font-weight", 600).attr("fill", hcTitle)
                     .text(g.group);
             }
         }
@@ -503,7 +520,7 @@ export class Visual implements IVisual {
             ax.append("text")
                 .attr("x", x(t)).attr("y", m.top - 10)
                 .attr("text-anchor", "middle")
-                .attr("font-size", `${fs}px`).attr("fill", "#888")
+                .attr("font-size", `${fs}px`).attr("fill", hcMuted2)
                 .text(flow.times[t]);
         }
 
@@ -517,7 +534,7 @@ export class Visual implements IVisual {
         this.container.append("text")
             .attr("x", width - m.right).attr("y", m.top - 10)
             .attr("text-anchor", "end")
-            .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("fill", "#666")
+            .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("fill", hcMuted)
             .text(`Aggregate · ${flow.totalEntities} entities · ${churn}% of transitions cross groups`
                 + (flow.droppedTransitions ? ` · ${flow.droppedTransitions} left` : "")
                 + (flow.enteredTransitions ? ` · ${flow.enteredTransitions} joined` : ""));
@@ -556,9 +573,10 @@ export class Visual implements IVisual {
         if (!hasE) missing.push("Entity");
         if (!hasT) missing.push("Time Step");
         if (!hasG) missing.push("Group");
+        const hcL = this.colorPalette.isHighContrast === true ? (this.colorPalette.foreground?.value || "#000") : "#666";
         g.append("text").attr("text-anchor", "middle").attr("y", 22)
             .attr("font-family", "Segoe UI, sans-serif").attr("font-size", "12px")
-            .attr("fill", "#666")
+            .attr("fill", hcL)
             .text(missing.length ? "Add fields:  " + missing.join("   +   ") : "Add Entity, Time Step and Group to begin");
         g.append("text").attr("text-anchor", "middle").attr("y", 44)
             .attr("font-family", "Segoe UI, sans-serif").attr("font-size", "11px")
