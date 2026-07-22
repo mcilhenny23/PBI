@@ -273,9 +273,14 @@ export class Visual implements IVisual {
                 r = Math.max(0.75, nominalR * factor);
             }
 
+            // High contrast: dot fill collapses to foreground; threshold split
+            // is expressed by dashed stroke (already done for the line at
+            // ~line 355) instead of a distinct color.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
             const opacity = Math.max(0, Math.min(1, dp.dotOpacity.value / 100));
-            const baseColor = dp.dotColor.value.value;
-            const thColor = th.thresholdColor.value.value;
+            const baseColor = hc ? hcFg : dp.dotColor.value.value;
+            const thColor = hc ? hcFg : th.thresholdColor.value.value;
 
             // ── Draw each group ────────────────────────────────────
             activeGroups.forEach((g, gi) => {
@@ -299,7 +304,7 @@ export class Visual implements IVisual {
                         });
                 }
                 const groupColor = (G > 1 && !showTh)
-                    ? this.colorPalette.getColor(g.name).value
+                    ? (hc ? hcFg : this.colorPalette.getColor(g.name).value)
                     : baseColor;
 
                 // Band / column geometry and baseline.

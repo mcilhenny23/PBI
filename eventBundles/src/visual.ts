@@ -249,7 +249,12 @@ export class Visual implements IVisual {
             // ── Draw ───────────────────────────────────────────────
             const opacity = Math.max(0, Math.min(1, (AP.bundleOpacity.value ?? 60) / 100));
             const colorBy = String(AP.colorBy.value?.value ?? "event-type");
+            // High contrast: two-color palette can't distinguish events by hue,
+            // so ribbons collapse to the foreground.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
             const colorOf = (ev: string): string => {
+                if (hc) return hcFg;
                 if (colorBy === "uniform") return "#4682B4";
                 if (colorBy === "event-category") {
                     return this.colorPalette.getColor(this.eventCategory.get(ev) || "—").value;

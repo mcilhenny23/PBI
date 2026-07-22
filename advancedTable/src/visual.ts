@@ -219,10 +219,19 @@ export class Visual implements IVisual {
         this.container.innerHTML = "";
         const s = this.formattingSettings;
         const fs = Math.max(9, Math.min(20, s.tableCard.fontSize.value ?? 12));
-        const bandingColor = s.tableCard.bandingColor.value.value === DEFAULT_BANDING ? "#f5f5f5" : s.tableCard.bandingColor.value.value;
-        const sparkColor = s.sparklinesCard.sparkColor.value.value === DEFAULT_SPARK_COLOR
-            ? (this.colorPalette.getColor("atSpark")?.value || DEFAULT_SPARK_COLOR)
-            : s.sparklinesCard.sparkColor.value.value;
+        // High contrast: banding disappears (background), sparklines + rule
+        // icons collapse to the foreground.
+        const hc = this.colorPalette.isHighContrast === true;
+        const hcFg = this.colorPalette.foreground?.value || "#000000";
+        const hcBg = this.colorPalette.background?.value || "#ffffff";
+        const bandingColor = hc
+            ? hcBg
+            : (s.tableCard.bandingColor.value.value === DEFAULT_BANDING ? "#f5f5f5" : s.tableCard.bandingColor.value.value);
+        const sparkColor = hc
+            ? hcFg
+            : (s.sparklinesCard.sparkColor.value.value === DEFAULT_SPARK_COLOR
+                ? (this.colorPalette.getColor("atSpark")?.value || DEFAULT_SPARK_COLOR)
+                : s.sparklinesCard.sparkColor.value.value);
         const sparkW = Math.max(20, s.sparklinesCard.sparkWidth.value ?? 90);
         const sparkH = Math.max(10, s.sparklinesCard.sparkHeight.value ?? 22);
         const sparkType = String(s.sparklinesCard.sparkType.value?.value ?? "line");
@@ -234,14 +243,14 @@ export class Visual implements IVisual {
                 op:  String(s.rulesCard.rule1Operator.value?.value ?? "<"),
                 v:   s.rulesCard.rule1Value.value ?? 0,
                 icon:String(s.rulesCard.rule1Icon.value?.value ?? "▼"),
-                color: s.rulesCard.rule1Color.value.value
+                color: hc ? hcFg : s.rulesCard.rule1Color.value.value
             },
             {
                 col: String(s.rulesCard.rule2Column.value ?? "").trim(),
                 op:  String(s.rulesCard.rule2Operator.value?.value ?? ">="),
                 v:   s.rulesCard.rule2Value.value ?? 0,
                 icon:String(s.rulesCard.rule2Icon.value?.value ?? "▲"),
-                color: s.rulesCard.rule2Color.value.value
+                color: hc ? hcFg : s.rulesCard.rule2Color.value.value
             }
         ].filter(r => r.col);
 

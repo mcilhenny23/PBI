@@ -273,9 +273,15 @@ export class Visual implements IVisual {
             // so the categorical bin ramp doesn't apply.
             const continuous = stacked
                 || (String(die.colorMode.value?.value ?? "categorical") === "continuous" && valIdx >= 0);
+            // High contrast: categorical bins collapse to foreground; the
+            // continuous ramp goes background→foreground so yield still reads
+            // as darker-vs-lighter dies.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
+            const hcBg = this.colorPalette.background?.value || "#ffffff";
             const bins = Array.from(new Set(dies.map(d => d.bin).filter((b): b is string => b != null))).sort();
             const binColor = new Map<string, string>();
-            for (const b of bins) binColor.set(b, this.colorPalette.getColor(b).value);
+            for (const b of bins) binColor.set(b, hc ? hcFg : this.colorPalette.getColor(b).value);
 
             let valueScale: d3.ScaleLinear<string, string> | null = null;
             let valueDomain: [number, number] = [0, 1];
@@ -291,9 +297,11 @@ export class Visual implements IVisual {
                 valueDomain = [lo, hi];
                 // Fail rate reads "high = bad", so the ramp is reversed against
                 // the value ramp, where high is normally good yield.
-                const ramp = (stacked && stackedIsRate)
-                    ? [cs.colorScaleHigh.value.value, cs.colorScaleMid.value.value, cs.colorScaleLow.value.value]
-                    : [cs.colorScaleLow.value.value, cs.colorScaleMid.value.value, cs.colorScaleHigh.value.value];
+                const ramp = hc
+                    ? [hcBg, d3.interpolateRgb(hcBg, hcFg)(0.5), hcFg]
+                    : ((stacked && stackedIsRate)
+                        ? [cs.colorScaleHigh.value.value, cs.colorScaleMid.value.value, cs.colorScaleLow.value.value]
+                        : [cs.colorScaleLow.value.value, cs.colorScaleMid.value.value, cs.colorScaleHigh.value.value]);
                 valueScale = d3.scaleLinear<string>()
                     .domain([lo, (lo + hi) / 2, hi])
                     .range(ramp)
@@ -349,7 +357,7 @@ export class Visual implements IVisual {
 
                 // Dies on canvas.
                 ctx.lineWidth = borderW;
-                ctx.strokeStyle = die.dieBorderColor.value.value;
+                ctx.strokeStyle = hc ? hcFg : die.dieBorderColor.value.value;
                 for (const d of waferDies) {
                     const gx = d.x - minX, gy = d.y - minY;
                     if (shape === "circle") {
@@ -395,7 +403,7 @@ export class Visual implements IVisual {
                         this.overlay.append("circle")
                             .attr("cx", cx).attr("cy", cy).attr("r", rPx * (z / zc))
                             .attr("fill", "none")
-                            .attr("stroke", zn.zoneLineColor.value.value)
+                            .attr("stroke", hc ? hcFg : zn.zoneLineColor.value.value)
                             .attr("stroke-opacity", op)
                             .attr("stroke-width", 1)
                             .attr("stroke-dasharray", "3 3");
@@ -421,7 +429,7 @@ export class Visual implements IVisual {
                             if (d.bin === autoPassBin) buckets[z].pass++;
                         }
                         const statFmt = String(zn.zoneStatFormat.value?.value ?? "yield");
-                        const statColor = zn.zoneStatColor.value.value;
+                        const statColor = hc ? hcFg : zn.zoneStatColor.value.value;
                         const fsZone = Math.max(9, Math.min(14, rPx * 0.06));
                         // Label at the top of each ring, sitting just outside
                         // the inner radius so it reads inside the ring segment
@@ -461,7 +469,7 @@ export class Visual implements IVisual {
                     const rSizeY = Math.max(1, Math.round(rt.reticleSizeY.value || 2));
                     const rOffX = ((Math.round(rt.reticleOffsetX.value || 0) % rSizeX) + rSizeX) % rSizeX;
                     const rOffY = ((Math.round(rt.reticleOffsetY.value || 0) % rSizeY) + rSizeY) % rSizeY;
-                    const rColor = rt.reticleColor.value.value;
+                    const rColor = hc ? hcFg : rt.reticleColor.value.value;
                     const rOp = Math.max(0, Math.min(1, (rt.reticleLineOpacity.value ?? 70) / 100));
                     const rLw = Math.max(0.2, rt.reticleLineWidth.value ?? 1.5);
 

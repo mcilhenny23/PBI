@@ -245,8 +245,16 @@ export class Visual implements IVisual {
                 if (w > 0 && w < minPos) minPos = w;
             }
             if (!Number.isFinite(minPos)) minPos = 1;
+            // High contrast: swap the configured ramp for a background→foreground
+            // ramp so weight still reads as darker-vs-lighter cells.
+            const cp = this.host.colorPalette;
+            const hc = cp.isHighContrast === true;
+            const hcFg = cp.foreground?.value || "#000000";
+            const hcBg = cp.background?.value || "#ffffff";
             const scaleMode = String(col.colorScale.value?.value ?? "linear");
-            const interp = d3.interpolateRgb(col.colorRampLow.value.value, col.colorRampHigh.value.value);
+            const rampLow = hc ? hcBg : col.colorRampLow.value.value;
+            const rampHigh = hc ? hcFg : col.colorRampHigh.value.value;
+            const interp = d3.interpolateRgb(rampLow, rampHigh);
             const tFor = (w: number): number => {
                 if (w <= 0 || maxW <= 0) return 0;
                 if (scaleMode === "sqrt") return Math.sqrt(w / maxW);
@@ -282,7 +290,7 @@ export class Visual implements IVisual {
             // ── Cells on canvas ────────────────────────────────────
             // Paint the "zero" background once, then only non-zero cells — much
             // cheaper than N² fills on a sparse network.
-            ctx.fillStyle = col.colorRampLow.value.value;
+            ctx.fillStyle = rampLow;
             ctx.fillRect(left, top, size, size);
 
             for (let r = 0; r < N; r++) {
@@ -312,7 +320,7 @@ export class Visual implements IVisual {
 
             // ── Cluster boundaries ─────────────────────────────────
             if (clu.showClusterBoundaries.value && mode === "cluster" && boundaries.length) {
-                const bc = clu.clusterBoundaryColor.value.value;
+                const bc = hc ? hcFg : clu.clusterBoundaryColor.value.value;
                 for (const b of boundaries) {
                     const p = top + b * cell, q = left + b * cell;
                     this.overlay.append("line")

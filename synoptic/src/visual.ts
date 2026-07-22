@@ -171,16 +171,24 @@ export class Visual implements IVisual {
             this.svg.attr("viewBox", `${vx} ${vy} ${vw} ${vh}`)
                 .attr("preserveAspectRatio", "xMidYMid meet");
 
+            // High contrast: values map onto a foreground-to-background ramp
+            // instead of the configured two-color scale, so critical/normal
+            // still reads as darker-vs-lighter in the accessibility palette.
+            const cp = this.host.colorPalette;
+            const hc = cp.isHighContrast === true;
+            const hcFg = cp.foreground?.value || "#000000";
+            const hcBg = cp.background?.value || "#ffffff";
+
             // ── Re-render from the model ───────────────────────────
             const ctx = {
-                defaultFill: T.defaultFillColor.value.value,
+                defaultFill: hc ? hcBg : T.defaultFillColor.value.value,
                 showIds: T.showElementIds.value,
                 bindings,
                 mode: String(V.bindingMode.value?.value ?? "fill-level"),
                 lo: V.valueLow.value ?? 0,
                 hi: V.valueHigh.value ?? 100,
-                colorLow: V.colorLow.value.value,
-                colorHigh: V.colorHigh.value.value,
+                colorLow: hc ? hcBg : V.colorLow.value.value,
+                colorHigh: hc ? hcFg : V.colorHigh.value.value,
                 alarm: A.alarmThreshold.value ?? 90,
                 blink: A.blinkOnAlarm.value,
                 flow: A.flowAnimation.value

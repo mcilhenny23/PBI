@@ -373,6 +373,12 @@ export class Visual implements IVisual {
             vlabel(C, 6, 26, titleC, "start");
 
             // ── 10. Encodings ──────────────────────────────────────
+            // High contrast: point fill collapses to foreground; color ramp
+            // uses background→foreground so continuous encoding survives.
+            const cp = this.host.colorPalette;
+            const hc = cp.isHighContrast === true;
+            const hcFg = cp.foreground?.value || "#000000";
+            const hcBg = cp.background?.value || "#ffffff";
             let colorScale: d3.ScaleLinear<string, string> | null = null;
             let colorDomain: [number, number] = [0, 1];
             if (hasColor) {
@@ -381,7 +387,9 @@ export class Visual implements IVisual {
                 if (colorDomain[0] === colorDomain[1]) colorDomain[1] = colorDomain[0] + 1;
                 colorScale = d3.scaleLinear<string>()
                     .domain(colorDomain)
-                    .range([cscale.colorScaleLow.value.value, cscale.colorScaleHigh.value.value])
+                    .range(hc
+                        ? [hcBg, hcFg]
+                        : [cscale.colorScaleLow.value.value, cscale.colorScaleHigh.value.value])
                     .interpolate(d3.interpolateRgb);
             }
 
@@ -395,7 +403,7 @@ export class Visual implements IVisual {
             }
 
             const opacity = Math.max(0, Math.min(1, pts.pointOpacity.value / 100));
-            const baseColor = pts.pointColor.value.value;
+            const baseColor = hc ? hcFg : pts.pointColor.value.value;
 
             // ── 11. Points ─────────────────────────────────────────
             const gPts = this.container.append("g").classed("points", true);

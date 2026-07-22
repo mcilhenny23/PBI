@@ -216,9 +216,13 @@ export class Visual implements IVisual {
             }
 
             // ── Colors ─────────────────────────────────────────────
+            // High contrast: categorical colors collapse to the foreground —
+            // the two-color palette can't encode categories.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
             this.colorOf = new Map<string, string>();
             const catValues = Array.from(new Set(intervals.map(i => i.category).filter((c): c is string => c != null)));
-            for (const c of catValues) this.colorOf.set(c, this.colorPalette.getColor(c).value);
+            for (const c of catValues) this.colorOf.set(c, hc ? hcFg : this.colorPalette.getColor(c).value);
 
             // ── Lane packing per track ─────────────────────────────
             const packing = String(tk.packingMode.value?.value ?? "stack");
