@@ -66,6 +66,18 @@ function buildLut(name: string): Uint8ClampedArray {
     return lut;
 }
 
+/** HC ramp: linear background → foreground so magnitude reads without color. */
+function buildLutHC(fg: string, bg: string): Uint8ClampedArray {
+    const interp = d3.interpolateRgb(bg, fg);
+    const lut = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+        const c = d3.color(interp(i / 255));
+        const rgb = c ? c.rgb() : { r: 0, g: 0, b: 0 };
+        lut[i * 3] = rgb.r; lut[i * 3 + 1] = rgb.g; lut[i * 3 + 2] = rgb.b;
+    }
+    return lut;
+}
+
 interface Panel {
     name: string;
     spec: Spectrogram;
@@ -310,7 +322,17 @@ export class Visual implements IVisual {
             if (plotW < 20 || panelH < 16) { this.events.renderingFinished(options); return; }
 
             // ── Color + magnitude mapping ──────────────────────────
-            const lut = buildLut(String(D.colorRamp.value?.value ?? "viridis"));
+            // High contrast: swap the configured ramp for a background→foreground
+            // linear ramp so the heatmap stays readable in the accessibility
+            // palette. Overlays (order markers, harmonic cursors, alarm bands)
+            // route to the foreground below.
+            const cp = this.host.colorPalette;
+            const hc = cp.isHighContrast === true;
+            const hcFg = cp.foreground?.value || "#000000";
+            const hcBg = cp.background?.value || "#ffffff";
+            const lut = hc
+                ? buildLutHC(hcFg, hcBg)
+                : buildLut(String(D.colorRamp.value?.value ?? "viridis"));
             const useDb = String(D.magnitudeScale.value?.value ?? "db") === "db";
             const dbMin = D.minMagnitude.value ?? -80;
             const dbMax = D.maxMagnitude.value ?? 0;

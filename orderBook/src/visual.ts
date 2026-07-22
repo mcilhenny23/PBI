@@ -62,6 +62,18 @@ function buildLut(name: string): Uint8ClampedArray {
     return lut;
 }
 
+/** HC ramp: linear background → foreground so depth reads without color. */
+function buildLutHC(fg: string, bg: string): Uint8ClampedArray {
+    const interp = d3.interpolateRgb(bg, fg);
+    const lut = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+        const c = d3.color(interp(i / 255));
+        const rgb = c ? c.rgb() : { r: 0, g: 0, b: 0 };
+        lut[i * 3] = rgb.r; lut[i * 3 + 1] = rgb.g; lut[i * 3 + 2] = rgb.b;
+    }
+    return lut;
+}
+
 const numFmt = d3.format(",.6~g");
 const volFmt = d3.format(",.4~s");
 
@@ -249,7 +261,17 @@ export class Visual implements IVisual {
             if (plotW < 20 || plotH < 20) { this.events.renderingFinished(options); return; }
 
             // ── Heatmap: build at matrix resolution, scale up ──────
-            const lut = buildLut(String(H.colorRamp.value?.value ?? "blues"));
+            // High contrast: swap the configured ramp for a background→foreground
+            // linear ramp so depth density stays visible in the accessibility
+            // palette. Overlays (bid/ask lines, trade circles) below route to
+            // the foreground.
+            const cp = this.host.colorPalette;
+            const hc = cp.isHighContrast === true;
+            const hcFg = cp.foreground?.value || "#000000";
+            const hcBg = cp.background?.value || "#ffffff";
+            const lut = hc
+                ? buildLutHC(hcFg, hcBg)
+                : buildLut(String(H.colorRamp.value?.value ?? "blues"));
             const off = document.createElement("canvas");
             off.width = nT; off.height = nP;
             const octx = off.getContext("2d")!;
