@@ -464,7 +464,11 @@ export class Visual implements IVisual {
                     const gy = Math.floor((my - L.originY) / L.cell);
                     const bucket = L.dieMap.get(`${gx},${gy}`);
                     if (!bucket?.length) continue;
-                    const d = bucket[0];
+                    // Canvas paint is last-write-wins (bucket entries are pushed
+                    // and painted in the same order), so the die visible in the
+                    // cell is the LAST one in the bucket. Reading bucket[0] would
+                    // label a red cell with the PASS row's details.
+                    const d = bucket[bucket.length - 1];
                     const items: VisualTooltipDataItem[] = [];
                     if (hasWafer && d.wafer) items.push({ displayName: "Wafer", value: d.wafer });
                     items.push({ displayName: xTitle, value: String(d.x) });
@@ -524,7 +528,13 @@ export class Visual implements IVisual {
                     const gx = Math.floor((mx - L.originX) / L.cell);
                     const gy = Math.floor((my - L.originY) / L.cell);
                     const bucket = L.dieMap.get(`${gx},${gy}`);
-                    const id = bucket?.find(d => !!d.selectionId)?.selectionId;
+                    if (!bucket?.length) continue;
+                    // Same last-wins rule as the tooltip — the context menu
+                    // should anchor to the die the user actually SEES.
+                    let id: ISelectionId | undefined;
+                    for (let i = bucket.length - 1; i >= 0; i--) {
+                        if (bucket[i].selectionId) { id = bucket[i].selectionId; break; }
+                    }
                     if (!id) continue;
                     this.selectionManager.showContextMenu(id, { x: event.clientX, y: event.clientY });
                     return;
