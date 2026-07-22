@@ -55,6 +55,14 @@
                 "highlightOpacity": { "type": { "numeric": true } }
             }
         },
+        "regimes": {
+            "properties": {
+                "showRegimes": { "type": { "bool": true } },
+                "regimeCount": { "type": { "numeric": true } },
+                "showArcCurve": { "type": { "bool": true } },
+                "regimeColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
         "axis": {
             "properties": {
                 "showAxis": { "type": { "bool": true } },

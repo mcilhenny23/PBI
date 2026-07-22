@@ -191,6 +191,49 @@ class AxisCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Regime Segmentation — the FLUSS arc-curve extension. Motifs answer "what
+ * repeats?", discords answer "what stands alone?"; FLUSS answers a third
+ * question the profile alone can't: "when did behaviour change?"
+ */
+class RegimeCard extends FormattingSettingsCard {
+    showRegimes = new formattingSettings.ToggleSwitch({
+        name: "showRegimes",
+        displayName: "Show regime boundaries",
+        description: "Runs the FLUSS arc-curve extension and marks positions where the signal's character changed with a dashed vertical line.",
+        value: false
+    });
+
+    regimeCount = new formattingSettings.NumUpDown({
+        name: "regimeCount",
+        displayName: "Boundaries to mark",
+        description: "Top-N lowest points of the corrected arc curve. Boundaries above 0.95 CAC are filtered out — that's the noise floor.",
+        value: 3
+    });
+
+    showArcCurve = new formattingSettings.ToggleSwitch({
+        name: "showArcCurve",
+        displayName: "Overlay arc curve on profile strip",
+        description: "Draws the corrected arc curve as a line over the profile strip. Its minima are where the boundaries sit.",
+        value: true
+    });
+
+    regimeColor = new formattingSettings.ColorPicker({
+        name: "regimeColor",
+        displayName: "Regime boundary color",
+        value: { value: "#8b5cf6" }
+    });
+
+    name: string = "regimes";
+    displayName: string = "Regime Segmentation";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showRegimes,
+        this.regimeCount,
+        this.showArcCurve,
+        this.regimeColor
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -206,7 +249,8 @@ class InteractionsCard extends FormattingSettingsCard {
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     profileCard = new ProfileCard();
     displayCard = new DisplayCard();
+    regimeCard = new RegimeCard();
     axisCard = new AxisCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.profileCard, this.displayCard, this.axisCard, this.interactionsCard];
+    cards = [this.profileCard, this.displayCard, this.regimeCard, this.axisCard, this.interactionsCard];
 }

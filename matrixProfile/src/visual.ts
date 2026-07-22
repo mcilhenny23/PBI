@@ -18,7 +18,8 @@ import DataView = powerbi.DataView;
 import { VisualFormattingSettingsModel } from "./settings";
 import {
     stomp, findMotifs, findDiscords, panMatrixProfile, candidateLengths,
-    MatrixProfileResult, MotifPair, Discord, PanProfile
+    segmentByArcCurve,
+    MatrixProfileResult, MotifPair, Discord, PanProfile, RegimeSegmentation
 } from "./matrixProfile";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
@@ -119,6 +120,7 @@ export class Visual implements IVisual {
                 .populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews?.[0]);
             const P = this.formattingSettings.profileCard;
             const D = this.formattingSettings.displayCard;
+            const R = this.formattingSettings.regimeCard;
             const A = this.formattingSettings.axisCard;
 
             const width = options.viewport.width;
@@ -421,6 +423,67 @@ export class Visual implements IVisual {
             }
 
             }   // end of single-length profile strip
+
+            // ── FLUSS regime boundaries ────────────────────────────
+            // Computed from the matrix-profile indices — cheap O(n) after the
+            // O(n²) STOMP that's already cached. Drawn on top of the series
+            // AND the profile strip as dashed vertical lines, so a boundary
+            // reads simultaneously as "here in the signal" and "here in the
+            // profile shape".
+            let regimes: RegimeSegmentation | null = null;
+            if (R.showRegimes.value && res) {
+                regimes = segmentByArcCurve(
+                    res.mpi,
+                    Math.max(1, Math.round(m * exclusionPct / 100)),
+                    Math.max(1, Math.round(R.regimeCount.value ?? 3))
+                );
+                const rColor = R.regimeColor.value.value;
+
+                // Optional CAC overlay on the profile strip. Same y-range
+                // (0..1 after clamp) mapped to the strip's height. Skipped in
+                // pan-heatmap mode because the strip is already used as a
+                // heatmap and the overlay would fight for space.
+                if (R.showArcCurve.value && !(multiLength && pan)) {
+                    const cac = regimes.cac;
+                    // The last few positions have no valid mpi, so the tail
+                    // of cac reads 1 by construction and would flatten the
+                    // right edge. Draw only where the matrix profile itself
+                    // is finite.
+                    const cacPath = d3.line<number>()
+                        .defined((_, i) => Number.isFinite(res.mp[i]))
+                        .x((_, i) => x(i))
+                        .y(v => profY + profH - v * profH);
+                    this.container.append("path")
+                        .datum(Array.from(cac))
+                        .attr("d", cacPath)
+                        .attr("fill", "none")
+                        .attr("stroke", rColor)
+                        .attr("stroke-width", 1.2)
+                        .attr("stroke-dasharray", "5 3")
+                        .attr("opacity", 0.9);
+                }
+
+                // Boundary lines through both panels.
+                for (let i = 0; i < regimes.boundaries.length; i++) {
+                    const bi = regimes.boundaries[i];
+                    const bx = x(bi);
+                    this.container.append("line")
+                        .attr("x1", bx).attr("x2", bx)
+                        .attr("y1", serY).attr("y2", profY + profH)
+                        .attr("stroke", rColor).attr("stroke-width", 1.5)
+                        .attr("stroke-dasharray", "6 3")
+                        .attr("opacity", 0.9)
+                        .attr("pointer-events", "none");
+                    this.container.append("text")
+                        .attr("x", bx).attr("y", serY - 2)
+                        .attr("text-anchor", "middle")
+                        .attr("font-size", `${Math.max(9, fs - 1)}px`)
+                        .attr("fill", rColor).attr("font-weight", 600)
+                        .attr("stroke", "#fff").attr("stroke-width", 3)
+                        .attr("paint-order", "stroke")
+                        .text(`regime ${i + 1}`);
+                }
+            }
 
             // Panel label for the strip.
             this.container.append("text")

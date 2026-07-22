@@ -523,3 +523,127 @@ export function panMatrixProfile(
         suggestedDiscordLength: bestDiscord.m
     };
 }
+
+// ── FLUSS regime change / semantic segmentation ─────────────────
+//
+// Motifs and discords answer "what repeats?" and "what stands alone?".
+// FLUSS answers a third question the matrix profile alone can't: **when did
+// behaviour change?**
+//
+// Idea: every subsequence points to its nearest-neighbour subsequence via
+// mpi. Those pointers form arcs across the time axis. When behaviour is
+// stable, arcs stay short and cluster locally; when the signal enters a new
+// regime, the previous regime's subsequences have no partner in the new
+// regime, so arcs stop crossing the boundary. The count of arcs crossing
+// each position is the Arc Curve; boundaries are its minima.
+//
+// The raw count has a triangular bias — even random arcs cross the middle
+// more than the ends — so FLUSS divides by that idealized curve to get the
+// Corrected Arc Curve (CAC). Boundaries are the CAC's minima below 1.
+//
+// Reference: Gharghabi et al., 2017, "Matrix Profile VIII: Domain Agnostic
+// Online Semantic Segmentation at Superhuman Performance Levels".
+
+export interface RegimeSegmentation {
+    /** Corrected arc curve, one value per subsequence position. Range ~[0,1]. */
+    cac: Float64Array;
+    /** Positions of detected regime boundaries, sorted ascending. */
+    boundaries: number[];
+    /** CAC value at each boundary (lower = more distinctive). */
+    boundaryScores: number[];
+}
+
+/**
+ * Compute the arc curve and pick regime boundaries as its lowest minima.
+ *
+ * `exclusion` matches STOMP's exclusion zone — the same trivial-match
+ * distance used to build the profile is used to exclude boundary candidates
+ * near known ones (avoids stacking three boundaries on top of one broad dip).
+ */
+export function segmentByArcCurve(
+    mpi: Int32Array,
+    exclusion: number,
+    maxBoundaries: number
+): RegimeSegmentation {
+    const n = mpi.length;
+    if (n === 0) {
+        return { cac: new Float64Array(0), boundaries: [], boundaryScores: [] };
+    }
+
+    // Raw arc count: for each i, how many arcs (j → mpi[j]) span position i.
+    // Computed in O(n) with a difference-array trick — each arc contributes +1
+    // to the span [lo+1, hi], expressed as ac[lo+1]++, ac[hi+1]-- then prefix
+    // sum. No O(n²) sweep.
+    const raw = new Float64Array(n);
+    for (let j = 0; j < n; j++) {
+        const nn = mpi[j];
+        if (nn < 0 || nn === j) continue;
+        const lo = j < nn ? j : nn;
+        const hi = j < nn ? nn : j;
+        // Arc crosses positions lo+1..hi inclusive (endpoints don't cross).
+        if (lo + 1 < n) raw[lo + 1] += 1;
+        if (hi + 1 < n) raw[hi + 1] -= 1;
+    }
+    let running = 0;
+    for (let i = 0; i < n; i++) { running += raw[i]; raw[i] = running; }
+
+    // Idealized (baseline) arc curve for random pairs: expected number of
+    // arcs crossing position i under uniform-random mpi is the triangular
+    // 2 * i * (n - i) / n. This normalizes the U-shape out of the raw curve.
+    const cac = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+        const ideal = 2 * i * (n - i) / n;
+        cac[i] = ideal > 0 ? Math.min(1, raw[i] / ideal) : 1;
+    }
+    // The very ends are always ~1 (few arcs cross the extremes) and don't
+    // constitute meaningful regime changes; force them to 1 to keep the peak
+    // picker away from them.
+    const guard = Math.max(exclusion, Math.floor(n * 0.05));
+    for (let i = 0; i < Math.min(guard, n); i++) cac[i] = 1;
+    for (let i = Math.max(0, n - guard); i < n; i++) cac[i] = 1;
+
+    // Boundary picking: real regime changes produce CAC dips well under
+    // 0.1; the shoulders of those dips sit at 0.2-0.4. A cutoff of 0.15
+    // draws the line cleanly on synthetic three-regime signals — real
+    // boundaries admit, shoulders reject. Tighter than the FLUSS paper's
+    // 0.9, and picks fewer things: the philosophy here is "no clear
+    // boundary found" is a valid answer, better than lighting up shoulders
+    // as false positives.
+    //
+    // The valley-walk still peels a whole dip per pick (so a subtle
+    // shoulder that happens to be < 0.15 gets absorbed into its parent
+    // dip's exclusion rather than counting as a separate boundary), with
+    // a max-walk cap so an unusually noisy regime doesn't consume the
+    // whole signal.
+    const cutoff = 0.15;
+    const recoveryLevel = 0.7;
+    const maxWalk = Math.max(exclusion * 5, Math.floor(n * 0.1));
+    const scratch = Float64Array.from(cac);
+    const boundaries: number[] = [];
+    const boundaryScores: number[] = [];
+    const k = Math.max(1, Math.min(50, maxBoundaries));
+    for (let q = 0; q < k; q++) {
+        let bestVal = Infinity, bestIdx = -1;
+        for (let i = 0; i < n; i++) {
+            if (scratch[i] < bestVal) { bestVal = scratch[i]; bestIdx = i; }
+        }
+        if (bestIdx < 0 || bestVal >= cutoff) break;
+        boundaries.push(bestIdx);
+        boundaryScores.push(bestVal);
+        // Walk left until CAC recovers, hits an excluded slot, or hits cap.
+        let lo = bestIdx;
+        const leftLimit = Math.max(0, bestIdx - maxWalk);
+        while (lo > leftLimit && Number.isFinite(scratch[lo - 1]) && scratch[lo - 1] < recoveryLevel) lo--;
+        let hi = bestIdx;
+        const rightLimit = Math.min(n - 1, bestIdx + maxWalk);
+        while (hi < rightLimit && Number.isFinite(scratch[hi + 1]) && scratch[hi + 1] < recoveryLevel) hi++;
+        for (let i = lo; i <= hi; i++) scratch[i] = Infinity;
+    }
+    // Sort by position for rendering.
+    const order = boundaries.map((_, i) => i).sort((a, b) => boundaries[a] - boundaries[b]);
+    return {
+        cac,
+        boundaries: order.map(i => boundaries[i]),
+        boundaryScores: order.map(i => boundaryScores[i])
+    };
+}
