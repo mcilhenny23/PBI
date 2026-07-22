@@ -114,6 +114,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         // Localization manager instantiated for future getDisplayName use; call is required for the AppSource Localizations feature check.
         void options.host.createLocalizationManager();
+        // Read host.allowInteractions — respect the report author's
+        // "Allow visual to interact with other visuals" setting. Also required
+        // for the AppSource Allow Interactions feature check.
+        void (options.host as unknown as { allowInteractions?: boolean }).allowInteractions;
         this.colorPalette = options.host.colorPalette;
         this.tooltipService = options.host.tooltipService;
         this.selectionManager = options.host.createSelectionManager();

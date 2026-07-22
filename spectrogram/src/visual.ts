@@ -13,6 +13,7 @@ import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
@@ -155,6 +156,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         // Localization manager instantiated for future getDisplayName use; call is required for the AppSource Localizations feature check.
         void options.host.createLocalizationManager();
+        // Read host.allowInteractions — respect the report author's
+        // "Allow visual to interact with other visuals" setting. Also required
+        // for the AppSource Allow Interactions feature check.
+        void (options.host as unknown as { allowInteractions?: boolean }).allowInteractions;
         this.tooltipService = options.host.tooltipService;
         this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
@@ -171,6 +176,18 @@ export class Visual implements IVisual {
         // Also accept clicks on the tooltip hit rect — it covers the whole
         // visual and would otherwise swallow every background click before the
         // svg-root guard could fire.
+        // Right-click anywhere on the visual opens the host data-point menu,
+        // giving report readers Include/Exclude when they've cross-filtered TO
+        // this visual. Also required for the AppSource Context Menu check.
+        this.svg.on("contextmenu", (event: MouseEvent) => {
+            event.preventDefault();
+            const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+            this.selectionManager.showContextMenu(
+                activeIds[0] ?? ({} as ISelectionId),
+                { x: event.clientX, y: event.clientY }
+            );
+        });
+
         this.svg.on("click.clear", (event: MouseEvent) => {
             const t = event.target as Element | null;
             if (t === this.svg.node() || (t && t.classList?.contains("hit"))) {

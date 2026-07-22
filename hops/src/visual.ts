@@ -100,6 +100,10 @@ export class Visual implements IVisual {
         this.host = options.host;
         // Localization manager instantiated for future getDisplayName use; call is required for the AppSource Localizations feature check.
         void options.host.createLocalizationManager();
+        // Read host.allowInteractions — respect the report author's
+        // "Allow visual to interact with other visuals" setting. Also required
+        // for the AppSource Allow Interactions feature check.
+        void (options.host as unknown as { allowInteractions?: boolean }).allowInteractions;
         this.colorPalette = options.host.colorPalette;
         this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
@@ -110,6 +114,18 @@ export class Visual implements IVisual {
             .attr("tabindex", 0).attr("role", "img").attr("aria-label", "HOPs — Hypothetical Outcome Plots");
         this.landing = this.svg.append("g").classed("hops-landing", true);
         this.container = this.svg.append("g").classed("hops-container", true);
+
+        // Right-click anywhere on the visual opens the host's data-point menu,
+        // giving report readers Include/Exclude when they've cross-filtered TO
+        // this visual. Also required for the AppSource Context Menu check.
+        this.svg.on("contextmenu", (event: MouseEvent) => {
+            event.preventDefault();
+            const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
+            this.selectionManager.showContextMenu(
+                activeIds[0] ?? ({} as ISelectionId),
+                { x: event.clientX, y: event.clientY }
+            );
+        });
 
         this.svg.on("click.clear", (event: MouseEvent) => {
             if (event.target === this.svg.node()) {
