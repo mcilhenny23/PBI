@@ -161,7 +161,8 @@ export class Visual implements IVisual {
 
         this.root = d3.select(options.element).append("div").classed("spec-root", true);
         this.canvas = this.root.append("canvas").classed("spec-canvas", true);
-        this.svg = this.root.append("svg").classed("spec-svg", true);
+        this.svg = this.root.append("svg").classed("spec-svg", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Spectrogram");
         this.landing = this.svg.append("g").classed("spec-landing", true);
         this.overlay = this.svg.append("g").classed("spec-overlay", true);
 

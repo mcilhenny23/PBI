@@ -86,7 +86,8 @@ export class Visual implements IVisual {
 
         this.svg = d3.select(options.element)
             .append("svg")
-            .classed("ternary-plot", true);
+            .classed("ternary-plot", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Ternary plot");
 
         this.landing = this.svg.append("g")
             .classed("ternary-plot-landing", true);

@@ -106,7 +106,8 @@ export class Visual implements IVisual {
         // vector chrome — outline, zones, notch, labels and hit-testing.
         this.root = d3.select(options.element).append("div").classed("wafer-map", true);
         this.canvas = this.root.append("canvas").classed("wafer-canvas", true);
-        this.svg = this.root.append("svg").classed("wafer-svg", true);
+        this.svg = this.root.append("svg").classed("wafer-svg", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Wafer map");
         this.landing = this.svg.append("g").classed("wafer-landing", true);
         this.overlay = this.svg.append("g").classed("wafer-overlay", true);
     }

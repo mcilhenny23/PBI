@@ -109,7 +109,8 @@ export class Visual implements IVisual {
 
         this.svg = d3.select(options.element)
             .append("svg")
-            .classed("icon-array", true);
+            .classed("icon-array", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Icon array");
 
         this.landing = this.svg.append("g")
             .classed("icon-array-landing", true);

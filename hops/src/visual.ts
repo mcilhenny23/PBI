@@ -104,7 +104,8 @@ export class Visual implements IVisual {
 
         this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
-        this.svg = d3.select(options.element).append("svg").classed("hops", true);
+        this.svg = d3.select(options.element).append("svg").classed("hops", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "HOPs — Hypothetical Outcome Plots");
         this.landing = this.svg.append("g").classed("hops-landing", true);
         this.container = this.svg.append("g").classed("hops-container", true);
 

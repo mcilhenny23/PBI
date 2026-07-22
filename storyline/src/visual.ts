@@ -65,7 +65,8 @@ export class Visual implements IVisual {
 
         this.selectionManager.registerOnSelectCallback(() => this.applyExternalDim());
 
-        this.svg = d3.select(options.element).append("svg").classed("sl-root", true);
+        this.svg = d3.select(options.element).append("svg").classed("sl-root", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Storyline");
         this.landing = this.svg.append("g").classed("sl-landing", true);
         this.container = this.svg.append("g").classed("sl-container", true);
 

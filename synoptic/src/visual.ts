@@ -69,7 +69,8 @@ export class Visual implements IVisual {
         this.tooltipService = options.host.tooltipService;
         this.formattingSettingsService = new FormattingSettingsService();
 
-        this.svg = d3.select(options.element).append("svg").classed("syn-root", true);
+        this.svg = d3.select(options.element).append("svg").classed("syn-root", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Process synoptic diagram");
         this.defs = this.svg.append("defs");
         this.landing = this.svg.append("g").classed("syn-landing", true);
         this.scene = this.svg.append("g").classed("syn-scene", true);

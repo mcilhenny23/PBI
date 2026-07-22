@@ -60,7 +60,8 @@ export class Visual implements IVisual {
         this.tooltipService = options.host.tooltipService;
         this.formattingSettingsService = new FormattingSettingsService();
 
-        this.svg = d3.select(options.element).append("svg").classed("eb-root", true);
+        this.svg = d3.select(options.element).append("svg").classed("eb-root", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Event bundles");
         this.landing = this.svg.append("g").classed("eb-landing", true);
         this.container = this.svg.append("g").classed("eb-container", true);
 

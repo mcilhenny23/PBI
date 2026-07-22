@@ -216,6 +216,7 @@ export class Visual implements IVisual {
         const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         this.container.appendChild(svgEl);
         this.svg = d3.select(svgEl).classed("wgs-svg", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "WebGL scatter plot")
             .style("position", "absolute").style("left", "0").style("top", "0");
 
         this.hexG = this.svg.append("g").classed("wgs-hex", true);

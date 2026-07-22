@@ -105,7 +105,8 @@ export class Visual implements IVisual {
 
         this.selectionManager.registerOnSelectCallback(() => this.applySelectionStyling());
 
-        this.svg = d3.select(options.element).append("svg").classed("line-focus", true);
+        this.svg = d3.select(options.element).append("svg").classed("line-focus", true)
+            .attr("tabindex", 0).attr("role", "img").attr("aria-label", "Line focus chart");
         this.landing = this.svg.append("g").classed("lf-landing", true);
         this.plot = this.svg.append("g").classed("lf-plot", true);
         this.focusLayer = this.svg.append("g").classed("lf-focus", true);
