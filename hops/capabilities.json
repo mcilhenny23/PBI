@@ -17,6 +17,12 @@
             "name": "actuals",
             "kind": "Measure",
             "description": "Optional historical actuals line, drawn solid where non-null."
+        },
+        {
+            "displayName": "Ensemble ID",
+            "name": "ensembleId",
+            "kind": "Grouping",
+            "description": "Optional — the run/draw identifier when the ensemble is in long/tidy form (one row per axis × run). Bind this + a single Sample Draws measure instead of pivoting to a column per run. Ignored in wide mode."
         }
     ],
     "objects": {
@@ -75,9 +81,12 @@
         {
             "categorical": {
                 "categories": {
-                    "for": { "in": "axis" },
+                    "select": [
+                        { "for": { "in": "axis" } },
+                        { "for": { "in": "ensembleId" } }
+                    ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 10000 }
+                        "top": { "count": 30000 }
                     }
                 },
                 "values": {

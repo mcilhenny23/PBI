@@ -63,7 +63,7 @@ Four themes recur:
 
 ## 6. HOPs — animated uncertainty
 
-- **▶ Accept ensembles as rows** *(A)* — the ensemble currently must arrive as multiple measure *columns*. Almost all Monte Carlo output is rows with a draw id. This single change makes the visual work against data people already have. **Known limitation from build time.**
+- **✅ Accept ensembles as rows** *(A)* — new **Ensemble ID** grouping role. When bound + a single **Sample Draws** measure, the visual pivots (axis, ensembleId) rows into per-member arrays. Wide-format columns still work with Ensemble ID unbound — the branch is chosen from the bound roles, so existing bindings need no change. Axis order preserved from row-first-seen order (never alphabetical, else "Jan, Feb, Mar" reads as "Apr, Aug, Dec"). Actuals in long form arrive repeated per row and are collapsed to the first non-null seen at each axis point. Verified against the demand-ensemble sample: 120-row long file round-trips exactly to the 12-column wide file, same animation.
 - **○ Static / animated toggle** — pair with the Fan Chart so one report can show both.
 - **○ Frame scrubber** — step through outcomes manually.
 - **○ Speed tied to variance** — faster flicker where uncertainty is wider.

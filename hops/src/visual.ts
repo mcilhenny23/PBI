@@ -157,9 +157,22 @@ export class Visual implements IVisual {
             this.container.attr("transform", `translate(${this.margin.left},${this.margin.top})`);
 
             // ── Data ───────────────────────────────────────────────
+            // Two input shapes are supported. Which one is active depends on
+            // whether Ensemble ID is bound:
+            //   Wide (no Ensemble ID): each Sample Draws measure is a separate
+            //     column = one ensemble member. Axis has n rows.
+            //   Long (Ensemble ID bound): a single Sample Draws measure whose
+            //     values are pivoted by (axis, ensembleId) — n × k rows. The
+            //     visual pivots them back into per-member arrays.
             const dataView: DataView = options.dataViews?.[0];
             const cat = dataView?.categorical;
-            const axisCol = cat?.categories?.[0];
+            const cats = cat?.categories || [];
+            const findCat = (role: string): number =>
+                cats.findIndex(c => c.source.roles && c.source.roles[role]);
+            const axisIdx = findCat("axis");
+            const ensIdx = findCat("ensembleId");
+            const axisCol = axisIdx >= 0 ? cats[axisIdx] : undefined;
+            const ensCol = ensIdx >= 0 ? cats[ensIdx] : undefined;
             const vals = cat?.values;
             const sampleIdx = vals ? findRoleIndices(vals, "samples") : [];
             const actualsIdx = vals ? findRoleIndices(vals, "actuals")[0] ?? -1 : -1;
@@ -173,16 +186,71 @@ export class Visual implements IVisual {
             }
             this.landing.selectAll("*").remove();
 
-            const axisCats = axisCol.values.map(v => String(v));
             const axisTitle = axisCol.source.displayName || "Axis";
 
-            const members: Member[] = sampleIdx.map(idx => ({
-                name: vals[idx].source.displayName || "Draw",
-                values: axisCats.map((_, i) => safeNum(vals[idx].values[i]))
-            }));
-            const actuals: (number | null)[] | null = actualsIdx >= 0
-                ? axisCats.map((_, i) => safeNum(vals[actualsIdx].values[i]))
-                : null;
+            let axisCats: string[];
+            let members: Member[];
+            let actuals: (number | null)[] | null;
+
+            if (ensCol && sampleIdx.length >= 1) {
+                // Long mode: pivot (axis, ensembleId) rows into per-member arrays.
+                // Axis order is preserved from first appearance in the rows —
+                // sorting alphabetically would break natural time order like
+                // "Jan, Feb, Mar…". Members are sorted for stable draws.
+                const axisFirstSeen = new Map<string, number>();
+                const memberFirstSeen = new Map<string, number>();
+                const axisRaw = axisCol.values;
+                const ensRaw = ensCol.values;
+                const sampleVals = vals[sampleIdx[0]].values;
+                const actualsRaw = actualsIdx >= 0 ? vals[actualsIdx].values : null;
+
+                for (let i = 0; i < axisRaw.length; i++) {
+                    const a = axisRaw[i] instanceof Date
+                        ? (axisRaw[i] as Date).toISOString().slice(0, 10)
+                        : (axisRaw[i] == null ? "" : String(axisRaw[i]));
+                    if (!axisFirstSeen.has(a)) axisFirstSeen.set(a, axisFirstSeen.size);
+                    const e = ensRaw[i] == null ? "" : String(ensRaw[i]);
+                    if (!memberFirstSeen.has(e)) memberFirstSeen.set(e, memberFirstSeen.size);
+                }
+                axisCats = Array.from(axisFirstSeen.keys());
+                const memberNames = Array.from(memberFirstSeen.keys());
+
+                // Actuals in long form come repeated per (axis, ensembleId) row
+                // — the visual treats them as axis-only, so collapse to the
+                // first non-null seen at each axis point.
+                const actualsMap = actualsRaw ? new Map<string, number>() : null;
+
+                const grid: (number | null)[][] = memberNames.map(() =>
+                    axisCats.map(() => null));
+                for (let i = 0; i < axisRaw.length; i++) {
+                    const aKey = axisRaw[i] instanceof Date
+                        ? (axisRaw[i] as Date).toISOString().slice(0, 10)
+                        : (axisRaw[i] == null ? "" : String(axisRaw[i]));
+                    const eKey = ensRaw[i] == null ? "" : String(ensRaw[i]);
+                    const ai = axisFirstSeen.get(aKey)!;
+                    const mi = memberFirstSeen.get(eKey)!;
+                    grid[mi][ai] = safeNum(sampleVals[i]);
+                    if (actualsMap && !actualsMap.has(aKey)) {
+                        const a = safeNum(actualsRaw![i]);
+                        if (a != null) actualsMap.set(aKey, a);
+                    }
+                }
+                members = memberNames.map((name, i) => ({ name, values: grid[i] }));
+                actuals = actualsMap
+                    ? axisCats.map(a => actualsMap.has(a) ? actualsMap.get(a)! : null)
+                    : null;
+            } else {
+                // Wide mode (unchanged behaviour).
+                axisCats = axisCol.values.map(v =>
+                    v instanceof Date ? (v as Date).toISOString().slice(0, 10) : String(v));
+                members = sampleIdx.map(idx => ({
+                    name: vals[idx].source.displayName || "Draw",
+                    values: axisCats.map((_, i) => safeNum(vals[idx].values[i]))
+                }));
+                actuals = actualsIdx >= 0
+                    ? axisCats.map((_, i) => safeNum(vals[actualsIdx].values[i]))
+                    : null;
+            }
 
             // ── Scales ─────────────────────────────────────────────
             const allValues: number[] = [];
