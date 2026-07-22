@@ -10,6 +10,17 @@ import FormattingSettingsModel = formattingSettings.Model;
  * Matrix — row/column ordering and cell geometry.
  */
 class MatrixCard extends FormattingSettingsCard {
+    matrixMode = new formattingSettings.ItemDropdown({
+        name: "matrixMode",
+        displayName: "Matrix mode",
+        description: "Unipartite treats sources and targets as one node set — the standard adjacency view. Bipartite treats them as two disjoint sets (people × projects, customers × products, students × courses) and draws a rectangular matrix without a diagonal or symmetry.",
+        items: [
+            { value: "unipartite", displayName: "Unipartite (one node set)" },
+            { value: "bipartite", displayName: "Bipartite (rows ≠ columns)" }
+        ],
+        value: { value: "unipartite", displayName: "Unipartite (one node set)" }
+    });
+
     seriation = new formattingSettings.ItemDropdown({
         name: "seriation",
         displayName: "Row / column order",
@@ -50,6 +61,7 @@ class MatrixCard extends FormattingSettingsCard {
     name: string = "matrix";
     displayName: string = "Matrix";
     slices: Array<FormattingSettingsSlice> = [
+        this.matrixMode,
         this.seriation,
         this.symmetric,
         this.cellShape,

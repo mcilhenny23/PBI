@@ -22,6 +22,14 @@
     "objects": {
         "matrix": {
             "properties": {
+                "matrixMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "unipartite", "displayName": "Unipartite (one node set)" },
+                            { "value": "bipartite", "displayName": "Bipartite (rows ≠ columns)" }
+                        ]
+                    }
+                },
                 "seriation": {
                     "type": {
                         "enumeration": [

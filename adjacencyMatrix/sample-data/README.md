@@ -55,6 +55,43 @@ triangles separately is how you spot rework in a process.
 
 ---
 
+## 3 · People × projects — bipartite mode
+
+**File:** `03-people-projects.csv` (12 people × 8 projects, hours logged)
+
+- **Matrix → Matrix mode → Bipartite (rows ≠ columns)**
+- **Source Node** ← `Person`
+- **Target Node** ← `Project`
+- **Weight** ← `Hours`
+
+A bipartite matrix has two disjoint node sets — people on the rows, projects
+on the columns — so a "Person 42" and a "Project 42" never fuse into a single
+node the way they would in unipartite mode. The matrix becomes **rectangular**
+(rowN × colN, here 12 × 8), the diagonal has no meaning, and row/column
+seriation runs independently on each axis.
+
+Twelve people, two implicit teams of six, each mostly staffed on four
+projects. Aggregate hours by block:
+
+|                     | Projects 1-4 | Projects 5-8 |
+|---------------------|-------------:|-------------:|
+| **People 1-6**      | **1391 h**   | 153 h        |
+| **People 7-12**     | 151 h        | **1442 h**   |
+
+On-block hours are **9.3× the off-block hours** — a clear block-diagonal
+structure. With **Seriation → Cluster** on, both axes reorder independently
+and the two blocks separate cleanly into the top-left and bottom-right
+corners of the matrix. The rare cross-team hours read as scattered
+low-intensity cells against the sparse background.
+
+This is the whole class of "who works on what", "which customers buy which
+products", "which students take which courses" problems that unipartite
+adjacency can't represent without inventing pseudo-edges. Rectangular
+cells auto-cap when one axis is much larger than the other, so the picture
+stays legible on very unbalanced datasets.
+
+---
+
 ## Things to try
 
 - **Seriation** — Cluster / Degree / Alphabetical / None. Degree puts the

@@ -69,12 +69,18 @@ export class Visual implements IVisual {
     private formattingSettingsService: FormattingSettingsService;
 
     // Kept so the pointer can be mapped back to a matrix cell.
-    private hit: { left: number; top: number; cell: number; n: number } | null = null;
-    private nodes: string[] = [];
-    private order: number[] = [];
-    private matrix: number[][] = [];
+    private hit: { left: number; top: number; cellW: number; cellH: number; rowN: number; colN: number } | null = null;
+    /** Row-axis node names. In unipartite mode, same reference as colNodes. */
+    private rowNodes: string[] = [];
+    /** Column-axis node names. In unipartite mode, same reference as rowNodes. */
+    private colNodes: string[] = [];
+    private rowOrder: number[] = [];
+    private colOrder: number[] = [];
+    private matrix: number[][] = [];   // matrix[rowIdx][colIdx]
+    private bipartite = false;
     /** Per-node aggregated selection ids — every source-row identity touching each node. */
-    private nodeIds: ISelectionId[][] = [];
+    private rowIds: ISelectionId[][] = [];
+    private colIds: ISelectionId[][] = [];
 
     /** Caches the seriation so styling changes don't re-cluster. */
     private clusterCache = new ComputeCache<{ order: number[]; groups: number[][] }>();
@@ -152,27 +158,45 @@ export class Visual implements IVisual {
             }
             this.landing.selectAll("*").remove();
 
-            // ── Build node list + adjacency matrix ─────────────────
-            const rows = cats[sIdx].values.length;
-            const index = new Map<string, number>();
-            const nodes: string[] = [];
-            const nodeIdx = (name: string): number => {
-                let i = index.get(name);
-                if (i === undefined) { i = nodes.length; index.set(name, i); nodes.push(name); }
+            // ── Build node lists + adjacency matrix ────────────────
+            // Bipartite mode: source names and target names live in separate
+            // index spaces, so a name appearing in both roles becomes two
+            // distinct nodes. That's the whole point — you can't have a
+            // "customer × product" matrix if Customer 42 and Product 42 fuse
+            // into one row. Unipartite mode preserves the historical behaviour
+            // of a single node set.
+            const bipartite = String(mx.matrixMode.value?.value ?? "unipartite") === "bipartite";
+            this.bipartite = bipartite;
+
+            const rowsCount = cats[sIdx].values.length;
+            const rowIndex = new Map<string, number>();
+            const colIndex = new Map<string, number>();
+            const rowNodes: string[] = [];
+            const colNodes: string[] = [];
+            const idxOf = (map: Map<string, number>, arr: string[], name: string): number => {
+                let i = map.get(name);
+                if (i === undefined) { i = arr.length; map.set(name, i); arr.push(name); }
                 return i;
             };
             const edges: { s: number; t: number; w: number }[] = [];
             const srcCat = cats[sIdx];
-            const nodeIdsPer: ISelectionId[][] = [];
-            for (let r = 0; r < rows; r++) {
+            const rowIdsPer: ISelectionId[][] = [];
+            const colIdsPer: ISelectionId[][] = [];
+            for (let r = 0; r < rowsCount; r++) {
                 const sv = cats[sIdx].values[r], tv = cats[tIdx].values[r];
                 if (sv == null || tv == null) continue;
                 const w = wIdx >= 0 ? (safeNum(vals[wIdx].values[r]) ?? 0) : 1;
-                const si = nodeIdx(String(sv)), ti = nodeIdx(String(tv));
+                let si: number, ti: number;
+                if (bipartite) {
+                    si = idxOf(rowIndex, rowNodes, String(sv));
+                    ti = idxOf(colIndex, colNodes, String(tv));
+                } else {
+                    // Shared index space; both lists point at it later.
+                    si = idxOf(rowIndex, rowNodes, String(sv));
+                    ti = idxOf(rowIndex, rowNodes, String(tv));
+                }
                 edges.push({ s: si, t: ti, w });
 
-                // Aggregate row-level identity onto both endpoints so a click on
-                // either node selects every touching edge.
                 let rowId: ISelectionId | undefined;
                 try {
                     rowId = this.host.createSelectionIdBuilder()
@@ -180,73 +204,117 @@ export class Visual implements IVisual {
                         .createSelectionId();
                 } catch { /* skipped */ }
                 if (rowId) {
-                    if (!nodeIdsPer[si]) nodeIdsPer[si] = [];
-                    if (!nodeIdsPer[ti]) nodeIdsPer[ti] = [];
-                    nodeIdsPer[si].push(rowId);
-                    nodeIdsPer[ti].push(rowId);
+                    if (!rowIdsPer[si]) rowIdsPer[si] = [];
+                    if (!colIdsPer[ti]) colIdsPer[ti] = [];
+                    rowIdsPer[si].push(rowId);
+                    colIdsPer[ti].push(rowId);
                 }
             }
-            this.nodeIds = nodeIdsPer;
-            const N = nodes.length;
-            if (N === 0) {
+            if (!bipartite) {
+                // Share the node list between row and column axes so both
+                // dimensions have the same order and the diagonal has meaning.
+                colNodes.length = 0;
+                for (const n of rowNodes) colNodes.push(n);
+                for (let i = 0; i < rowIdsPer.length; i++) {
+                    if (rowIdsPer[i] && !colIdsPer[i]) colIdsPer[i] = rowIdsPer[i].slice();
+                    else if (colIdsPer[i] && !rowIdsPer[i]) rowIdsPer[i] = colIdsPer[i].slice();
+                }
+            }
+            this.rowIds = rowIdsPer;
+            this.colIds = colIdsPer;
+            const rowN = rowNodes.length;
+            const colN = colNodes.length;
+            if (rowN === 0 || colN === 0) {
                 this.renderLandingPage(width, height, true, true);
                 this.events.renderingFinished(options);
                 return;
             }
 
-            const symmetric = mx.symmetric.value;
-            const matrix: number[][] = Array.from({ length: N }, () => new Array<number>(N).fill(0));
+            const symmetric = !bipartite && mx.symmetric.value;
+            const matrix: number[][] = Array.from({ length: rowN }, () => new Array<number>(colN).fill(0));
             for (const e of edges) {
                 matrix[e.s][e.t] += e.w;
                 if (symmetric && e.s !== e.t) matrix[e.t][e.s] += e.w;
             }
-            this.nodes = nodes;
+            this.rowNodes = rowNodes;
+            this.colNodes = colNodes;
             this.matrix = matrix;
 
             // ── Seriation ──────────────────────────────────────────
+            // Row and column orderings are computed independently. Unipartite
+            // mode wants the same order on both axes (so the diagonal aligns
+            // and the matrix reads symmetrically); bipartite mode wants each
+            // axis ordered by its own degree/name/cluster since the two sides
+            // are distinct entities.
             let mode = String(mx.seriation.value?.value ?? "cluster");
-            if (mode === "cluster" && N > CLUSTER_LIMIT) mode = "degree";   // perf guard
+            const capForCluster = Math.max(rowN, colN);
+            if (mode === "cluster" && capForCluster > CLUSTER_LIMIT) mode = "degree";
 
-            const degree = matrix.map(row => d3.sum(row));
-            let order: number[];
-            let groups: number[][] = [];
+            const rowDegree = matrix.map(row => d3.sum(row));
+            const colDegree = d3.range(colN).map(c => d3.sum(matrix.map(row => row[c])));
 
-            if (mode === "alphabetical") {
-                order = d3.range(N).sort((a, b) => nodes[a].localeCompare(nodes[b]));
-            } else if (mode === "degree") {
-                order = d3.range(N).sort((a, b) => degree[b] - degree[a]);
-            } else if (mode === "cluster") {
-                // Agglomerative clustering is the expensive step here (an N×N
-                // distance matrix plus N−1 merges). It depends only on the
-                // adjacency matrix, so colour ramps, labels and boundary styling
-                // must never re-run it — hence the cache.
-                const fp = new Fingerprint().str("cluster").num(N);
-                for (const row of matrix) fp.nums(row);
-                const seriated = this.clusterCache.get(fp.done(), () => {
-                    const root = agglomerative(euclideanDistances(matrix));
-                    const k = Math.min(8, Math.max(2, Math.round(Math.sqrt(N / 2))));
-                    return {
-                        order: root ? root.members : d3.range(N),
-                        groups: cutIntoGroups(root, k)
-                    };
-                });
-                order = seriated ? seriated.order : d3.range(N);
-                groups = seriated ? seriated.groups : [];
+            const orderBy = (
+                names: string[], degree: number[], mat: number[][], axis: "row" | "col"
+            ): { order: number[]; groups: number[][] } => {
+                const n = names.length;
+                if (mode === "alphabetical") {
+                    return { order: d3.range(n).sort((a, b) => names[a].localeCompare(names[b])), groups: [] };
+                }
+                if (mode === "degree") {
+                    return { order: d3.range(n).sort((a, b) => degree[b] - degree[a]), groups: [] };
+                }
+                if (mode === "cluster") {
+                    // Row clusters use the raw matrix; column clusters use its
+                    // transpose so the notion of "similar columns" is
+                    // similarity in column vectors, not row vectors.
+                    const distMat: number[][] = axis === "row"
+                        ? mat
+                        : d3.range(colN).map(c => mat.map(row => row[c]));
+                    const fp = new Fingerprint().str("cluster").str(axis).num(n);
+                    for (const row of distMat) fp.nums(row);
+                    const seriated = this.clusterCache.get(fp.done(), () => {
+                        const root = agglomerative(euclideanDistances(distMat));
+                        const k = Math.min(8, Math.max(2, Math.round(Math.sqrt(n / 2))));
+                        return { order: root ? root.members : d3.range(n),
+                                 groups: cutIntoGroups(root, k) };
+                    });
+                    return seriated ? seriated : { order: d3.range(n), groups: [] };
+                }
+                return { order: d3.range(n), groups: [] };
+            };
+
+            let rowOrder: number[], colOrder: number[];
+            let rowGroups: number[][] = [], colGroups: number[][] = [];
+            if (!bipartite) {
+                // Shared ordering: compute once on rows and mirror to columns
+                // so the diagonal stays aligned.
+                const s = orderBy(rowNodes, rowDegree, matrix, "row");
+                rowOrder = s.order; colOrder = s.order;
+                rowGroups = s.groups; colGroups = s.groups;
             } else {
-                order = d3.range(N);                                        // data order
+                const rs = orderBy(rowNodes, rowDegree, matrix, "row");
+                const cs = orderBy(colNodes, colDegree, matrix, "col");
+                rowOrder = rs.order; colOrder = cs.order;
+                rowGroups = rs.groups; colGroups = cs.groups;
             }
-            this.order = order;
+            this.rowOrder = rowOrder;
+            this.colOrder = colOrder;
 
-            // Position of each group boundary, in display-order units.
-            const boundaries: number[] = [];
-            if (groups.length > 1) {
-                let cum = 0;
-                for (let g = 0; g < groups.length - 1; g++) { cum += groups[g].length; boundaries.push(cum); }
-            }
+            // Group boundaries, in display-order units, per axis.
+            const rowBoundaries: number[] = [];
+            const colBoundaries: number[] = [];
+            const fillBoundaries = (groups: number[][], out: number[]): void => {
+                if (groups.length > 1) {
+                    let cum = 0;
+                    for (let g = 0; g < groups.length - 1; g++) { cum += groups[g].length; out.push(cum); }
+                }
+            };
+            fillBoundaries(rowGroups, rowBoundaries);
+            fillBoundaries(colGroups, colBoundaries);
 
             // ── Color ──────────────────────────────────────────────
             let maxW = 0, minPos = Infinity;
-            for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+            for (let i = 0; i < rowN; i++) for (let j = 0; j < colN; j++) {
                 const w = matrix[i][j];
                 if (w > maxW) maxW = w;
                 if (w > 0 && w < minPos) minPos = w;
@@ -276,7 +344,10 @@ export class Visual implements IVisual {
             const fs = Math.max(6, lab.labelFontSize.value);
             const maxLen = Math.max(2, Math.round(lab.maxLabelLength.value || 20));
             const outside = String(lab.labelPosition.value?.value ?? "outside") === "outside";
-            const longest = d3.max(nodes, n => truncate(n, maxLen).length) || 4;
+            // Longest of both axes drives the label margin.
+            const longestRow = d3.max(rowNodes, n => truncate(n, maxLen).length) || 4;
+            const longestCol = d3.max(colNodes, n => truncate(n, maxLen).length) || 4;
+            const longest = Math.max(longestRow, longestCol);
             const wantLabels = lab.showLabels.value;
             const labelSpace = wantLabels && outside
                 ? Math.min(160, Math.max(24, longest * fs * 0.62))
@@ -285,56 +356,81 @@ export class Visual implements IVisual {
             const padR = 12, padB = 12;
             const availW = width - labelSpace - padR;
             const availH = height - labelSpace - padB;
-            const size = Math.max(0, Math.min(availW, availH));
-            const cell = size / N;
+
+            // Bipartite: rectangular cells sized to the axis aspect. Unipartite:
+            // preserve square cells so the diagonal renders at 45°.
+            let cellW: number, cellH: number, mW: number, mH: number;
+            if (bipartite) {
+                cellW = availW / colN;
+                cellH = availH / rowN;
+                // Cap so cells aren't wildly rectangular when one axis is huge
+                // and the other tiny — the smaller dimension caps the larger.
+                const capped = Math.min(cellW, cellH * 3, 60);
+                cellW = Math.min(cellW, capped * (cellW / cellH));
+                cellH = Math.min(cellH, capped);
+                mW = cellW * colN;
+                mH = cellH * rowN;
+            } else {
+                const size = Math.max(0, Math.min(availW, availH));
+                cellW = cellH = size / Math.max(rowN, colN);
+                mW = cellW * colN;
+                mH = cellH * rowN;
+            }
             const left = labelSpace, top = labelSpace;
 
-            if (size < 10 || cell <= 0) { this.events.renderingFinished(options); return; }
+            if (mW < 10 || mH < 10 || cellW <= 0 || cellH <= 0) {
+                this.events.renderingFinished(options); return;
+            }
 
-            const showDiag = mx.showDiagonal.value;
+            const showDiag = bipartite ? true : mx.showDiagonal.value;
             const circle = String(mx.cellShape.value?.value ?? "square") === "circle";
 
             // ── Cells on canvas ────────────────────────────────────
-            // Paint the "zero" background once, then only non-zero cells — much
-            // cheaper than N² fills on a sparse network.
             ctx.fillStyle = rampLow;
-            ctx.fillRect(left, top, size, size);
+            ctx.fillRect(left, top, mW, mH);
 
-            for (let r = 0; r < N; r++) {
-                const si = order[r];
-                for (let c = 0; c < N; c++) {
-                    const ti = order[c];
-                    if (!showDiag && si === ti) continue;
+            for (let r = 0; r < rowN; r++) {
+                const si = rowOrder[r];
+                for (let c = 0; c < colN; c++) {
+                    const ti = colOrder[c];
+                    // Diagonal only meaningful when rows and cols are the
+                    // same node set (unipartite). In bipartite mode showDiag
+                    // is forced true above because there's no notion of "same
+                    // index = same node".
+                    if (!showDiag && !bipartite && si === ti) continue;
                     const w = matrix[si][ti];
                     if (w <= 0) continue;
                     ctx.fillStyle = interp(tFor(w));
-                    const x = left + c * cell, y = top + r * cell;
+                    const x = left + c * cellW, y = top + r * cellH;
                     if (circle) {
-                        const rad = Math.max(0.4, cell / 2 - 0.5);
+                        const rad = Math.max(0.4, Math.min(cellW, cellH) / 2 - 0.5);
                         ctx.beginPath();
-                        ctx.arc(x + cell / 2, y + cell / 2, rad, 0, Math.PI * 2);
+                        ctx.arc(x + cellW / 2, y + cellH / 2, rad, 0, Math.PI * 2);
                         ctx.fill();
                     } else {
-                        ctx.fillRect(x, y, Math.max(0.5, cell), Math.max(0.5, cell));
+                        ctx.fillRect(x, y, Math.max(0.5, cellW), Math.max(0.5, cellH));
                     }
                 }
             }
 
             // Matrix outline.
             this.overlay.append("rect")
-                .attr("x", left).attr("y", top).attr("width", size).attr("height", size)
+                .attr("x", left).attr("y", top).attr("width", mW).attr("height", mH)
                 .attr("fill", "none").attr("stroke", "#ddd").attr("stroke-width", 1);
 
             // ── Cluster boundaries ─────────────────────────────────
-            if (clu.showClusterBoundaries.value && mode === "cluster" && boundaries.length) {
+            if (clu.showClusterBoundaries.value && mode === "cluster") {
                 const bc = hc ? hcFg : clu.clusterBoundaryColor.value.value;
-                for (const b of boundaries) {
-                    const p = top + b * cell, q = left + b * cell;
+                for (const b of rowBoundaries) {
+                    const p = top + b * cellH;
                     this.overlay.append("line")
-                        .attr("x1", left).attr("x2", left + size).attr("y1", p).attr("y2", p)
+                        .attr("x1", left).attr("x2", left + mW).attr("y1", p).attr("y2", p)
                         .attr("stroke", bc).attr("stroke-width", 1).attr("shape-rendering", "crispEdges");
+                }
+                for (const b of colBoundaries) {
+                    const q = left + b * cellW;
                     this.overlay.append("line")
-                        .attr("y1", top).attr("y2", top + size).attr("x1", q).attr("x2", q)
+                        .attr("y1", top).attr("y2", top + mH).attr("x1", q).attr("x2", q)
                         .attr("stroke", bc).attr("stroke-width", 1).attr("shape-rendering", "crispEdges");
                 }
             }
@@ -342,14 +438,14 @@ export class Visual implements IVisual {
             // ── Labels ─────────────────────────────────────────────
             // Level of detail: drop labels entirely on tiny cells, and thin them
             // out when they'd collide.
-            if (wantLabels && cell >= 3) {
-                const every = Math.max(1, Math.ceil((fs + 2) / cell));
+            if (wantLabels && Math.min(cellW, cellH) >= 3) {
+                const everyRow = Math.max(1, Math.ceil((fs + 2) / cellH));
+                const everyCol = Math.max(1, Math.ceil((fs + 2) / cellW));
                 const g = this.overlay.append("g").classed("labels", true);
-                for (let i = 0; i < N; i++) {
-                    if (i % every !== 0) continue;
-                    const name = truncate(nodes[order[i]], maxLen);
-                    const mid = (i + 0.5) * cell;
-                    // Rows, on the left.
+                for (let i = 0; i < rowN; i++) {
+                    if (i % everyRow !== 0) continue;
+                    const name = truncate(rowNodes[rowOrder[i]], maxLen);
+                    const mid = (i + 0.5) * cellH;
                     g.append("text")
                         .attr("x", outside ? left - 4 : left + 4)
                         .attr("y", top + mid)
@@ -357,7 +453,11 @@ export class Visual implements IVisual {
                         .attr("dominant-baseline", "middle")
                         .attr("font-size", `${fs}px`).attr("fill", "#555")
                         .text(name);
-                    // Columns, along the top, rotated.
+                }
+                for (let i = 0; i < colN; i++) {
+                    if (i % everyCol !== 0) continue;
+                    const name = truncate(colNodes[colOrder[i]], maxLen);
+                    const mid = (i + 0.5) * cellW;
                     g.append("text")
                         .attr("transform", `translate(${left + mid},${outside ? top - 4 : top + 4}) rotate(-90)`)
                         .attr("text-anchor", outside ? "start" : "end")
@@ -368,7 +468,7 @@ export class Visual implements IVisual {
             }
 
             // ── Tooltip hit layer ──────────────────────────────────
-            this.hit = { left, top, cell, n: N };
+            this.hit = { left, top, cellW, cellH, rowN, colN };
             const srcTitle = cats[sIdx].source.displayName || "Source";
             const tgtTitle = cats[tIdx].source.displayName || "Target";
             const wTitle = wIdx >= 0 ? (vals[wIdx].source.displayName || "Weight") : "Weight";
@@ -380,16 +480,16 @@ export class Visual implements IVisual {
                 .on("mousemove", (event: MouseEvent) => {
                     if (!this.hit) return;
                     const [px, py] = d3.pointer(event, this.svg.node());
-                    const c = Math.floor((px - this.hit.left) / this.hit.cell);
-                    const r = Math.floor((py - this.hit.top) / this.hit.cell);
-                    if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) {
+                    const c = Math.floor((px - this.hit.left) / this.hit.cellW);
+                    const r = Math.floor((py - this.hit.top) / this.hit.cellH);
+                    if (r < 0 || c < 0 || r >= this.hit.rowN || c >= this.hit.colN) {
                         this.tooltipService.hide({ immediately: false, isTouchEvent: false });
                         return;
                     }
-                    const si = this.order[r], ti = this.order[c];
+                    const si = this.rowOrder[r], ti = this.colOrder[c];
                     const items: VisualTooltipDataItem[] = [
-                        { displayName: srcTitle, value: this.nodes[si] },
-                        { displayName: tgtTitle, value: this.nodes[ti] },
+                        { displayName: srcTitle, value: this.rowNodes[si] },
+                        { displayName: tgtTitle, value: this.colNodes[ti] },
                         { displayName: wTitle, value: numFmt(this.matrix[si][ti]) }
                     ];
                     this.tooltipService.show({
@@ -401,19 +501,16 @@ export class Visual implements IVisual {
                 .on("click", (event: MouseEvent) => {
                     if (!this.hit) return;
                     const [px, py] = d3.pointer(event, this.svg.node());
-                    const c = Math.floor((px - this.hit.left) / this.hit.cell);
-                    const r = Math.floor((py - this.hit.top) / this.hit.cell);
-                    if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) {
+                    const c = Math.floor((px - this.hit.left) / this.hit.cellW);
+                    const r = Math.floor((py - this.hit.top) / this.hit.cellH);
+                    if (r < 0 || c < 0 || r >= this.hit.rowN || c >= this.hit.colN) {
                         this.selectionManager.clear().then(() => this.applyExternalDim());
                         return;
                     }
-                    // Dedupe by row-identity reference — a hub node with 3000
-                    // in-edges + 3000 out-edges would otherwise ship 6000 ids
-                    // (doubled again on a diagonal cell) and stall the host.
-                    const si = this.order[r], ti = this.order[c];
+                    const si = this.rowOrder[r], ti = this.colOrder[c];
                     const ids = Array.from(new Set<ISelectionId>([
-                        ...(this.nodeIds[si] ?? []),
-                        ...(this.nodeIds[ti] ?? [])
+                        ...(this.rowIds[si] ?? []),
+                        ...(this.colIds[ti] ?? [])
                     ]));
                     // If the cell resolves to no ids (edge rows that failed
                     // selectionId construction), treat like an out-of-bounds
@@ -436,11 +533,11 @@ export class Visual implements IVisual {
                     if (!this.hit) return;
                     event.preventDefault();
                     const [px, py] = d3.pointer(event, this.svg.node());
-                    const c = Math.floor((px - this.hit.left) / this.hit.cell);
-                    const r = Math.floor((py - this.hit.top) / this.hit.cell);
-                    if (r < 0 || c < 0 || r >= this.hit.n || c >= this.hit.n) return;
-                    const si = this.order[r];
-                    const ids = this.nodeIds[si] ?? [];
+                    const c = Math.floor((px - this.hit.left) / this.hit.cellW);
+                    const r = Math.floor((py - this.hit.top) / this.hit.cellH);
+                    if (r < 0 || c < 0 || r >= this.hit.rowN || c >= this.hit.colN) return;
+                    const si = this.rowOrder[r];
+                    const ids = this.rowIds[si] ?? [];
                     // Skip the menu when no id exists — passing {} as ISelectionId
                     // leaves the host in an indeterminate state.
                     if (!ids.length) return;

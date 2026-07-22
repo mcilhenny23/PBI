@@ -78,7 +78,7 @@ Four themes recur:
 
 ## 8. Adjacency Matrix — networks
 
-- **▶ Bipartite mode** *(A)* — rows ≠ columns (people × projects, customers × products). Currently the matrix is a single node set; bipartite is a large class of real problems.
+- **✅ Bipartite mode** *(A)* — new **Matrix → Matrix mode** dropdown adds **Bipartite (rows ≠ columns)**. Source and target names live in separate index spaces so "Customer 42" and "Product 42" stay distinct; the matrix becomes rectangular (rowN × colN), no diagonal, no symmetry. Row/column seriation runs **independently** on each axis — row clusters use the raw matrix distances, column clusters use its transpose, so cluster ordering exposes the block structure of *each* side of the join. Cells auto-shape to rectangles with a cap so wildly unbalanced axes stay legible. Verified on a seeded 12-person × 8-project sample: 9.3× on-block-diagonal hours ratio, cluster order separates the two implicit teams cleanly. Ships with a `03-people-projects.csv` sample.
 - **○ Node metrics panel** *(C)* — degree, betweenness, clustering coefficient — makes it analysis rather than display.
 - **○ Alternative seriation** — spectral ordering, optimal leaf ordering.
 - **○ Matrix diff** — period over period.
