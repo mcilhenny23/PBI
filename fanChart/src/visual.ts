@@ -154,21 +154,25 @@ export class Visual implements IVisual {
     }
 
     private applySelectionStyling(): void {
-        // Fan chart is continuous — one filled selection band, whole-visual
-        // dim on external filter. The band highlight (fill on the selected
-        // horizon's hit rect) still contrasts against the dimmed backdrop
-        // because it uses fill, not opacity.
+        // Two states worth distinguishing:
+        //   1. Self-select — a horizon in this chart was clicked. Show the
+        //      tint on that horizon; do NOT dim the container, or SVG opacity
+        //      cascade would multiply the tint alpha to invisibility.
+        //   2. External hasSel — a peer visual filtered us with an id we
+        //      don't own. Dim the container to signal we're being filtered.
         const s = this.formattingSettings;
         if (!s) return;
         const activeIds = this.selectionManager.getSelectionIds() as ISelectionId[];
         const hasSel = activeIds.length > 0;
         const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 25) / 100));
+        let ownsSelection = false;
         this.container.selectAll<SVGRectElement, FanDataPoint>("rect.hit").each(function (d) {
             const rect = d3.select(this);
             const isSel = !!d?.selectionId && activeIds.some(a => a?.equals?.(d.selectionId!));
+            if (isSel) ownsSelection = true;
             rect.attr("fill", hasSel && isSel ? "rgba(66, 135, 245, 0.15)" : "transparent");
         });
-        this.container.attr("opacity", hasSel ? dim : 1);
+        this.container.attr("opacity", hasSel && !ownsSelection ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
