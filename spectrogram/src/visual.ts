@@ -87,15 +87,20 @@ function framedMeanRpm(rpm: Float64Array, windowSize: number, hopSize: number, n
     const out = new Float64Array(numWindows);
     for (let w = 0; w < numWindows; w++) {
         const start = w * hopSize, end = Math.min(rpm.length, start + windowSize);
-        let sum = 0, count = 0;
+        // Two counts so a straddle frame (some zero, some running) reports the
+        // running mean instead of a wrong halved value: mean over positive-only
+        // samples when any exist, or 0 when every sample was truly zero
+        // (shaft-at-rest), or NaN when no finite samples at all (no sensor).
+        let sumPos = 0, countPos = 0, countZero = 0;
         for (let i = start; i < end; i++) {
             const v = rpm[i];
-            // Zero is a legitimate value (shaft at rest before startup) —
-            // let it through so downstream can distinguish 'shaft stopped'
-            // (framedRpm = 0) from 'no sensor data' (framedRpm = NaN).
-            if (Number.isFinite(v) && v >= 0) { sum += v; count++; }
+            if (!Number.isFinite(v) || v < 0) continue;
+            if (v === 0) countZero++;
+            else { sumPos += v; countPos++; }
         }
-        out[w] = count > 0 ? sum / count : NaN;
+        if (countPos > 0) out[w] = sumPos / countPos;
+        else if (countZero > 0) out[w] = 0;
+        else out[w] = NaN;
     }
     return out;
 }
