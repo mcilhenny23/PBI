@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "The xkcd movie-narrative idiom as an analytical chart. Every entity is a line that weaves between groups over time, so joins, departures and migrations read as movement. Org changes, team composition, customer-segment migration, coalition shifts. Crossings are minimized with a barycentre sweep.",
-        "supportUrl": "https://github.com/jeffs-visuals/storyline",
-        "gitHubUrl": "https://github.com/jeffs-visuals/storyline"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

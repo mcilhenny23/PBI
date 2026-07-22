@@ -5,14 +5,14 @@
         "guid": "iconArrays18971F6DF3F0AA9DA97CBEFC9B7E30C8",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "Frequency-framing icon array (pictograph). Communicates risk and proportion as a grid of icons — '17 of 100 people' — proven to beat percentages for lay comprehension. Bind a Value (and optional Total or Category segments) to fill a grid of people, hearts, circles or squares.",
-        "supportUrl": "https://github.com/jeffs-visuals/icon-array",
-        "gitHubUrl": "https://github.com/jeffs-visuals/icon-array"
+        "description": "Frequency-framing icon array (pictograph). Communicates risk and proportion as a grid of icons \u2014 '17 of 100 people' \u2014 proven to beat percentages for lay comprehension. Bind a Value (and optional Total or Category segments) to fill a grid of people, hearts, circles or squares.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

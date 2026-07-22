@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Bookmap-style market-depth heatmap: resting liquidity at every price level over time, with executed trades overlaid and best bid/ask tracking the spread. Market microstructure for desks that already run their portfolio analytics in Power BI.",
-        "supportUrl": "https://github.com/jeffs-visuals/order-book",
-        "gitHubUrl": "https://github.com/jeffs-visuals/order-book"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

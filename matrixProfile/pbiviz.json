@@ -5,14 +5,14 @@
         "guid": "matrixProfile667ECFCD9344A01352EEE39308E09580",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "Anomaly and pattern discovery for time series via the UCR matrix profile (STOMP). Finds motifs — shapes that repeat — and discords — shapes that never repeat — with one parameter and no training. The profile strip sits under the series with matched spans highlighted and motif pairs joined by arcs.",
-        "supportUrl": "https://github.com/jeffs-visuals/matrix-profile",
-        "gitHubUrl": "https://github.com/jeffs-visuals/matrix-profile"
+        "description": "Anomaly and pattern discovery for time series via the UCR matrix profile (STOMP). Finds motifs \u2014 shapes that repeat \u2014 and discords \u2014 shapes that never repeat \u2014 with one parameter and no training. The profile strip sits under the series with matched spans highlighted and motif pairs joined by arcs.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

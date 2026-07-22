@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Histogram with automatic bin-width selection (Freedman-Diaconis / Sturges / Scott / manual), a drag-to-adjust bin-width slider under the axis, a Gaussian KDE density overlay, and group overlay / facet / stack modes.",
-        "supportUrl": "https://github.com/jeffs-visuals/histogram-pro",
-        "gitHubUrl": "https://github.com/jeffs-visuals/histogram-pro"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

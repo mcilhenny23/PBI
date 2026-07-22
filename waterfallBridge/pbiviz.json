@@ -5,14 +5,14 @@
         "guid": "waterfallBridge7A4F2D3E9B814C6A80C1E5F8D9A6B24C",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "Multi-measure waterfall / bridge chart. Decompose Actual → drivers → Budget across multiple measures or a Steps column. Anchors, deltas, subtotals, connectors, and an unexplained-variance chip when the bridge doesn't tie out.",
-        "supportUrl": "https://github.com/jeffs-visuals/waterfall-bridge",
-        "gitHubUrl": "https://github.com/jeffs-visuals/waterfall-bridge"
+        "description": "Multi-measure waterfall / bridge chart. Decompose Actual \u2192 drivers \u2192 Budget across multiple measures or a Steps column. Anchors, deltas, subtotals, connectors, and an unexplained-variance chip when the bridge doesn't tie out.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

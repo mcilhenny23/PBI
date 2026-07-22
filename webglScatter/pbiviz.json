@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Honest scatter for large N. Renders every point via WebGL point sprites (500k+ without downsampling), auto-switches to a Canvas density heatmap or hexbin summary when zoomed out, and requests additional data segments via fetchMoreData so nothing is silently dropped.",
-        "supportUrl": "https://github.com/jeffs-visuals/webgl-scatter",
-        "gitHubUrl": "https://github.com/jeffs-visuals/webgl-scatter"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

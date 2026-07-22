@@ -5,13 +5,18 @@
         "guid": "synoptic9A5790535D11ED10E38EF422322D5486",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "SCADA-style schematic bound to live measures — tank levels fill, valves change colour, pipes animate flow, readouts update. The template is parsed into an internal geometry model and re-drawn from validated primitives, so no third-party markup is ever injected into the page.",
-        "supportUrl": "https://github.com/jeffs-visuals/synoptic",
-        "gitHubUrl": "https://github.com/jeffs-visuals/synoptic"
+        "description": "SCADA-style schematic bound to live measures \u2014 tank levels fill, valves change colour, pipes animate flow, readouts update. The template is parsed into an internal geometry model and re-drawn from validated primitives, so no third-party markup is ever injected into the page.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
-    "author": { "name": "Jeff", "email": "jeff@example.com" },
-    "assets": { "icon": "assets/icon.png" },
+    "author": {
+        "name": "Jeff",
+        "email": "jeff@mcilhennygroup.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
     "externalJS": null,
     "style": "style/visual.less",
     "capabilities": "capabilities.json",

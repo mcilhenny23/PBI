@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Small-multiples trellis with the toggles the native version lacks: shared / free / shared-within-row Y-scale, per-panel sorting, and a benchmark-panel ghost overlaid on every panel. Line / bar / area / scatter panel types.",
-        "supportUrl": "https://github.com/jeffs-visuals/trellis-container",
-        "gitHubUrl": "https://github.com/jeffs-visuals/trellis-container"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

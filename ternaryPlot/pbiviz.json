@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Plots three-component composition data (A+B+C) inside an equilateral triangle. Standard in geology, materials science, soil science and chemistry. Bind three measures for the components, an optional label, and optional color/size encodings.",
-        "supportUrl": "https://github.com/jeffs-visuals/ternary-plot",
-        "gitHubUrl": "https://github.com/jeffs-visuals/ternary-plot"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

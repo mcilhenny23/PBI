@@ -5,14 +5,14 @@
         "guid": "waferMap5D99EC950C5C1D65144C9F61AA6EBB4F",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "Semiconductor yield map — die-level pass/fail, bin code or continuous value across a circular wafer, with edge exclusion, concentric zone overlays and small-multiples across wafers. Canvas-rendered for thousands of dies.",
-        "supportUrl": "https://github.com/jeffs-visuals/wafer-map",
-        "gitHubUrl": "https://github.com/jeffs-visuals/wafer-map"
+        "description": "Semiconductor yield map \u2014 die-level pass/fail, bin code or continuous value across a circular wafer, with edge exclusion, concentric zone overlays and small-multiples across wafers. Canvas-rendered for thousands of dies.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

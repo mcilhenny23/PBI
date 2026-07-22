@@ -6,13 +6,13 @@
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Project Gantt chart with dependency arrows and critical-path highlighting. Orthogonal FS/SS/FF arrows between tasks, CPM forward/backward pass surfaces the zero-float chain in red, WBS hierarchy with collapsible summary bars, and milestones as diamonds/circles/flags.",
-        "supportUrl": "https://github.com/jeffs-visuals/gantt-cpm",
-        "gitHubUrl": "https://github.com/jeffs-visuals/gantt-cpm"
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"

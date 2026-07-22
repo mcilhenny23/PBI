@@ -5,14 +5,14 @@
         "guid": "modernSankeyC5D2B8F3E4194A7C9E12F5A6D7C8B935",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "Modern Sankey diagram: cycle-aware layout, drag-to-reorder nodes with persistent state, gradient links from source→target, and a highlight-connected hover. Multi-level flows come from chained source→target rows — no level column required.",
-        "supportUrl": "https://github.com/jeffs-visuals/modern-sankey",
-        "gitHubUrl": "https://github.com/jeffs-visuals/modern-sankey"
+        "description": "Modern Sankey diagram: cycle-aware layout, drag-to-reorder nodes with persistent state, gradient links from source\u2192target, and a highlight-connected hover. Multi-level flows come from chained source\u2192target rows \u2014 no level column required.",
+        "supportUrl": "https://github.com/mcilhenny23/PBI/issues",
+        "gitHubUrl": "https://github.com/mcilhenny23/PBI"
     },
     "apiVersion": "5.3.0",
     "author": {
         "name": "Jeff",
-        "email": "jeff@example.com"
+        "email": "jeff@mcilhennygroup.com"
     },
     "assets": {
         "icon": "assets/icon.png"
