@@ -164,7 +164,11 @@ export class Visual implements IVisual {
         if (!s) return;
         const dim = Math.max(0.1, Math.min(1, (s.interactionsCard.dimUnselectedOpacity.value ?? 30) / 100));
         const hasSel = this.selectionManager.getSelectionIds().length > 0;
+        // Overlay carries data-bearing marks (alarm bands, harmonic cursors,
+        // order markers) — dimming the canvas alone would leave them looking
+        // like the filter target.
         this.canvas.style("opacity", hasSel ? String(dim) : "1");
+        this.overlay.attr("opacity", hasSel ? dim : 1);
     }
 
     public update(options: VisualUpdateOptions) {
