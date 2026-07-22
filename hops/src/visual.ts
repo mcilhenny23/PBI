@@ -11,6 +11,7 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
@@ -64,6 +65,7 @@ function mulberry32(seed: number): () => number {
 export class Visual implements IVisual {
     private events: IVisualEventService;
     private host: IVisualHost;
+    private colorPalette: ISandboxExtendedColorPalette;
     private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private container: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -96,6 +98,7 @@ export class Visual implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
+        this.colorPalette = options.host.colorPalette;
         this.selectionManager = options.host.createSelectionManager();
         this.formattingSettingsService = new FormattingSettingsService();
 
@@ -148,6 +151,19 @@ export class Visual implements IVisual {
             const lines = this.formattingSettings.linesCard;
             const fan = this.formattingSettings.fanCard;
             const axes = this.formattingSettings.axesCard;
+
+            // High contrast: collapse the palette to foreground/background only.
+            // The two colors can't encode three roles (fan, actuals, outcome), so
+            // differentiate by stroke-dasharray: outcome solid, actuals dashed,
+            // fan bands rendered as a translucent foreground fill.
+            const hc = this.colorPalette.isHighContrast === true;
+            const hcFg = this.colorPalette.foreground?.value || "#000000";
+            const hcAxis = hc ? hcFg : "#999";
+            const hcTick = hc ? hcFg : "#666";
+            const outcomeColor = hc ? hcFg : lines.outcomeColor.value.value;
+            const actualsColor = hc ? hcFg : lines.actualsColor.value.value;
+            const fanColor = hc ? hcFg : fan.fanColor.value.value;
+            const medianColor = hc ? hcFg : fan.medianColor.value.value;
 
             const width = options.viewport.width;
             const height = options.viewport.height;
@@ -383,7 +399,7 @@ export class Visual implements IVisual {
                         if (runStart >= 0) flush(nAx - 1);
 
                         if (d) fanG.append("path")
-                            .attr("d", d).attr("fill", fan.fanColor.value.value)
+                            .attr("d", d).attr("fill", fanColor)
                             .attr("fill-opacity", bandOp)
                             .attr("stroke", "none");
                     }
@@ -398,7 +414,7 @@ export class Visual implements IVisual {
                             .datum(medPts)
                             .attr("d", lineGen)
                             .attr("fill", "none")
-                            .attr("stroke", fan.medianColor.value.value)
+                            .attr("stroke", medianColor)
                             .attr("stroke-width", 1.5)
                             .attr("stroke-linejoin", "round")
                             .attr("stroke-dasharray", "4 3");
@@ -416,7 +432,7 @@ export class Visual implements IVisual {
                 this.trailPaths.push(
                     trailG.append("path")
                         .attr("fill", "none")
-                        .attr("stroke", lines.outcomeColor.value.value)
+                        .attr("stroke", outcomeColor)
                         .attr("stroke-width", lines.outcomeWidth.value)
                         .attr("stroke-linejoin", "round")
                         .attr("opacity", 0)
@@ -431,9 +447,10 @@ export class Visual implements IVisual {
                         .datum(pts)
                         .attr("d", lineGen)
                         .attr("fill", "none")
-                        .attr("stroke", lines.actualsColor.value.value)
+                        .attr("stroke", actualsColor)
                         .attr("stroke-width", lines.actualsWidth.value)
-                        .attr("stroke-linejoin", "round");
+                        .attr("stroke-linejoin", "round")
+                        .attr("stroke-dasharray", hc ? "5 3" : null);
                 }
             }
 
@@ -441,7 +458,7 @@ export class Visual implements IVisual {
             this.outcomeLayer = this.container.append("g").classed("outcome", true);
             this.outcomePath = this.outcomeLayer.append("path")
                 .attr("fill", "none")
-                .attr("stroke", lines.outcomeColor.value.value)
+                .attr("stroke", outcomeColor)
                 .attr("stroke-width", lines.outcomeWidth.value)
                 .attr("stroke-linejoin", "round")
                 .attr("stroke-linecap", "round");
@@ -454,8 +471,8 @@ export class Visual implements IVisual {
                 const g = this.ensembleLayer.append("g")
                     .attr("transform", `translate(0,${plotH})`)
                     .call(d3.axisBottom(xScale).tickSize(0).tickPadding(8));
-                g.select(".domain").attr("stroke", "#999");
-                g.selectAll("text").attr("font-size", `${axes.fontSize.value}px`).attr("fill", "#666");
+                g.select(".domain").attr("stroke", hcAxis);
+                g.selectAll("text").attr("font-size", `${axes.fontSize.value}px`).attr("fill", hcTick);
                 // Thin out labels on dense axes.
                 const every = Math.ceil(axisCats.length / Math.max(1, Math.floor(plotW / 60)));
                 if (every > 1) g.selectAll<SVGTextElement, string>("text").attr("opacity", (_, i) => i % every === 0 ? 1 : 0);
@@ -463,8 +480,8 @@ export class Visual implements IVisual {
             if (axes.showYAxis.value) {
                 const g = this.ensembleLayer.append("g")
                     .call(d3.axisLeft(yScale).ticks(6).tickSize(0).tickPadding(6));
-                g.select(".domain").attr("stroke", "#999");
-                g.selectAll("text").attr("font-size", `${axes.fontSize.value}px`).attr("fill", "#666");
+                g.select(".domain").attr("stroke", hcAxis);
+                g.selectAll("text").attr("font-size", `${axes.fontSize.value}px`).attr("fill", hcTick);
             }
 
             // ── Frames + loop ──────────────────────────────────────
@@ -488,7 +505,7 @@ export class Visual implements IVisual {
             if (singlePoint) {
                 this.outcomeLayer.append("circle").classed("outcome-dot", true)
                     .attr("r", Math.max(3, lines.outcomeWidth.value + 2))
-                    .attr("fill", lines.outcomeColor.value.value)
+                    .attr("fill", outcomeColor)
                     .attr("cx", xScale(axisCats[0])!)
                     .attr("cy", yScale(members[0]?.values[0] ?? yMin));
             }
