@@ -200,6 +200,109 @@ class ZonesCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Reticle Overlay — the exposed area of one photolithography step. A wafer is
+ * built by stepping the reticle across the surface in a grid of "shots", each
+ * shot exposing an m × n block of dies. Any defect tied to reticle damage or
+ * contamination repeats at exactly the reticle period, so overlaying the
+ * reticle grid on the die map turns "why do these dies keep failing" into a
+ * one-glance visual.
+ *
+ * Also aggregates per-reticle bad-die rates when asked, so a bad shot is
+ * highlighted by fill, not just outlined.
+ */
+class ReticleCard extends FormattingSettingsCard {
+    showReticle = new formattingSettings.ToggleSwitch({
+        name: "showReticle",
+        displayName: "Show reticle grid",
+        description: "Overlays the reticle-shot boundaries on the die map. Set Size to the number of dies per reticle shot in X and Y.",
+        value: false
+    });
+
+    reticleSizeX = new formattingSettings.NumUpDown({
+        name: "reticleSizeX",
+        displayName: "Dies per reticle (X)",
+        description: "How many dies wide one reticle exposure covers.",
+        value: 2
+    });
+
+    reticleSizeY = new formattingSettings.NumUpDown({
+        name: "reticleSizeY",
+        displayName: "Dies per reticle (Y)",
+        description: "How many dies tall one reticle exposure covers.",
+        value: 2
+    });
+
+    reticleOffsetX = new formattingSettings.NumUpDown({
+        name: "reticleOffsetX",
+        displayName: "X offset (dies)",
+        description: "Shift the grid by this many dies so the reticle boundary lands where it actually sat on the stepper.",
+        value: 0
+    });
+
+    reticleOffsetY = new formattingSettings.NumUpDown({
+        name: "reticleOffsetY",
+        displayName: "Y offset (dies)",
+        value: 0
+    });
+
+    reticleColor = new formattingSettings.ColorPicker({
+        name: "reticleColor",
+        displayName: "Reticle line color",
+        value: { value: "#111111" }
+    });
+
+    reticleLineWidth = new formattingSettings.NumUpDown({
+        name: "reticleLineWidth",
+        displayName: "Reticle line width",
+        value: 1.5
+    });
+
+    reticleLineOpacity = new formattingSettings.NumUpDown({
+        name: "reticleLineOpacity",
+        displayName: "Reticle line opacity (%)",
+        value: 70
+    });
+
+    highlightBadReticles = new formattingSettings.ToggleSwitch({
+        name: "highlightBadReticles",
+        displayName: "Highlight bad reticles",
+        description: "Tint each reticle shot by its fail rate — a reticle whose fail rate is well above the wafer average glows, so a repeating defect at the shot period jumps out even before you count the dies.",
+        value: false
+    });
+
+    reticleFailThreshold = new formattingSettings.NumUpDown({
+        name: "reticleFailThreshold",
+        displayName: "Highlight threshold (× wafer avg)",
+        description: "A reticle is tinted when its fail rate is at least this multiple of the wafer's overall fail rate. Default 1.5× catches meaningfully-bad shots without every mildly-noisy one lighting up.",
+        value: 1.5
+    });
+
+    passBinReticle = new formattingSettings.TextInput({
+        name: "passBinReticle",
+        displayName: "Passing bin (for fail rate)",
+        description: "Bin value that counts as good. Leave blank to reuse Wafer → Passing bin name (also auto-detects the most common bin).",
+        value: "",
+        placeholder: "auto"
+    });
+
+    name: string = "reticle";
+    displayName: string = "Reticle Overlay";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showReticle,
+        this.reticleSizeX,
+        this.reticleSizeY,
+        this.reticleOffsetX,
+        this.reticleOffsetY,
+        this.reticleColor,
+        this.reticleLineWidth,
+        this.reticleLineOpacity,
+        this.highlightBadReticles,
+        this.reticleFailThreshold,
+        this.passBinReticle
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -217,6 +320,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     dieAppearanceCard = new DieAppearanceCard();
     colorScaleCard = new ColorScaleCard();
     zonesCard = new ZonesCard();
+    reticleCard = new ReticleCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.waferCard, this.dieAppearanceCard, this.colorScaleCard, this.zonesCard, this.interactionsCard];
+    cards = [this.waferCard, this.dieAppearanceCard, this.colorScaleCard, this.zonesCard, this.reticleCard, this.interactionsCard];
 }

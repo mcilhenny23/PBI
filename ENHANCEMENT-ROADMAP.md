@@ -21,7 +21,7 @@ Four themes recur:
 ## 1. Wafer Map — semiconductor yield
 
 - **✅ Stacked (composite) mode** *(B, C)* — overlays every wafer into one map showing fail rate per die position. Random defects average out; systematic signatures stay bright. Verified on the sample lot: 8 dies fail on all 4 wafers (systematic) vs 234 failing on exactly one (noise).
-- **▶ Reticle / shot-field overlay** *(B)* — group dies into reticle fields. Defects very often align to reticle boundaries, and without the grid that pattern is invisible.
+- **✅ Reticle / shot-field overlay** *(B)* — new **Reticle Overlay** card with X/Y shot size, X/Y offset, colour, opacity and a **Highlight bad reticles** toggle that tints every shot whose fail rate is ≥ threshold × wafer average (default 1.5×). Auto-detects the passing bin from the log or reuses **Wafer → Passing bin name**. Verified on a seeded 540-die sample with two planted bad shots: shot (3,2) at 88% fail rate (7.75× avg) and shot (5,5) at 60% (5.31×) both glow immediately at the default threshold. Repeating-defect signatures the plain colour map buries in edge noise now surface in one glance.
 - **▶ Zonal yield statistics** *(C)* — yield by centre/mid/edge as numbers. The zone rings exist; the numbers don't.
 - **○ Wafer-to-wafer diff** — pick two wafers, show only what changed.
 - **○ Bin Pareto** — ranked bin counts beside the map.

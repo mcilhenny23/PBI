@@ -103,6 +103,21 @@
                 "zoneLineOpacity": { "type": { "numeric": true } }
             }
         },
+        "reticle": {
+            "properties": {
+                "showReticle": { "type": { "bool": true } },
+                "reticleSizeX": { "type": { "numeric": true } },
+                "reticleSizeY": { "type": { "numeric": true } },
+                "reticleOffsetX": { "type": { "numeric": true } },
+                "reticleOffsetY": { "type": { "numeric": true } },
+                "reticleColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "reticleLineWidth": { "type": { "numeric": true } },
+                "reticleLineOpacity": { "type": { "numeric": true } },
+                "highlightBadReticles": { "type": { "bool": true } },
+                "reticleFailThreshold": { "type": { "numeric": true } },
+                "passBinReticle": { "type": { "text": true } }
+            }
+        },
         "interactions": {
             "properties": {
                 "dimUnselectedOpacity": { "type": { "numeric": true } }

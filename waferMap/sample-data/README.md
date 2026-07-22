@@ -97,7 +97,41 @@ Hovering a die reports *how many wafers* contributed and how many failed, so a
 
 ---
 
-## Things to try
+## Reticle overlay — is the defect from a bad shot?
+
+**File:** `03-wafer-reticle.csv` (single wafer, 540 dies, deliberate
+reticle-aligned defects)
+
+- **Die X / Die Y / Bin / Value** ← as above
+- **Reticle Overlay → Show reticle grid** on
+- **Dies per reticle (X)** = **4**
+- **Dies per reticle (Y)** = **4**
+- **Highlight bad reticles** on
+
+The wafer was seeded with two reticle-aligned bad shots:
+
+| Shot | Dies | Fail rate | vs wafer avg |
+|---|---:|---:|---:|
+| (3, 2) — dies X 12–15, Y 8–11  | 16 | **88%** | 7.75× |
+| (5, 5) — dies X 20–23, Y 20–23 | 15 | **60%** | 5.31× |
+
+Wafer average is 11.3%. With the default 1.5× threshold both shots glow
+red immediately — a repeating-defect signature that a plain colour map
+buries in edge failures and background noise. In semiconductor terms this
+is the "is my reticle contaminated?" question, and it's now a two-toggle
+answer.
+
+Lower the threshold to **1.0×** to see every shot with even slightly
+above-average fail rate (edge-heavy corners will light up too — that's a
+different failure mode, not a reticle problem, so a threshold of 1.5× is a
+better default). Small shots (2–3 dies at the wafer edge) can trip the
+threshold with two failing dies — raise **Dies per reticle** to match your
+actual step size before reading too much into corner shots.
+
+**Reticle offset** shifts the whole grid — set it to 1 in either direction
+to test alignment; the highlights on (3,2) and (5,5) will move off and the
+apparent "bad shots" will scatter, confirming they're aligned to shot
+boundaries at offset 0, not to some other periodic feature.
 
 - **Edge exclusion** — 1, 2, 3… peels rings off the wafer edge.
 - **Zone overlay** — concentric rings for center/mid/edge yield analysis.

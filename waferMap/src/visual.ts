@@ -134,6 +134,7 @@ export class Visual implements IVisual {
             const die = this.formattingSettings.dieAppearanceCard;
             const cs = this.formattingSettings.colorScaleCard;
             const zn = this.formattingSettings.zonesCard;
+            const rt = this.formattingSettings.reticleCard;
 
             const width = options.viewport.width;
             const height = options.viewport.height;
@@ -211,19 +212,23 @@ export class Visual implements IVisual {
             const stacked = String(wf.multiWaferMode.value?.value ?? "small-multiples") === "stacked"
                 && allWafers.length > 1;
 
+            // Passing bin: an explicit setting wins, else the most common bin
+            // in the log. Lifted out of the stacked block because the reticle
+            // overlay needs it too — and we want one bin counting as "good"
+            // everywhere in the visual, never two.
+            let autoPassBin = (wf.passBin.value || "").trim();
+            if (!autoPassBin) {
+                const tally = new Map<string, number>();
+                for (const d of dies) if (d.bin != null) tally.set(d.bin, (tally.get(d.bin) || 0) + 1);
+                let best = -1;
+                tally.forEach((count, b) => { if (count > best) { best = count; autoPassBin = b; } });
+            }
+
             let composite: Die[] = [];
             let stackedDomain: [number, number] = [0, 1];
             let stackedIsRate = true;
             if (stacked) {
-                // "Passing" bin: explicit, else the most common bin in the data.
-                const explicitPass = (wf.passBin.value || "").trim();
-                let passBin = explicitPass;
-                if (!passBin) {
-                    const tally = new Map<string, number>();
-                    for (const d of dies) if (d.bin != null) tally.set(d.bin, (tally.get(d.bin) || 0) + 1);
-                    let best = -1;
-                    tally.forEach((n, b) => { if (n > best) { best = n; passBin = b; } });
-                }
+                const passBin = autoPassBin;
                 stackedIsRate = String(wf.stackedMetric.value?.value ?? "fail-rate") === "fail-rate";
 
                 const agg = new Map<string, { x: number; y: number; n: number; fail: number; sum: number; sumN: number }>();
@@ -394,6 +399,117 @@ export class Visual implements IVisual {
                             .attr("stroke-opacity", op)
                             .attr("stroke-width", 1)
                             .attr("stroke-dasharray", "3 3");
+                    }
+                }
+
+                // ── Reticle overlay ────────────────────────────────
+                // Grid lines aligned to reticle-shot boundaries. Optionally
+                // computes a per-shot fail rate and tints shots whose rate
+                // exceeds a threshold multiple of the wafer average — the
+                // repeating-defect signature of a bad reticle.
+                if (rt.showReticle.value) {
+                    const rSizeX = Math.max(1, Math.round(rt.reticleSizeX.value || 2));
+                    const rSizeY = Math.max(1, Math.round(rt.reticleSizeY.value || 2));
+                    const rOffX = ((Math.round(rt.reticleOffsetX.value || 0) % rSizeX) + rSizeX) % rSizeX;
+                    const rOffY = ((Math.round(rt.reticleOffsetY.value || 0) % rSizeY) + rSizeY) % rSizeY;
+                    const rColor = rt.reticleColor.value.value;
+                    const rOp = Math.max(0, Math.min(1, (rt.reticleLineOpacity.value ?? 70) / 100));
+                    const rLw = Math.max(0.2, rt.reticleLineWidth.value ?? 1.5);
+
+                    // Highlight math. Uses the same auto-passBin logic as the
+                    // stacked composite mode so a bin never counts as good in
+                    // one place and bad in another.
+                    const passOverride = String(rt.passBinReticle.value ?? "").trim()
+                        || String(wf.passBin.value ?? "").trim();
+                    const passBin = passOverride || autoPassBin;
+                    const isFail = (d: Die): boolean => d.bin != null && d.bin !== passBin;
+                    let wAvg = 0;
+                    if (rt.highlightBadReticles.value) {
+                        let n = 0, f = 0;
+                        for (const d of waferDies) { if (d.bin == null) continue; n++; if (isFail(d)) f++; }
+                        wAvg = n > 0 ? f / n : 0;
+                    }
+                    const threshold = Math.max(1, rt.reticleFailThreshold.value ?? 1.5);
+
+                    // Build shot buckets. Only shots that contain at least one
+                    // die inside the wafer are drawn; empty shots at the corner
+                    // of a circular wafer would clutter the grid.
+                    interface Shot { rx: number; ry: number; gx0: number; gy0: number; gxN: number; gyN: number; n: number; f: number; }
+                    const shots = new Map<string, Shot>();
+                    const shotIdx = (gx: number, gy: number): [number, number] => [
+                        Math.floor((gx - rOffX) / rSizeX),
+                        Math.floor((gy - rOffY) / rSizeY)
+                    ];
+                    // Enumerate die-grid cells the drawn dies actually occupy.
+                    for (const [key, arr] of dieMap) {
+                        const [gxStr, gyStr] = key.split(",");
+                        const gx = +gxStr, gy = +gyStr;
+                        const [rx, ry] = shotIdx(gx, gy);
+                        const k = `${rx},${ry}`;
+                        let s = shots.get(k);
+                        if (!s) {
+                            const gx0 = rx * rSizeX + rOffX;
+                            const gy0 = ry * rSizeY + rOffY;
+                            s = { rx, ry, gx0, gy0, gxN: gx0 + rSizeX, gyN: gy0 + rSizeY, n: 0, f: 0 };
+                            shots.set(k, s);
+                        }
+                        // A cell may hold multiple die records (rework rows) —
+                        // count them all rather than the last-written one, to
+                        // match how the tooltip aggregates a cell.
+                        for (const d of arr) {
+                            if (d.bin == null) continue;
+                            s.n++; if (isFail(d)) s.f++;
+                        }
+                    }
+
+                    // Highlight fills go under the grid lines.
+                    if (rt.highlightBadReticles.value && wAvg > 0) {
+                        const badFill = "#d62728";
+                        for (const s of shots.values()) {
+                            if (s.n === 0) continue;
+                            const rate = s.f / s.n;
+                            if (rate < wAvg * threshold) continue;
+                            const x0 = originX + s.gx0 * cell;
+                            const y0 = originY + s.gy0 * cell;
+                            const w = rSizeX * cell, h = rSizeY * cell;
+                            // Fill strength grows with how much worse than avg — capped so
+                            // even the worst shot stays translucent enough to see the dies.
+                            const intensity = Math.min(1, (rate / wAvg - 1) / 2);
+                            this.overlay.append("rect")
+                                .attr("x", x0).attr("y", y0)
+                                .attr("width", w).attr("height", h)
+                                .attr("fill", badFill)
+                                .attr("fill-opacity", 0.15 + 0.25 * intensity)
+                                .attr("pointer-events", "none");
+                        }
+                    }
+
+                    // Grid lines: every rSizeX columns, every rSizeY rows.
+                    // Extend through the whole die grid — the circle boundary
+                    // clips visually because the dies outside it aren't drawn.
+                    const gridStartX = originX + rOffX * cell;
+                    const gridEndX = originX + gridCols * cell;
+                    const gridStartY = originY + rOffY * cell;
+                    const gridEndY = originY + gridRows * cell;
+                    for (let gx = rOffX; gx <= gridCols; gx += rSizeX) {
+                        const px = originX + gx * cell;
+                        this.overlay.append("line")
+                            .attr("x1", px).attr("x2", px)
+                            .attr("y1", gridStartY).attr("y2", gridEndY)
+                            .attr("stroke", rColor).attr("stroke-opacity", rOp)
+                            .attr("stroke-width", rLw)
+                            .attr("shape-rendering", "crispEdges")
+                            .attr("pointer-events", "none");
+                    }
+                    for (let gy = rOffY; gy <= gridRows; gy += rSizeY) {
+                        const py = originY + gy * cell;
+                        this.overlay.append("line")
+                            .attr("x1", gridStartX).attr("x2", gridEndX)
+                            .attr("y1", py).attr("y2", py)
+                            .attr("stroke", rColor).attr("stroke-opacity", rOp)
+                            .attr("stroke-width", rLw)
+                            .attr("shape-rendering", "crispEdges")
+                            .attr("pointer-events", "none");
                     }
                 }
 
