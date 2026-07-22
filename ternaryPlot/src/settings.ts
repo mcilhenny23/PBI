@@ -136,6 +136,58 @@ class ColorScaleCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Classification Overlay — draws a domain classification scheme (USDA soil
+ * texture etc.) as polygons over the triangle. Every point then inherits
+ * a class name from the region it falls in and the shape of the cloud
+ * reads as domain knowledge, not just coordinates.
+ */
+class ClassificationCard extends FormattingSettingsCard {
+    showScheme = new formattingSettings.ToggleSwitch({
+        name: "showScheme",
+        displayName: "Show classification regions",
+        description: "Overlays a domain classification (e.g. USDA soil-texture triangle) as coloured polygons. Bind the components to match the scheme's expected vertex assignment or the regions won't line up with the data.",
+        value: false
+    });
+
+    schemeId = new formattingSettings.ItemDropdown({
+        name: "schemeId",
+        displayName: "Scheme",
+        items: [
+            { value: "usda-soil", displayName: "USDA soil texture (A=Clay, B=Sand, C=Silt)" }
+        ],
+        value: { value: "usda-soil", displayName: "USDA soil texture (A=Clay, B=Sand, C=Silt)" }
+    });
+
+    regionOpacity = new formattingSettings.NumUpDown({
+        name: "regionOpacity",
+        displayName: "Region fill opacity (%)",
+        value: 18
+    });
+
+    regionStroke = new formattingSettings.ColorPicker({
+        name: "regionStroke",
+        displayName: "Region outline color",
+        value: { value: "#666666" }
+    });
+
+    showRegionLabels = new formattingSettings.ToggleSwitch({
+        name: "showRegionLabels",
+        displayName: "Show region labels",
+        value: true
+    });
+
+    name: string = "classification";
+    displayName: string = "Classification Overlay";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showScheme,
+        this.schemeId,
+        this.regionOpacity,
+        this.regionStroke,
+        this.showRegionLabels
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -150,8 +202,9 @@ class InteractionsCard extends FormattingSettingsCard {
 
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     triangleCard = new TriangleCard();
+    classificationCard = new ClassificationCard();
     pointsCard = new PointsCard();
     colorScaleCard = new ColorScaleCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.triangleCard, this.pointsCard, this.colorScaleCard, this.interactionsCard];
+    cards = [this.triangleCard, this.classificationCard, this.pointsCard, this.colorScaleCard, this.interactionsCard];
 }

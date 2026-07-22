@@ -48,6 +48,21 @@
                 "axisLabelC": { "type": { "text": true } }
             }
         },
+        "classification": {
+            "properties": {
+                "showScheme": { "type": { "bool": true } },
+                "schemeId": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "usda-soil", "displayName": "USDA soil texture (A=Clay, B=Sand, C=Silt)" }
+                        ]
+                    }
+                },
+                "regionOpacity": { "type": { "numeric": true } },
+                "regionStroke": { "type": { "fill": { "solid": { "color": true } } } },
+                "showRegionLabels": { "type": { "bool": true } }
+            }
+        },
         "points": {
             "properties": {
                 "pointRadius": { "type": { "numeric": true } },

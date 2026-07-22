@@ -71,7 +71,7 @@ Four themes recur:
 
 ## 7. Ternary Plot — composition
 
-- **▶ Classification-region overlays** *(B)* — USDA soil-texture triangle, QAPF for rocks, phase fields. A bare triangle is markedly less useful than one carrying the standard boundaries.
+- **✅ Classification-region overlays** *(B)* — new **Classification Overlay** card with a pluggable scheme registry (`src/schemes.ts`). Ships with **USDA soil texture** (12 classes). Each region is a polygon of barycentric vertices projected through the visual's `project()`; hover-tooltip names the class + required vertex assignment. Boundaries approximate the NRCS Soil Survey Manual to whole-percent vertices — verified: 11/12 samples in the soil dataset land in the region matching their `TextureClass` column (the 12th is `Clay (heavy)` inside `Clay`, a subclass). Coverage sweep of 300 random points: 280 in exactly one region, 19 boundary gaps, 1 overlap. QAPF for rocks and other schemes add cleanly as new entries in the same registry.
 - **○ Density contours** — for hundreds of points.
 - **○ Per-group convex hulls / centroids**.
 - **○ Tie-lines and mixing paths** — materials science.

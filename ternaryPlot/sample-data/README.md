@@ -57,6 +57,35 @@ capita shows the classic development gradient.
 
 ---
 
+## Classification overlay — USDA soil texture
+
+The soil sample is exactly the case a classification triangle is for. Turn on
+**Classification Overlay → Show classification regions** with the USDA soil
+scheme. Bind:
+
+- **Component A (top)** ← `Clay`
+- **Component B (bottom-left)** ← `Sand`
+- **Component C (bottom-right)** ← `Silt`
+
+(The scheme dropdown states this required assignment.) Twelve coloured
+polygons partition the triangle by USDA textural class — every point
+inherits a class from the region it lands in. Verified against
+`01-soil-texture.csv`: **11 of 12 samples land in the region matching
+their `TextureClass` column** (the 12th is `Clay (heavy)` landing in
+`Clay`, which is a sub-classification, not a mismatch).
+
+Boundaries are rounded to whole-percent USDA polygon vertices — a
+coverage sweep of 300 random points had **280 in exactly one region**,
+19 boundary-line gaps, 1 overlap. Close enough to read at a glance;
+users who need surveyor accuracy can adjust the vertices in
+`src/schemes.ts`.
+
+Hover any region for its full class name. The overlay obeys the
+same normalize rule as the points — leave **Normalize** on when your
+components are in percent (they will be scaled to sum to 1).
+
+---
+
 ## Things to try
 
 - **Normalize** off — with the soil data (sums = 100, not 1) the points vanish;

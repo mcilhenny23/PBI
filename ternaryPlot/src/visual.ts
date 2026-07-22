@@ -17,6 +17,7 @@ import ISelectionId = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
+import { schemeById, barycentricCentroid } from "./schemes";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ export class Visual implements IVisual {
             this.formattingSettings = this.formattingSettingsService
                 .populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews?.[0]);
             const tri = this.formattingSettings.triangleCard;
+            const cls = this.formattingSettings.classificationCard;
             const pts = this.formattingSettings.pointsCard;
             const cscale = this.formattingSettings.colorScaleCard;
 
@@ -256,6 +258,74 @@ export class Visual implements IVisual {
                             .attr("x2", p2.x).attr("y2", p2.y)
                             .attr("stroke", "#e6e6e6").attr("stroke-width", 1)
                             .attr("shape-rendering", "crispEdges");
+                    }
+                }
+            }
+
+            // ── 6b. Classification scheme overlay ────────────────
+            // Sits between the gridlines and the triangle outline so the
+            // outline reads on top of the region fills. Categorical palette
+            // rotated across regions for visual differentiation; a diagnostic
+            // triangle isn't a colour-order-carrying chart, so anything
+            // consistent is fine.
+            if (cls.showScheme.value) {
+                const scheme = schemeById(String(cls.schemeId.value?.value ?? "usda-soil"));
+                if (scheme) {
+                    const regionG = this.container.append("g").classed("scheme-regions", true);
+                    const palette = d3.schemeSet3 as readonly string[];
+                    const strokeCol = cls.regionStroke.value.value;
+                    const fillOp = Math.max(0, Math.min(1, (cls.regionOpacity.value ?? 18) / 100));
+                    scheme.regions.forEach((r, i) => {
+                        const pts = r.vertices.map(v => project(v[0], v[1], v[2]));
+                        const path = pts.map((p, k) => (k === 0 ? "M" : "L") + p.x + "," + p.y).join(" ") + " Z";
+                        regionG.append("path")
+                            .attr("d", path)
+                            .attr("fill", palette[i % palette.length])
+                            .attr("fill-opacity", fillOp)
+                            .attr("stroke", strokeCol).attr("stroke-width", 0.75)
+                            .attr("stroke-opacity", 0.85)
+                            .on("mousemove", (event: MouseEvent) => {
+                                const [px, py] = d3.pointer(event, this.svg.node());
+                                this.tooltipService.show({
+                                    dataItems: [
+                                        { displayName: "Class", value: r.name },
+                                        { displayName: "Scheme", value: scheme.name },
+                                        { displayName: "Vertex assignment",
+                                          value: `A=${scheme.axisA}, B=${scheme.axisB}, C=${scheme.axisC}` }
+                                    ],
+                                    identities: [], coordinates: [px, py], isTouchEvent: false
+                                });
+                            })
+                            .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+                    });
+                    if (cls.showRegionLabels.value) {
+                        const labelG = this.container.append("g").classed("scheme-labels", true);
+                        scheme.regions.forEach(r => {
+                            const [a, b, c] = barycentricCentroid(r.vertices);
+                            const p = project(a, b, c);
+                            // Estimate the region's bounding-radius in pixels
+                            // to decide short vs full name. Small regions use
+                            // the short code so the layout stays legible.
+                            let maxDist = 0;
+                            for (const v of r.vertices) {
+                                const q = project(v[0], v[1], v[2]);
+                                const d = Math.hypot(q.x - p.x, q.y - p.y);
+                                if (d > maxDist) maxDist = d;
+                            }
+                            const useShort = maxDist < 32 && r.short;
+                            const text = useShort ? r.short! : r.name;
+                            labelG.append("text")
+                                .attr("x", p.x).attr("y", p.y)
+                                .attr("text-anchor", "middle")
+                                .attr("dominant-baseline", "middle")
+                                .attr("font-size", useShort ? "9px" : "10px")
+                                .attr("font-weight", 600)
+                                .attr("fill", "#333")
+                                .attr("stroke", "rgba(255,255,255,0.85)").attr("stroke-width", 3)
+                                .attr("paint-order", "stroke")
+                                .style("pointer-events", "none")
+                                .text(text);
+                        });
                     }
                 }
             }
