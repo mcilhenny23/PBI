@@ -522,7 +522,10 @@ export class Visual implements IVisual {
                 })
                 .on("contextmenu", (event: MouseEvent, d: FanDataPoint) => {
                     event.preventDefault(); event.stopPropagation();
-                    this.selectionManager.showContextMenu(d.selectionId ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                    // Skip the menu when no real id exists — passing {} as
+                    // ISelectionId leaves the host in an indeterminate state.
+                    if (!d.selectionId) return;
+                    this.selectionManager.showContextMenu(d.selectionId, { x: event.clientX, y: event.clientY });
                 })
                 .on("keydown", (event: KeyboardEvent, d: FanDataPoint) => {
                     if (event.key !== "Enter" && event.key !== " ") return;

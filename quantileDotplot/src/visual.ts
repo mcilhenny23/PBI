@@ -291,7 +291,11 @@ export class Visual implements IVisual {
                         })
                         .on("contextmenu", (event: MouseEvent) => {
                             event.preventDefault(); event.stopPropagation();
-                            this.selectionManager.showContextMenu(g.selectionIds![0] ?? ({} as ISelectionId), { x: event.clientX, y: event.clientY });
+                            // Skip when no real id — passing {} as ISelectionId
+                            // leaves the host in an indeterminate state.
+                            const id = g.selectionIds?.[0];
+                            if (!id) return;
+                            this.selectionManager.showContextMenu(id, { x: event.clientX, y: event.clientY });
                         });
                 }
                 const groupColor = (G > 1 && !showTh)

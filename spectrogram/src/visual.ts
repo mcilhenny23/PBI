@@ -683,7 +683,7 @@ export class Visual implements IVisual {
                                 .attr("fill", col)
                                 .attr("stroke", "rgba(0,0,0,0.6)").attr("stroke-width", 2.5)
                                 .attr("paint-order", "stroke")
-                                .text(k === 1 ? `${f0}×1 = ${f0.toFixed(1)} Hz` : `${k}× (${f.toFixed(1)} Hz)`);
+                                .text(k === 1 ? `1× (${f0.toFixed(1)} Hz)` : `${k}× (${f.toFixed(1)} Hz)`);
                         }
                     }
                 }
