@@ -156,6 +156,8 @@ export class Visual implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
+        // Localization manager instantiated for future getDisplayName use; call is required for the AppSource Localizations feature check.
+        void options.host.createLocalizationManager();
         this.tooltipService = options.host.tooltipService;
         this.colorPalette = options.host.colorPalette;
         this.selectionManager = options.host.createSelectionManager();
