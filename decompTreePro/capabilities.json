@@ -70,6 +70,12 @@
     },
     "supportsLandingPage": true,
     "supportsKeyboardFocus": true,
+    "subtotals": {
+        "matrix": {
+            "rowSubtotals": { "defaultValue": true },
+            "columnSubtotals": { "defaultValue": true }
+        }
+    },
     "supportsHighlight": true,
     "supportsMultiVisualSelection": true,
     "tooltips": {

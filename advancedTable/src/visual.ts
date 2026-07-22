@@ -74,6 +74,7 @@ function evaluateRule(cellValue: number | null, op: string, threshold: number): 
 export class Visual implements IVisual {
     private events: IVisualEventService;
     private host: IVisualHost;
+    private tooltipService: powerbi.extensibility.ITooltipService;
     private colorPalette: ISandboxExtendedColorPalette;
     private selectionManager: ISelectionManager;
     private formattingSettings: VisualFormattingSettingsModel;
@@ -87,6 +88,7 @@ export class Visual implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
         this.host = options.host;
+        this.tooltipService = options.host.tooltipService;
         // Localization manager instantiated for future getDisplayName use; call is required for the AppSource Localizations feature check.
         void options.host.createLocalizationManager();
         // Read host.allowInteractions — respect the report author's
