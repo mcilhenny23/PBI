@@ -314,7 +314,13 @@ export class Visual implements IVisual {
             // When enabled, take a fixed slice off the bottom of each panel for
             // the trend strip. Kept short (~28 px) because it is a supplementary
             // strip — the spectrogram is still the primary reading.
-            const trendOn = A.showAlarmBands.value && A.showBandTrend.value;
+            // Same unit gate the overlay band uses — a Hz-declared band's Low/High
+            // are meaningless in orders mode, so the trend that reads them must
+            // also sit out until the axis matches. Otherwise the trend line would
+            // silently compute a plausible-looking curve from the wrong bin range.
+            const bandUnitsGlobal = String(A.alarmBand1Units.value?.value ?? "hz");
+            const unitsMatchGlobal = this.ordersMode ? bandUnitsGlobal === "orders" : bandUnitsGlobal === "hz";
+            const trendOn = A.showAlarmBands.value && A.showBandTrend.value && unitsMatchGlobal;
             const trendH = trendOn && panelH >= 60 ? Math.min(36, Math.floor(panelH * 0.28)) : 0;
             const heatH = panelH - trendH;
 
