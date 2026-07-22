@@ -213,6 +213,19 @@ export class Visual implements IVisual {
                 if (pan) m = pan.suggestedMotifLength;
             }
 
+            // In multi mode when panMatrixProfile returned null (every candidate
+            // filtered by MAD_FLOOR or n<3m), surface the failure — otherwise
+            // control would fall through to fixed-m stomp using the stale
+            // windowLength setting and quietly render a result the user did
+            // not ask for.
+            if (multiLength && !pan) {
+                this.renderMessage(width, height, "Multi-length scan failed",
+                    `No candidate window length fit this ${n}-point series.`,
+                    "Try widening min/max window, or add more data.");
+                this.events.renderingFinished(options);
+                return;
+            }
+
             const exclusion = Math.max(1, Math.round(m * exclusionPct / 100));
             const key = new Fingerprint()
                 .nums(series)
@@ -223,14 +236,8 @@ export class Visual implements IVisual {
                 ? (pan.scans.find(sc => sc.m === m)?.result ?? null)
                 : this.profileCache.get(key, () => stomp(series, m, exclusion));
             if (!res) {
-                if (multiLength) {
-                    this.renderMessage(width, height, "Multi-length scan failed",
-                        `No candidate window length fit this ${n}-point series.`,
-                        "Try widening min/max window, or add more data.");
-                } else {
-                    this.renderMessage(width, height, "Cannot compute profile",
-                        "Check the window length against the series length.", "");
-                }
+                this.renderMessage(width, height, "Cannot compute profile",
+                    "Check the window length against the series length.", "");
                 this.events.renderingFinished(options);
                 return;
             }
