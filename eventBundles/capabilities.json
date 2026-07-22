@@ -70,6 +70,8 @@
                     }
                 },
                 "gapBetweenSteps": { "type": { "numeric": true } },
+                "timeScaledColumns": { "type": { "bool": true } },
+                "showTimeAxis": { "type": { "bool": true } },
                 "fontSize": { "type": { "formatting": { "fontSize": true } } }
             }
         },

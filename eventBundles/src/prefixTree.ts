@@ -50,16 +50,37 @@ export interface TrieStats {
     /** Nodes per depth, index 1..maxDepth. */
     levels: TrieNode[][];
     scale: number;          // pixels per case
+    /**
+     * Median absolute elapsed time from the anchor at each depth, index 1..maxDepth
+     * (0 = anchor). Empty when the caller didn't supply timestamps.
+     * Values are always non-negative — for the backward tree these are the
+     * anchor-minus-t values (time *before* the anchor).
+     */
+    depthMedianElapsed: number[];
+    /** Total case count contributing to depthMedianElapsed at each depth. */
+    depthSampleCount: number[];
 }
 
 function newNode(event: string, depth: number, parent: TrieNode | null): TrieNode {
     return { event, depth, count: 0, children: [], parent, y0: 0, y1: 0, srcY0: 0, srcY1: 0 };
 }
 
-/** Insert aligned sequences into a prefix tree, truncated at `maxDepth`. */
-export function buildTrie(sequences: string[][], maxDepth: number): TrieNode {
+/**
+ * Insert aligned sequences into a prefix tree, truncated at `maxDepth`.
+ * `elapsedTimes[i][d]` is the absolute elapsed time from the anchor to
+ * position d of case i — omit for equal-width columns; supply for
+ * time-scaled columns. Collected per-depth into `perDepthSamples` for
+ * median computation in layoutTrie().
+ */
+export function buildTrie(
+    sequences: string[][],
+    maxDepth: number,
+    elapsedTimes?: number[][],
+    perDepthSamples?: number[][]
+): TrieNode {
     const root = newNode("", 0, null);
-    for (const seq of sequences) {
+    for (let si = 0; si < sequences.length; si++) {
+        const seq = sequences[si];
         root.count++;
         let node = root;
         const limit = Math.min(seq.length, Math.max(1, maxDepth));
@@ -72,6 +93,15 @@ export function buildTrie(sequences: string[][], maxDepth: number): TrieNode {
             }
             child.count++;
             node = child;
+            if (elapsedTimes && perDepthSamples) {
+                const t = elapsedTimes[si]?.[i];
+                if (Number.isFinite(t)) {
+                    // depth i+1 because i=0 is the first event AFTER the anchor.
+                    const d = i + 1;
+                    if (!perDepthSamples[d]) perDepthSamples[d] = [];
+                    perDepthSamples[d].push(t);
+                }
+            }
         }
     }
     return root;
@@ -106,7 +136,19 @@ export function pruneTrie(root: TrieNode, minSupport: number): number {
  * trunk along the top, and a depth-first walk keeps each subtree contiguous —
  * that contiguity is what guarantees the ribbons between columns never cross.
  */
-export function layoutTrie(root: TrieNode, opts: LayoutOptions): TrieStats {
+/** Median of a numeric array; empty → 0. */
+function median(vals: number[]): number {
+    if (!vals.length) return 0;
+    const s = vals.slice().sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+export function layoutTrie(
+    root: TrieNode,
+    opts: LayoutOptions,
+    perDepthSamples?: number[][]
+): TrieStats {
     // Order children heaviest-first, everywhere.
     const sortRec = (n: TrieNode): void => {
         n.children.sort((a, b) => (b.count - a.count) || a.event.localeCompare(b.event));
@@ -162,7 +204,30 @@ export function layoutTrie(root: TrieNode, opts: LayoutOptions): TrieStats {
     };
     assignSources(root);
 
-    return { prunedCases: 0, maxDepth, levels, scale };
+    // Per-depth median of the elapsed-time samples the caller collected while
+    // building the tree. Runs only if the caller passed the samples array —
+    // equal-width columns skip this entirely.
+    const depthMedianElapsed: number[] = new Array(maxDepth + 1).fill(0);
+    const depthSampleCount: number[] = new Array(maxDepth + 1).fill(0);
+    if (perDepthSamples) {
+        for (let d = 1; d <= maxDepth; d++) {
+            const samples = perDepthSamples[d];
+            if (samples && samples.length) {
+                depthMedianElapsed[d] = median(samples);
+                depthSampleCount[d] = samples.length;
+            }
+        }
+        // Guarantee monotonic non-decreasing. Random tie-order in a very small
+        // sample can produce e.g. depth 3 < depth 2, which would print columns
+        // out of order. Clamp to the running maximum.
+        let running = 0;
+        for (let d = 1; d <= maxDepth; d++) {
+            if (depthMedianElapsed[d] < running) depthMedianElapsed[d] = running;
+            else running = depthMedianElapsed[d];
+        }
+    }
+
+    return { prunedCases: 0, maxDepth, levels, scale, depthMedianElapsed, depthSampleCount };
 }
 
 // ── Alignment ──────────────────────────────────────────────────
@@ -174,6 +239,13 @@ export interface AlignedSequences {
     forward: string[][];
     /** Events before the anchor, reversed (nearest the anchor first). */
     backward: string[][];
+    /**
+     * Elapsed time from the anchor per event, absolute value. Forward: t - anchor;
+     * backward: anchor - t (positive-going as depth increases). Empty when the
+     * caller didn't supply timestamps.
+     */
+    forwardTimes: number[][];
+    backwardTimes: number[][];
     /** Cases that had no anchor event and were excluded. */
     excluded: number;
 }
@@ -186,23 +258,75 @@ export interface AlignedSequences {
  * left (what led up to it) and right (what followed) from a shared column.
  */
 export function alignSequences(
-    sequences: string[][], anchor: Anchor, anchorEvent: string
+    sequences: string[][],
+    anchor: Anchor,
+    anchorEvent: string,
+    timestamps?: number[][]
 ): AlignedSequences {
+    // Elapsed-time arrays are populated in parallel to the string arrays when
+    // timestamps are supplied. First element is 0 by construction (the anchor
+    // itself); subsequent elements are absolute elapsed time from the anchor.
+    const buildElapsed = (baseIdx: number, positions: number[], caseTimes: number[] | undefined): number[] => {
+        if (!caseTimes) return [];
+        const anchorT = caseTimes[baseIdx];
+        if (!Number.isFinite(anchorT)) return [];
+        return positions.map(k => {
+            const t = caseTimes[k];
+            return Number.isFinite(t) ? Math.abs(t - anchorT) : NaN;
+        });
+    };
+
     if (anchor === "last-event") {
-        // Reverse everything; the caller renders this tree right-to-left.
-        return { forward: sequences.map(s => s.slice().reverse()), backward: [], excluded: 0 };
+        const forward: string[][] = [];
+        const forwardTimes: number[][] = [];
+        for (let i = 0; i < sequences.length; i++) {
+            const s = sequences[i], t = timestamps?.[i];
+            const n = s.length;
+            const reversed = s.slice().reverse();
+            forward.push(reversed);
+            if (t) {
+                // Anchor is index n-1; reversed index k corresponds to original n-1-k.
+                const positions: number[] = [];
+                for (let k = 0; k < n; k++) positions.push(n - 1 - k);
+                forwardTimes.push(buildElapsed(n - 1, positions, t));
+            }
+        }
+        return { forward, backward: [], forwardTimes, backwardTimes: [], excluded: 0 };
     }
     if (anchor === "selected" && anchorEvent) {
         const forward: string[][] = [];
         const backward: string[][] = [];
+        const forwardTimes: number[][] = [];
+        const backwardTimes: number[][] = [];
         let excluded = 0;
-        for (const s of sequences) {
+        for (let ci = 0; ci < sequences.length; ci++) {
+            const s = sequences[ci];
+            const t = timestamps?.[ci];
             const i = s.indexOf(anchorEvent);
             if (i < 0) { excluded++; continue; }
             forward.push(s.slice(i));
             backward.push(s.slice(0, i).reverse());
+            if (t) {
+                const fwdPos: number[] = [];
+                for (let k = i; k < s.length; k++) fwdPos.push(k);
+                forwardTimes.push(buildElapsed(i, fwdPos, t));
+                const bwdPos: number[] = [];
+                for (let k = i - 1; k >= 0; k--) bwdPos.push(k);
+                backwardTimes.push(buildElapsed(i, bwdPos, t));
+            }
         }
-        return { forward, backward, excluded };
+        return { forward, backward, forwardTimes, backwardTimes, excluded };
     }
-    return { forward: sequences.map(s => s.slice()), backward: [], excluded: 0 };
+    const forward: string[][] = [];
+    const forwardTimes: number[][] = [];
+    for (let i = 0; i < sequences.length; i++) {
+        const s = sequences[i], t = timestamps?.[i];
+        forward.push(s.slice());
+        if (t) {
+            const pos: number[] = [];
+            for (let k = 0; k < s.length; k++) pos.push(k);
+            forwardTimes.push(buildElapsed(0, pos, t));
+        }
+    }
+    return { forward, backward: [], forwardTimes, backwardTimes: [], excluded: 0 };
 }

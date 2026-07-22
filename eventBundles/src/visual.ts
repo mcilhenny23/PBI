@@ -52,7 +52,11 @@ export class Visual implements IVisual {
     private margin = { top: 30, right: 14, bottom: 16, left: 14 };
 
     /** Caches the built+pruned prefix tree so restyling doesn't rebuild it. */
-    private trieCache = new ComputeCache<{ fwdRoot: TrieNode; bwdRoot: TrieNode | null; prunedF: number; prunedB: number }>();
+    private trieCache = new ComputeCache<{
+        fwdRoot: TrieNode; bwdRoot: TrieNode | null;
+        prunedF: number; prunedB: number;
+        fwdSamples: number[][]; bwdSamples: number[][];
+    }>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -154,9 +158,15 @@ export class Visual implements IVisual {
                 arr.push({ t, e: ev });
             }
             const sequences: string[][] = [];
+            // Parallel per-case timestamp arrays; used only when time-scaled
+            // columns are on. Populated whenever a timestamp column was bound
+            // so the setting can be toggled without a re-parse.
+            const seqTimes: number[][] = [];
+            const hasRealTime = cTs >= 0;
             for (const arr of byCase.values()) {
                 arr.sort((a, b) => (a.t - b.t) || a.e.localeCompare(b.e));
                 sequences.push(arr.map(x => x.e));
+                if (hasRealTime) seqTimes.push(arr.map(x => x.t));
             }
             if (!sequences.length) {
                 this.renderLandingPage(width, height, true, true);
@@ -167,7 +177,7 @@ export class Visual implements IVisual {
             // ── Align + build ──────────────────────────────────────
             const anchor = String(AG.alignmentAnchor.value?.value ?? "first-event") as Anchor;
             const anchorEvent = (AG.anchorEvent.value || "").trim();
-            const aligned = alignSequences(sequences, anchor, anchorEvent);
+            const aligned = alignSequences(sequences, anchor, anchorEvent, hasRealTime ? seqTimes : undefined);
 
             if (anchor === "selected" && !anchorEvent) {
                 this.renderMessage(width, height, "Pick an anchor event",
@@ -204,15 +214,28 @@ export class Visual implements IVisual {
                 .done();
 
             const trie = this.trieCache.get(trieKey, () => {
-                const f = buildTrie(aligned.forward, maxDepth);
+                // Elapsed-time samples per depth get collected during buildTrie
+                // when the aligner produced parallel timestamp arrays. Layout
+                // then computes the per-depth median from those samples.
+                const fwdSamples: number[][] = [];
+                const bwdSamples: number[][] = [];
+                const f = buildTrie(
+                    aligned.forward, maxDepth,
+                    aligned.forwardTimes.length ? aligned.forwardTimes : undefined,
+                    fwdSamples
+                );
                 const pf = pruneTrie(f, minSupport);
                 let b: TrieNode | null = null;
                 let pb = 0;
                 if (aligned.backward.length) {
-                    b = buildTrie(aligned.backward, maxDepth);
+                    b = buildTrie(
+                        aligned.backward, maxDepth,
+                        aligned.backwardTimes.length ? aligned.backwardTimes : undefined,
+                        bwdSamples
+                    );
                     pb = pruneTrie(b, minSupport);
                 }
-                return { fwdRoot: f, bwdRoot: b, prunedF: pf, prunedB: pb };
+                return { fwdRoot: f, bwdRoot: b, prunedF: pf, prunedB: pb, fwdSamples, bwdSamples };
             })!;
 
             const fwdRoot = trie.fwdRoot;
@@ -240,8 +263,17 @@ export class Visual implements IVisual {
                 gap: Math.max(1, Math.min(6, plotAcross * 0.01)),
                 minBandHeight: Math.max(0.5, AP.minBandWidth.value ?? 2)
             };
-            const fwdStats = layoutTrie(fwdRoot, layoutOpts);
-            const bwdStats = bwdRoot ? layoutTrie(bwdRoot, layoutOpts) : null;
+            const fwdStats = layoutTrie(fwdRoot, layoutOpts, trie.fwdSamples);
+            const bwdStats = bwdRoot ? layoutTrie(bwdRoot, layoutOpts, trie.bwdSamples) : null;
+
+            // Time-scaled columns require both the setting on AND at least one
+            // depth in the trie to have collected a non-zero elapsed sample.
+            // Otherwise fall back to equal-width — silently, since a bound but
+            // uninformative timestamp column is a normal state, not an error.
+            const timeScaled = LO.timeScaledColumns.value
+                && hasRealTime
+                && (fwdStats.depthMedianElapsed.some(t => t > 0)
+                    || (bwdStats?.depthMedianElapsed.some(t => t > 0) ?? false));
 
             // Fit the requested step gap into the available length.
             const fwdCols = fwdStats.maxDepth;
@@ -251,6 +283,41 @@ export class Visual implements IVisual {
             const needed = totalCols * step;
             if (needed > plotAlong && totalCols > 0) step = plotAlong / totalCols;
             const effBlock = Math.min(blockLen, Math.max(4, step * 0.45));
+
+            // ── Time-scaled column offsets ────────────────────────
+            // When time-scaled mode is on, column d for the forward tree sits
+            // at `origin + dir * timeScale * medianElapsed[d]`. medianElapsed
+            // is monotone by construction (clamped in layoutTrie) so columns
+            // never overtake each other.
+            //
+            // Blocks in scaled mode still need positive width; effBlock is set
+            // to a fixed marker length so a wide gap between two consecutive
+            // events reads as gap, not as an inflated block.
+            const fwdOffsets: number[] = new Array(fwdCols + 1).fill(0);
+            const bwdOffsets: number[] = new Array(bwdCols + 1).fill(0);
+            let scaledEffBlock = effBlock;
+            if (timeScaled) {
+                const fwdSpan = fwdStats.depthMedianElapsed[fwdCols] || 0;
+                const bwdSpan = bwdStats?.depthMedianElapsed[bwdCols] || 0;
+                const totalTime = Math.max(fwdSpan + bwdSpan, 1);
+                // Reserve some pixels for the marker blocks themselves so
+                // simultaneous events (near-zero elapsed) still show as two
+                // adjacent blocks rather than overlapping.
+                const markerReserve = totalCols * Math.max(6, blockLen * 0.5);
+                const availForTime = Math.max(1, plotAlong - markerReserve);
+                const timeScale = availForTime / totalTime;
+                for (let d = 1; d <= fwdCols; d++) {
+                    fwdOffsets[d] = fwdStats.depthMedianElapsed[d] * timeScale
+                                  + d * Math.max(6, blockLen * 0.5);
+                }
+                if (bwdStats) {
+                    for (let d = 1; d <= bwdCols; d++) {
+                        bwdOffsets[d] = bwdStats.depthMedianElapsed[d] * timeScale
+                                      + d * Math.max(6, blockLen * 0.5);
+                    }
+                }
+                scaledEffBlock = Math.max(4, Math.min(blockLen, blockLen * 0.55));
+            }
 
             // Origin: the anchor column. One-sided trees start at the near edge.
             const alongOrigin = this.horizontal
@@ -287,20 +354,25 @@ export class Visual implements IVisual {
                     ? { x: along, y: acrossOrigin + across }
                     : { x: acrossOrigin + across, y: along };
 
-            const drawTree = (tree: Tree, origin: number): void => {
+            const drawTree = (tree: Tree, origin: number, offsets: number[]): void => {
                 const ribbons = this.container.append("g").classed("ribbons", true);
                 const blocks = this.container.append("g").classed("blocks", true);
+                const useOffsets = timeScaled && offsets.length > 0;
+                const eb = useOffsets ? scaledEffBlock : effBlock;
+                const colStart = (d: number): number =>
+                    useOffsets ? origin + tree.dir * offsets[d - 1]
+                               : origin + tree.dir * ((d - 1) * step);
 
                 for (let d = 1; d <= tree.maxDepth; d++) {
                     const nodes = tree.levels[d] || [];
                     for (const n of nodes) {
-                        const lead = origin + tree.dir * ((d - 1) * step);
-                        const trail = lead + tree.dir * effBlock;
+                        const lead = colStart(d);
+                        const trail = lead + tree.dir * eb;
 
                         // Ribbon from the parent's trailing edge (depth 1 starts flush).
                         if (d > 1 && n.parent) {
-                            const pLead = origin + tree.dir * ((d - 2) * step);
-                            const pTrail = pLead + tree.dir * effBlock;
+                            const pLead = colStart(d - 1);
+                            const pTrail = pLead + tree.dir * eb;
                             ribbons.append("path")
                                 .attr("d", this.ribbonPath(pTrail, n.srcY0, n.srcY1, lead, n.y0, n.y1, toXY))
                                 .attr("fill", colorOf(n.event))
@@ -344,10 +416,37 @@ export class Visual implements IVisual {
                 }
             };
 
-            drawTree({ root: fwdRoot, dir: fwdDir, maxDepth: fwdStats.maxDepth, levels: fwdStats.levels }, fwdOrigin);
+            drawTree({ root: fwdRoot, dir: fwdDir, maxDepth: fwdStats.maxDepth, levels: fwdStats.levels }, fwdOrigin, fwdOffsets);
             if (bwdRoot && bwdStats) {
                 drawTree({ root: bwdRoot, dir: -1, maxDepth: bwdStats.maxDepth, levels: bwdStats.levels },
-                    alongOrigin - stepGap * 0.0);
+                    alongOrigin - stepGap * 0.0, bwdOffsets);
+            }
+
+            // ── Time axis (scaled mode only) ──────────────────────
+            if (timeScaled && LO.showTimeAxis.value && this.horizontal) {
+                const axisG = this.container.append("g").classed("time-axis", true);
+                const y = this.margin.top + noteH + plotAcross + 4;
+                const drawTick = (px: number, label: string): void => {
+                    axisG.append("line")
+                        .attr("x1", px).attr("x2", px).attr("y1", y).attr("y2", y + 4)
+                        .attr("stroke", "#999").attr("stroke-width", 1);
+                    axisG.append("text")
+                        .attr("x", px).attr("y", y + 14)
+                        .attr("text-anchor", "middle")
+                        .attr("font-size", `${Math.max(9, fs - 2)}px`).attr("fill", "#666")
+                        .text(label);
+                };
+                drawTick(alongOrigin, "anchor");
+                for (let d = 1; d <= fwdCols; d++) {
+                    const px = alongOrigin + fwdDir * fwdOffsets[d];
+                    drawTick(px, `+${this.fmtDur(fwdStats.depthMedianElapsed[d])}`);
+                }
+                if (bwdStats) {
+                    for (let d = 1; d <= bwdCols; d++) {
+                        const px = alongOrigin - bwdOffsets[d];
+                        drawTick(px, `−${this.fmtDur(bwdStats.depthMedianElapsed[d])}`);
+                    }
+                }
             }
 
             // Anchor marker line, when the diagram is two-sided.
@@ -395,6 +494,18 @@ export class Visual implements IVisual {
         const c1 = toXY(am, s0), c2 = toXY(am, t0), c3 = toXY(am, t1), c4 = toXY(am, s1);
         return `M ${p1.x},${p1.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`
             + ` L ${p3.x},${p3.y} C ${c3.x},${c3.y} ${c4.x},${c4.y} ${p4.x},${p4.y} Z`;
+    }
+
+    /** Human-friendly duration for the time-scaled axis (millisecond input). */
+    private fmtDur(ms: number): string {
+        if (!Number.isFinite(ms) || ms <= 0) return "0";
+        const s = ms / 1000;
+        if (s < 90) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+        const m = s / 60;
+        if (m < 90) return `${m.toFixed(m < 10 ? 1 : 0)}m`;
+        const h = m / 60;
+        if (h < 48) return `${h.toFixed(h < 10 ? 1 : 0)}h`;
+        return `${(h / 24).toFixed(1)}d`;
     }
 
     private showTooltip(event: MouseEvent, n: TrieNode, total: number): void {

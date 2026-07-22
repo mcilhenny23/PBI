@@ -92,7 +92,7 @@ Four themes recur:
 
 ## 10. Event Sequence Bundles — journey analysis
 
-- **▶ Time-scaled columns** *(A)* — steps are currently equal width; real analysis needs actual elapsed time between events.
+- **✅ Time-scaled columns** *(A)* — **Layout → Time-scaled columns** positions each column by the median elapsed time from the anchor across every case that reached that depth. `alignSequences` now carries parallel per-case timestamp arrays; `buildTrie` accepts a per-depth samples collector; `layoutTrie` returns `depthMedianElapsed` (clamped monotone so columns never overtake). Silent fallback to equal-width when Timestamp isn't bound or samples are all zero. Optional time axis prints `anchor`, `+15m`, `+82m`, `+1.9h`, ... under each column. Verified on the ER-journeys sample: Registration → Triage 15 min, Triage → Doctor **82 min (5.4× wider)** — the equal-width chart flattens this into two identical columns, time-scaled makes the bottleneck the widest thing on screen.
 - **▶ Outcome colouring** *(C)* — colour bundles by final outcome (recovered / churned / readmitted).
 - **○ Sequence search** — "show journeys containing X then Y".
 - **○ Cohort comparison** — two populations side by side.

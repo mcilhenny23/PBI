@@ -126,6 +126,20 @@ class LayoutCard extends FormattingSettingsCard {
         value: 60
     });
 
+    timeScaledColumns = new formattingSettings.ToggleSwitch({
+        name: "timeScaledColumns",
+        displayName: "Time-scaled columns",
+        description: "Position each column by the median elapsed time from the anchor, so a slow step reads as wide and a fast one narrow. Requires the Timestamp field. Falls back to equal-width columns silently when timestamps aren't usable.",
+        value: false
+    });
+
+    showTimeAxis = new formattingSettings.ToggleSwitch({
+        name: "showTimeAxis",
+        displayName: "Show time axis (scaled mode)",
+        description: "Prints an elapsed-time axis at the bottom when time-scaled columns are on.",
+        value: true
+    });
+
     fontSize = new formattingSettings.NumUpDown({
         name: "fontSize",
         displayName: "Font size",
@@ -137,6 +151,8 @@ class LayoutCard extends FormattingSettingsCard {
     slices: Array<FormattingSettingsSlice> = [
         this.orientation,
         this.gapBetweenSteps,
+        this.timeScaledColumns,
+        this.showTimeAxis,
         this.fontSize
     ];
 }

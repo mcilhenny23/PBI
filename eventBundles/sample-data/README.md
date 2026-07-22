@@ -56,6 +56,36 @@ and the visual reports how many it excluded rather than dropping them silently.
 
 ---
 
+## Time-scaled columns — where is the actual wait?
+
+Turn on **Layout → Time-scaled columns**. Each column now sits at the median
+elapsed time from the anchor across every case that reached that depth,
+instead of one-column-per-step. A slow step reads as *wide*, a fast one as
+*narrow*. The bottleneck jumps out.
+
+Verified on this file (aligned on the first event, Registration):
+
+| Depth | Cases | Median elapsed | vs step 1 |
+|---:|---:|---:|---:|
+| 1 (Triage) | 800 | 15.2 min | 1.0× |
+| 2 | 800 | **81.5 min** | **5.4×** |
+| 3 | 750 | 1.9 h | 7.4× |
+| 4 | 750 | 2.8 h | 11.0× |
+| 5 | 679 | 3.5 h | 14.0× |
+| 6 | 509 | 4.7 h | 18.5× |
+| 7 | 89  | 5.2 h | 20.6× |
+
+Registration → Triage takes ~15 minutes. **Triage → the next step
+(Doctor/Assessment) takes another 66 minutes** — that gap is 5.4× wider
+than the first step and is what a time-scaled chart plants right in
+front of the reader. The equal-width layout hides it entirely.
+
+A **time axis** underneath prints `anchor`, `+15m`, `+82m`, `+1.9h`, … so
+the reader can trace back exact durations. Falls back silently to
+equal-width when the Timestamp field isn't bound.
+
+---
+
 ## Things to try
 
 - **Min bundle support** — the key control. At 5 you see the long tail; raise
