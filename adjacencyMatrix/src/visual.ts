@@ -392,7 +392,6 @@ export class Visual implements IVisual {
                         this.selectionManager.clear().then(() => this.applyExternalDim());
                         return;
                     }
-                    event.stopPropagation();
                     // Dedupe by row-identity reference — a hub node with 3000
                     // in-edges + 3000 out-edges would otherwise ship 6000 ids
                     // (doubled again on a diagonal cell) and stall the host.
@@ -409,6 +408,12 @@ export class Visual implements IVisual {
                         this.selectionManager.clear().then(() => this.applyExternalDim());
                         return;
                     }
+                    // Only stop propagation on the SELECT path — otherwise the
+                    // svg-root click.clear handler would wipe the selection we
+                    // just set. The two clear branches deliberately bubble;
+                    // click.clear re-clearing is idempotent and keeps bubble
+                    // semantics consistent across all three outcomes.
+                    event.stopPropagation();
                     const multi = event.ctrlKey || event.metaKey || event.shiftKey;
                     this.selectionManager.select(ids, multi).then(() => this.applyExternalDim());
                 })
