@@ -401,7 +401,14 @@ export class Visual implements IVisual {
                         ...(this.nodeIds[si] ?? []),
                         ...(this.nodeIds[ti] ?? [])
                     ]));
-                    if (ids.length === 0) return;
+                    // If the cell resolves to no ids (edge rows that failed
+                    // selectionId construction), treat like an out-of-bounds
+                    // click and clear — silently no-op'ing would leave prior
+                    // selection state active and confuse the user.
+                    if (ids.length === 0) {
+                        this.selectionManager.clear().then(() => this.applyExternalDim());
+                        return;
+                    }
                     const multi = event.ctrlKey || event.metaKey || event.shiftKey;
                     this.selectionManager.select(ids, multi).then(() => this.applyExternalDim());
                 })
