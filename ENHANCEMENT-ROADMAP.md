@@ -56,7 +56,7 @@ Four themes recur:
 
 ## 5. Storyline — entity migration
 
-- **▶ Aggregate flow mode** *(A)* — today it's one line per entity, capping it around 50. Customer-segment migration means 10,000 entities. Band thickness = cohort count turns this from "team changes" into customer analytics. **Large applicability jump.**
+- **✅ Aggregate flow mode** *(A)* — **Layout → Flow mode → Aggregate (Sankey ribbons)** collapses per-entity lines into one thick band per group at each time step, sized by member count, with ribbons showing transitions. Sub-stripes within each source/target band are ordered by their partner's vertical position (Sankey stacking) so ribbons cross minimally without a full optimiser. Ribbons tooltip (from, to, count, stayed/moved). Verified on team-moves: 96 stayed, 5 moved, 2 dropped, 2 joined, reported as a 5% churn rate — small on the 16-entity narrative sample by construction; the mode earns its keep once entity counts pass ~50 and the individual-line view becomes a hairball.
 - **▶ Group-order optimisation** — band order is currently fixed (documented limitation); a move between non-adjacent bands still crosses the ones between.
 - **○ Entity bundling** — collapse similar trajectories.
 - **○ Event annotations** — mark reorganisations or campaigns on the time axis.

@@ -17,7 +17,7 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
-import { layoutStoryline, StorylineRow, Ordering, LayoutResult } from "./layout";
+import { layoutStoryline, aggregateStoryline, StorylineRow, Ordering, LayoutResult, AggregateLayout } from "./layout";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -51,6 +51,9 @@ export class Visual implements IVisual {
 
     /** Caches the barycentre sweep so restyling doesn't re-run it. */
     private layoutCache = new ComputeCache<LayoutResult>();
+
+    /** Caches the aggregate-flow layout, which is O(entities · times). */
+    private aggregateCache = new ComputeCache<AggregateLayout>();
 
     constructor(options: VisualConstructorOptions) {
         this.events = options.host.eventService;
@@ -132,6 +135,18 @@ export class Visual implements IVisual {
             const groupGap = Math.max(0, L.groupGap.value ?? 20);
             const slotHeight = lineWidth + entityGap;
             const ordering = String(L.orderingStrategy.value?.value ?? "minimize-crossings") as Ordering;
+            const flowMode = String(L.flowMode.value?.value ?? "entity");
+
+            // ── Aggregate branch (Sankey) ──────────────────────────
+            // Bail out to a separate renderer so the per-entity code paths
+            // don't have to interleave with ribbon layout. Same input, but
+            // very different geometry — one branch per branch of the design.
+            if (flowMode === "aggregate") {
+                this.renderAggregate(rows, width, height, LB, A, L);
+                this.applyExternalDim();
+                this.events.renderingFinished(options);
+                return;
+            }
 
             // ── Layout (cached) ────────────────────────────────────
             // The barycentre sweep runs several full passes over every entity at
@@ -341,6 +356,171 @@ export class Visual implements IVisual {
         } catch (error) {
             this.events.renderingFailed(options, String(error));
         }
+    }
+
+    private renderAggregate(
+        rows: StorylineRow[],
+        width: number, height: number,
+        LB: VisualFormattingSettingsModel["labelsCard"],
+        A: VisualFormattingSettingsModel["appearanceCard"],
+        L: VisualFormattingSettingsModel["layoutCard"]
+    ): void {
+        const unitH = Math.max(0.5, L.unitHeight.value ?? 4);
+        const groupGap = Math.max(0, L.groupGap.value ?? 20);
+        const fs = Math.max(6, LB.fontSize.value);
+
+        const key = new Fingerprint()
+            .num(unitH).num(groupGap)
+            .num(rows.length)
+            .strs(rows.map(r => `${r.entity}\x00${r.time}\x00${r.group}`))
+            .done();
+        const flow = this.aggregateCache.get(key,
+            () => aggregateStoryline(rows, { unitHeight: unitH, groupGap }));
+        if (!flow) return;
+
+        const m = {
+            top: 26,
+            right: LB.showEntityLabels.value ? 92 : 20,
+            bottom: 26,
+            left: LB.showGroupLabels.value ? 74 : 20
+        };
+        const plotW = Math.max(20, width - m.left - m.right);
+        const plotH = Math.max(20, height - m.top - m.bottom);
+        if (plotW < 30 || plotH < 30) return;
+
+        const T = flow.times.length;
+        const x = (t: number) => T > 1 ? m.left + (t / (T - 1)) * plotW : m.left + plotW / 2;
+        // Compress the tallest slice into the viewport height.
+        const scaleY = flow.height > 0 ? Math.min(1, plotH / flow.height) : 1;
+        const yOff = m.top + Math.max(0, (plotH - flow.height * scaleY) / 2);
+        const y = (v: number) => yOff + v * scaleY;
+
+        // Fixed pixel gap between the ribbon-endpoint stripe and the group
+        // band, so the ribbons don't fuse into the bands and become unreadable.
+        const nodeW = Math.max(6, Math.min(14, plotW / T * 0.12));
+
+        // Colour ribbons by their SOURCE group by default. Same-source
+        // (stayed) ribbons and cross-source (moved) ribbons visually cluster
+        // together, so a churny time slice reads immediately as "lots of
+        // different source colours flowing in".
+        const colorFor = (group: string): string => this.colorPalette.getColor(group).value;
+        const tension = Math.max(0, Math.min(100, L.lineTension.value ?? 50)) / 100 * 0.5;
+
+        // ── Ribbons ────────────────────────────────────────────
+        const ribbonLayer = this.container.append("g").classed("ribbons", true);
+        for (const r of flow.ribbons) {
+            const x0 = x(r.t) + nodeW / 2;
+            const x1 = x(r.t + 1) - nodeW / 2;
+            const dx = (x1 - x0) * tension;
+            const yTL = y(r.y0Src), yBL = y(r.y1Src);
+            const yTR = y(r.y0Tgt), yBR = y(r.y1Tgt);
+            // Top edge left→right, right edge down, bottom edge right→left, close.
+            const d =
+                `M ${x0},${yTL} ` +
+                `C ${x0 + dx},${yTL} ${x1 - dx},${yTR} ${x1},${yTR} ` +
+                `L ${x1},${yBR} ` +
+                `C ${x1 - dx},${yBR} ${x0 + dx},${yBL} ${x0},${yBL} Z`;
+            const same = r.from === r.to;
+            ribbonLayer.append("path")
+                .attr("d", d)
+                .attr("fill", colorFor(r.from))
+                .attr("fill-opacity", same ? 0.28 : 0.55)
+                .attr("stroke", "none")
+                .on("mousemove", (event: MouseEvent) => {
+                    const [px, py] = d3.pointer(event, this.svg.node());
+                    const items: VisualTooltipDataItem[] = [
+                        { displayName: "From", value: `${r.from}  @  ${flow.times[r.t]}` },
+                        { displayName: "To", value: `${r.to}  @  ${flow.times[r.t + 1]}` },
+                        { displayName: "Entities", value: String(r.count) },
+                        { displayName: "Change", value: same ? "Stayed" : "Moved" }
+                    ];
+                    this.tooltipService.show({
+                        dataItems: items, identities: [],
+                        coordinates: [px, py], isTouchEvent: false
+                    });
+                })
+                .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+        }
+
+        // ── Group nodes (the vertical rectangles at each time) ─
+        const nodeLayer = this.container.append("g").classed("nodes", true);
+        for (const s of flow.slices) {
+            for (const g of s.groups) {
+                nodeLayer.append("rect")
+                    .attr("x", x(s.tIdx) - nodeW / 2)
+                    .attr("y", y(g.y0))
+                    .attr("width", nodeW)
+                    .attr("height", Math.max(1, y(g.y1) - y(g.y0)))
+                    .attr("fill", colorFor(g.group))
+                    .attr("fill-opacity", 0.95)
+                    .on("mousemove", (event: MouseEvent) => {
+                        const [px, py] = d3.pointer(event, this.svg.node());
+                        this.tooltipService.show({
+                            dataItems: [
+                                { displayName: "Group", value: g.group },
+                                { displayName: "Time", value: s.time },
+                                { displayName: "Members", value: String(g.count) },
+                                { displayName: "Share", value: `${(g.count / Math.max(1, s.total / unitH) * 100).toFixed(0)}%` }
+                            ],
+                            identities: [], coordinates: [px, py], isTouchEvent: false
+                        });
+                    })
+                    .on("mouseleave", () => this.tooltipService.hide({ immediately: false, isTouchEvent: false }));
+
+                // Count label inside the band if it fits.
+                const bandH = y(g.y1) - y(g.y0);
+                if (bandH >= fs + 4 && s.tIdx === 0 || s.tIdx === T - 1) {
+                    nodeLayer.append("text")
+                        .attr("x", s.tIdx === 0 ? x(s.tIdx) - nodeW - 4 : x(s.tIdx) + nodeW + 4)
+                        .attr("y", (y(g.y0) + y(g.y1)) / 2)
+                        .attr("text-anchor", s.tIdx === 0 ? "end" : "start")
+                        .attr("dominant-baseline", "middle")
+                        .attr("font-size", `${Math.max(9, fs - 2)}px`)
+                        .attr("fill", "#666")
+                        .text(`${g.count}`);
+                }
+            }
+        }
+
+        // ── Group labels down the left edge ────────────────────
+        if (LB.showGroupLabels.value) {
+            const labelLayer = this.container.append("g").classed("group-labels", true);
+            const s0 = flow.slices[0];
+            for (const g of s0.groups) {
+                labelLayer.append("text")
+                    .attr("x", m.left - 20)
+                    .attr("y", (y(g.y0) + y(g.y1)) / 2)
+                    .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+                    .attr("font-size", `${fs}px`).attr("font-weight", 600).attr("fill", "#555")
+                    .text(g.group);
+            }
+        }
+
+        // ── Time axis ──────────────────────────────────────────
+        const ax = this.container.append("g").classed("time-axis", true);
+        const step = Math.max(1, Math.ceil(T / Math.max(1, Math.floor(plotW / 70))));
+        for (let t = 0; t < T; t += step) {
+            ax.append("text")
+                .attr("x", x(t)).attr("y", m.top - 10)
+                .attr("text-anchor", "middle")
+                .attr("font-size", `${fs}px`).attr("fill", "#888")
+                .text(flow.times[t]);
+        }
+
+        // ── Note: aggregation stats ────────────────────────────
+        // Report total entities and how many transitions crossed group lines
+        // versus stayed — puts a number on the churn the ribbons visualise.
+        let stayed = 0, moved = 0;
+        for (const r of flow.ribbons) (r.from === r.to ? stayed += r.count : moved += r.count);
+        const totalTrans = stayed + moved;
+        const churn = totalTrans > 0 ? Math.round(moved / totalTrans * 100) : 0;
+        this.container.append("text")
+            .attr("x", width - m.right).attr("y", m.top - 10)
+            .attr("text-anchor", "end")
+            .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("fill", "#666")
+            .text(`Aggregate · ${flow.totalEntities} entities · ${churn}% of transitions cross groups`
+                + (flow.droppedTransitions ? ` · ${flow.droppedTransitions} left` : "")
+                + (flow.enteredTransitions ? ` · ${flow.enteredTransitions} joined` : ""));
     }
 
     private renderLandingPage(

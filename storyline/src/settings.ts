@@ -10,6 +10,24 @@ import FormattingSettingsModel = formattingSettings.Model;
  * Layout — spacing and how entities are ordered within each time slice.
  */
 class LayoutCard extends FormattingSettingsCard {
+    flowMode = new formattingSettings.ItemDropdown({
+        name: "flowMode",
+        displayName: "Flow mode",
+        description: "Entity draws one line per person — best for narratives with a small cast. Aggregate draws one thick band per group with ribbons for transitions between them — best when the entity count is too high to read line by line.",
+        items: [
+            { value: "entity", displayName: "Entity (one line per person)" },
+            { value: "aggregate", displayName: "Aggregate (Sankey ribbons)" }
+        ],
+        value: { value: "entity", displayName: "Entity (one line per person)" }
+    });
+
+    unitHeight = new formattingSettings.NumUpDown({
+        name: "unitHeight",
+        displayName: "Pixels per entity (aggregate)",
+        description: "Aggregate mode only. Height of one entity's contribution to a group band; scale down for large populations.",
+        value: 4
+    });
+
     lineTension = new formattingSettings.NumUpDown({
         name: "lineTension",
         displayName: "Line tension",
@@ -46,6 +64,8 @@ class LayoutCard extends FormattingSettingsCard {
     name: string = "layout";
     displayName: string = "Layout";
     slices: Array<FormattingSettingsSlice> = [
+        this.flowMode,
+        this.unitHeight,
         this.lineTension,
         this.groupGap,
         this.entityGap,

@@ -22,6 +22,15 @@
     "objects": {
         "layout": {
             "properties": {
+                "flowMode": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "entity", "displayName": "Entity (one line per person)" },
+                            { "value": "aggregate", "displayName": "Aggregate (Sankey ribbons)" }
+                        ]
+                    }
+                },
+                "unitHeight": { "type": { "numeric": true } },
                 "lineTension": { "type": { "numeric": true } },
                 "groupGap": { "type": { "numeric": true } },
                 "entityGap": { "type": { "numeric": true } },

@@ -62,3 +62,38 @@ Five team switches in total, so the crossings are visible but not a hairball.
 
 > With 50+ entities the chart gets dense by nature; hover-to-focus is what
 > keeps it readable, so leave **Highlight on hover** on.
+
+---
+
+## Aggregate mode — for population-sized data
+
+**Layout → Flow mode → Aggregate (Sankey ribbons)** collapses the entity
+lines into one thick band per group at each time step, sized by member
+count, with ribbons showing the transitions between them. Same input; the
+visual counts instead of tracking each person.
+
+Verified on this sample: 16 entities across eight quarters produce **96
+stayed, 5 moved, 2 dropped, 2 joined** transitions across the 7 adjacent
+pairs — a **5% churn rate**, which the top-right summary strip reports.
+Each ribbon's tooltip surfaces the actual (from-group, to-group, count).
+
+On this dataset the entity mode is the more compelling view because there
+are so few movers. Aggregate mode earns its keep once you're past ~50
+entities — the point at which the individual-line view is a hairball and
+the group-level totals become the readable summary. Tune **Pixels per
+entity** (default 4) if your populations are much larger than 16 and the
+tallest slice overflows the viewport (the visual auto-compresses, but a
+lower unit height keeps the ribbons distinguishable).
+
+**Reading the layout:**
+
+- **Node rectangles** (small verticals at each time step) are the group
+  bands. Height ∝ count. Hover for count and share.
+- **Ribbons** connect a source band's sub-stripe to a target band's
+  sub-stripe. Same-group ribbons (stayed) get a lighter fill so the eye
+  can pick out cross-group ones (moved) at a glance.
+- **Sub-stripes** within a source band are ordered by their target's
+  vertical position at the next time step, and vice versa — that's Sankey
+  stacking, which minimises ribbon crossings without a full optimiser.
+- **End counts** are printed just outside the first and last time steps,
+  so a quarter-to-quarter comparison is one glance away.
