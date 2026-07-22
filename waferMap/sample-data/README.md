@@ -135,6 +135,13 @@ boundaries at offset 0, not to some other periodic feature.
 
 - **Edge exclusion** — 1, 2, 3… peels rings off the wafer edge.
 - **Zone overlay** — concentric rings for center/mid/edge yield analysis.
+  Turn on **Show per-zone yield** to print the actual yield % (or fail %,
+  or die count) inside each ring. Verified on `01-wafer-single.csv` with
+  three zones: **center 65.0% · mid 93.9% · edge 73.0%** — the mid ring is
+  healthy, the edge is the classic exclusion-ring pattern, and the small
+  centre reading (60 dies, 21 fails) points to a genuine centre-of-wafer
+  defect that the map's colours make visible but the number lets you
+  quote.
 - **Notch position** — bottom / top / left / right orientation marker.
 - **Die gap & border** — set gap 0 and border 0 for a dense continuous map,
   or gap 1–2 to see individual dies.

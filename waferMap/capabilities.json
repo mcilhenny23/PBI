@@ -100,7 +100,18 @@
                 "showZones": { "type": { "bool": true } },
                 "zoneCount": { "type": { "numeric": true } },
                 "zoneLineColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "zoneLineOpacity": { "type": { "numeric": true } }
+                "zoneLineOpacity": { "type": { "numeric": true } },
+                "showZoneStats": { "type": { "bool": true } },
+                "zoneStatFormat": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "yield", "displayName": "Yield % (pass rate)" },
+                            { "value": "fail", "displayName": "Fail % (defect rate)" },
+                            { "value": "count", "displayName": "Die counts (pass/total)" }
+                        ]
+                    }
+                },
+                "zoneStatColor": { "type": { "fill": { "solid": { "color": true } } } }
             }
         },
         "reticle": {

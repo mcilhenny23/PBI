@@ -190,13 +190,40 @@ class ZonesCard extends FormattingSettingsCard {
         value: 40
     });
 
+    showZoneStats = new formattingSettings.ToggleSwitch({
+        name: "showZoneStats",
+        displayName: "Show per-zone yield",
+        description: "Prints yield % and die count in each ring — turns the geometric overlay into the actual centre / mid / edge yield report.",
+        value: false
+    });
+
+    zoneStatFormat = new formattingSettings.ItemDropdown({
+        name: "zoneStatFormat",
+        displayName: "Yield statistic",
+        items: [
+            { value: "yield", displayName: "Yield % (pass rate)" },
+            { value: "fail", displayName: "Fail % (defect rate)" },
+            { value: "count", displayName: "Die counts (pass/total)" }
+        ],
+        value: { value: "yield", displayName: "Yield % (pass rate)" }
+    });
+
+    zoneStatColor = new formattingSettings.ColorPicker({
+        name: "zoneStatColor",
+        displayName: "Yield text color",
+        value: { value: "#111111" }
+    });
+
     name: string = "zones";
     displayName: string = "Zone Overlay";
     slices: Array<FormattingSettingsSlice> = [
         this.showZones,
         this.zoneCount,
         this.zoneLineColor,
-        this.zoneLineOpacity
+        this.zoneLineOpacity,
+        this.showZoneStats,
+        this.zoneStatFormat,
+        this.zoneStatColor
     ];
 }
 

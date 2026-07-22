@@ -400,6 +400,55 @@ export class Visual implements IVisual {
                             .attr("stroke-width", 1)
                             .attr("stroke-dasharray", "3 3");
                     }
+
+                    // Per-zone yield: bin each die by its normalized radius,
+                    // count pass vs total per zone. Skips composite (stacked)
+                    // dies since bin is null there — stacked mode's coloured
+                    // die already encodes yield, so a separate number would
+                    // be double-counting.
+                    if (zn.showZoneStats.value && waferDies.length && !stacked) {
+                        const buckets = new Array(zc).fill(0).map(() => ({ total: 0, pass: 0 }));
+                        for (const d of waferDies) {
+                            if (d.bin == null) continue;
+                            const dx = (d.x - minX) + 0.5 - gcx;
+                            const dy = (d.y - minY) + 0.5 - gcy;
+                            const dist = Math.hypot(dx, dy);
+                            if (dist > effRadius) continue;
+                            const norm = dist / effRadius;   // 0 = centre, 1 = edge
+                            let z = Math.floor(norm * zc);
+                            if (z >= zc) z = zc - 1;
+                            buckets[z].total++;
+                            if (d.bin === autoPassBin) buckets[z].pass++;
+                        }
+                        const statFmt = String(zn.zoneStatFormat.value?.value ?? "yield");
+                        const statColor = zn.zoneStatColor.value.value;
+                        const fsZone = Math.max(9, Math.min(14, rPx * 0.06));
+                        // Label at the top of each ring, sitting just outside
+                        // the inner radius so it reads inside the ring segment
+                        // rather than on the boundary.
+                        for (let z = 0; z < zc; z++) {
+                            const b = buckets[z];
+                            if (b.total === 0) continue;
+                            const yield_ = b.pass / b.total;
+                            let text: string;
+                            if (statFmt === "fail") text = `${((1 - yield_) * 100).toFixed(1)}%`;
+                            else if (statFmt === "count") text = `${b.pass}/${b.total}`;
+                            else text = `${(yield_ * 100).toFixed(1)}%`;
+                            // Ring midpoint radius; text sits above the centre
+                            // by that amount so it lands at the top of the ring.
+                            const rMid = rPx * (z + 0.5) / zc;
+                            this.overlay.append("text")
+                                .attr("x", cx).attr("y", cy - rMid)
+                                .attr("text-anchor", "middle")
+                                .attr("dominant-baseline", "middle")
+                                .attr("font-size", `${fsZone}px`).attr("font-weight", 600)
+                                .attr("fill", statColor)
+                                .attr("stroke", "rgba(255,255,255,0.85)").attr("stroke-width", 3)
+                                .attr("paint-order", "stroke")
+                                .style("pointer-events", "none")
+                                .text(text);
+                        }
+                    }
                 }
 
                 // ── Reticle overlay ────────────────────────────────
