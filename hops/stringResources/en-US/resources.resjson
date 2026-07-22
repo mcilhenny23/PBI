@@ -1,0 +1,16 @@
+{
+  "Hypothetical Outcome Plots": "Hypothetical Outcome Plots",
+  "Animates independent draws from an ensemble so uncertainty is shown as motion (HOPs). Instead of a static interval, plausible outcome lines flicker frame-by-frame. Bind several sample-draw measures (model runs / simulations) over a shared axis, with optional actuals.": "Animates independent draws from an ensemble so uncertainty is shown as motion (HOPs). Instead of a static interval, plausible outcome lines flicker frame-by-frame. Bind several sample-draw measures (model runs / simulations) over a shared axis, with optional actuals.",
+
+  "Role_Axis_DisplayName": "Axis",
+  "Role_Axis_Description": "X axis — time or ordered category",
+
+  "Role_Samples_DisplayName": "Sample Draws",
+  "Role_Samples_Description": "Ensemble members. Bind several measures (model runs / simulation draws); each frame flickers to a different draw. One measure renders a single static line.",
+
+  "Role_Actuals_DisplayName": "Actuals",
+  "Role_Actuals_Description": "Optional historical actuals line, drawn solid where non-null.",
+
+  "Role_EnsembleId_DisplayName": "Ensemble ID",
+  "Role_EnsembleId_Description": "Optional — the run/draw identifier when the ensemble is in long/tidy form (one row per axis × run). Bind this + a single Sample Draws measure instead of pivoting to a column per run. Ignored in wide mode."
+}

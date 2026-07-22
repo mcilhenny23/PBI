@@ -1,0 +1,18 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker familiar with statistics / data-viz terminology before public release. Especially watch: 'HOPs' as a term-of-art, 'Ensemble' vs 'Stichprobe', 'Long/tidy form' (data-wrangling jargon), 'sample draw' (statistics).",
+
+  "Hypothetical Outcome Plots": "Hypothetische Ergebnisdiagramme",
+  "Animates independent draws from an ensemble so uncertainty is shown as motion (HOPs). Instead of a static interval, plausible outcome lines flicker frame-by-frame. Bind several sample-draw measures (model runs / simulations) over a shared axis, with optional actuals.": "Animiert unabhängige Ziehungen aus einem Ensemble, sodass Unsicherheit als Bewegung dargestellt wird (HOPs). Anstelle eines statischen Intervalls flackern plausible Ergebnislinien Bild für Bild. Binden Sie mehrere Sample-Draws-Measures (Modellläufe / Simulationen) über eine gemeinsame Achse, optional mit Ist-Werten.",
+
+  "Role_Axis_DisplayName": "Achse",
+  "Role_Axis_Description": "X-Achse — Zeit oder geordnete Kategorie",
+
+  "Role_Samples_DisplayName": "Stichprobenziehungen",
+  "Role_Samples_Description": "Ensemble-Mitglieder. Binden Sie mehrere Measures (Modellläufe / Simulationsziehungen); jedes Bild flackert zu einer anderen Ziehung. Ein einzelnes Measure erzeugt eine statische Linie.",
+
+  "Role_Actuals_DisplayName": "Ist-Werte",
+  "Role_Actuals_Description": "Optionale historische Ist-Werte-Linie, durchgezogen gezeichnet, wo Werte vorhanden sind.",
+
+  "Role_EnsembleId_DisplayName": "Ensemble-ID",
+  "Role_EnsembleId_Description": "Optional — die Lauf-/Ziehungs-Kennung, wenn das Ensemble im Long-/Tidy-Format vorliegt (eine Zeile pro Achse × Lauf). Binden Sie dies plus ein einzelnes Sample-Draws-Measure, statt zu einer Spalte pro Lauf zu pivotieren. Im Wide-Modus ignoriert."
+}

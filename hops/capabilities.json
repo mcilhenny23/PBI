@@ -1,27 +1,35 @@
 {
     "dataRoles": [
         {
+            "displayNameKey": "Role_Axis_DisplayName",
             "displayName": "Axis",
             "name": "axis",
             "kind": "Grouping",
+            "descriptionKey": "Role_Axis_Description",
             "description": "X axis — time or ordered category"
         },
         {
+            "displayNameKey": "Role_Samples_DisplayName",
             "displayName": "Sample Draws",
             "name": "samples",
             "kind": "Measure",
+            "descriptionKey": "Role_Samples_Description",
             "description": "Ensemble members. Bind several measures (model runs / simulation draws); each frame flickers to a different draw. One measure renders a single static line."
         },
         {
+            "displayNameKey": "Role_Actuals_DisplayName",
             "displayName": "Actuals",
             "name": "actuals",
             "kind": "Measure",
+            "descriptionKey": "Role_Actuals_Description",
             "description": "Optional historical actuals line, drawn solid where non-null."
         },
         {
+            "displayNameKey": "Role_EnsembleId_DisplayName",
             "displayName": "Ensemble ID",
             "name": "ensembleId",
             "kind": "Grouping",
+            "descriptionKey": "Role_EnsembleId_Description",
             "description": "Optional — the run/draw identifier when the ensemble is in long/tidy form (one row per axis × run). Bind this + a single Sample Draws measure instead of pivoting to a column per run. Ignored in wide mode."
         }
     ],
