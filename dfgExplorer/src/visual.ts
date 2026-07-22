@@ -89,6 +89,8 @@ export class Visual implements IVisual {
     private ambiguous = 0;
     private truncated = false;
     private viewport = { width: 0, height: 0 };
+    /** Selection IDs for every row, grouped by caseId — powers cross-filter on variant click. */
+    private selectionByCase = new Map<string, powerbi.visuals.ISelectionId[]>();
 
     /** Caches the dagre layout so variant clicks and restyles don't relayout. */
     private layoutCache = new ComputeCache<dagre.graphlib.Graph>();
@@ -168,18 +170,32 @@ export class Visual implements IVisual {
 
             // ── Parse rows ─────────────────────────────────────────
             const rows: EventRow[] = [];
+            this.selectionByCase = new Map();
             for (let i = 0; i < table.rows.length; i++) {
                 const r = table.rows[i];
                 if (r[cCase] == null || r[cAct] == null) continue;
                 // With no timestamp column, fall back to row order within the case.
                 const ts = cTs >= 0 ? safeTime(r[cTs]) : i;
+                const caseId = String(r[cCase]);
                 rows.push({
-                    caseId: String(r[cCase]),
+                    caseId,
                     activity: String(r[cAct]),
                     timestamp: ts == null ? i : ts,
                     resource: cRes >= 0 && r[cRes] != null ? String(r[cRes]) : null,
                     value: cVal >= 0 ? safeNum(r[cVal]) : null
                 });
+                // One row-level selection id per event, grouped by case so a
+                // variant click can select every row belonging to any case in
+                // the variant — Power BI cross-filters downstream visuals by
+                // those rows.
+                try {
+                    const sid = this.host.createSelectionIdBuilder()
+                        .withTable(table, i)
+                        .createSelectionId();
+                    let arr = this.selectionByCase.get(caseId);
+                    if (!arr) { arr = []; this.selectionByCase.set(caseId, arr); }
+                    arr.push(sid);
+                } catch { /* skipped */ }
             }
             this.truncated = table.rows.length >= ROW_LIMIT;
 
@@ -649,7 +665,13 @@ export class Visual implements IVisual {
         if (this.selectedVariant) {
             header.append("button").classed("vp-clear", true)
                 .text("Clear selection")
-                .on("click", () => { this.selectedVariant = null; this.render(); });
+                .on("click", () => {
+                    this.selectedVariant = null;
+                    // Also drop the report-level filter — otherwise the
+                    // in-visual "clear" would leave other visuals dimmed.
+                    this.selectionManager.clear().then(() => this.applyExternalDim());
+                    this.render();
+                });
         }
 
         const list = this.panelDiv.append("div").classed("vp-list", true);
@@ -658,8 +680,27 @@ export class Visual implements IVisual {
             const row = list.append("div")
                 .classed("vp-row", true)
                 .classed("selected", selected)
-                .on("click", () => {
+                .on("click", (event: MouseEvent) => {
                     this.selectedVariant = selected ? null : v.key;
+                    // Cross-filter the report: gather every row-level
+                    // selection id for the cases in this variant and pass
+                    // them to the selection manager. Clicking the same
+                    // variant a second time clears (parity with in-visual
+                    // toggle behaviour).
+                    if (this.selectedVariant) {
+                        const ids: powerbi.visuals.ISelectionId[] = [];
+                        for (const caseId of v.caseIds) {
+                            const arr = this.selectionByCase.get(caseId);
+                            if (arr) for (const id of arr) ids.push(id);
+                        }
+                        // Multi-select flag preserves any pre-existing
+                        // cross-highlight if the user shift-clicks.
+                        const multi = event.shiftKey || event.ctrlKey || event.metaKey;
+                        this.selectionManager.select(ids, multi)
+                            .then(() => this.applyExternalDim());
+                    } else {
+                        this.selectionManager.clear().then(() => this.applyExternalDim());
+                    }
                     this.render();
                 });
 

@@ -126,6 +126,30 @@ sit between the two Approve occurrences.
 
 ---
 
+## Variant clicks cross-filter the whole report
+
+Clicking a variant in the right-side panel used to dim the map to just
+that path — helpful, but confined to this visual. Now it **also filters
+every other visual on the page** by the cases that took that variant.
+
+Verified on this file:
+
+| Variant | Cases | Rows filtered |
+|---|---:|---:|
+| #1 Happy path | 194 (48.5%) | 1,164 |
+| #2 Reject/revise loop | 80 (20.0%) | 720 |
+| #5 **Approval skipped** | 27 (6.8%) | 135 |
+
+Drop a Slicer or Table on the same page bound to `CaseID` or `Cost`:
+clicking variant #5 filters both to just the 27 cases that reached the
+vendor without approval, so the audit finding drills straight from
+"here's the shape" to "here are the specific POs". Shift/Ctrl-click adds
+a variant to the current selection instead of replacing it. Clicking the
+same variant again, or the **Clear selection** button, clears the
+report filter and the map together.
+
+---
+
 ## Things to try
 
 - **Click a variant** in the right panel. The map dims to just that path, so
