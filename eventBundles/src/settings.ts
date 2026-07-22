@@ -87,9 +87,11 @@ class AppearanceCard extends FormattingSettingsCard {
     colorBy = new formattingSettings.ItemDropdown({
         name: "colorBy",
         displayName: "Color by",
+        description: "Outcome colours each bundle by the dominant final event (or bound Outcome value) among cases passing through it. Highlights which paths end in success vs. failure at a glance.",
         items: [
             { value: "event-type", displayName: "Event type" },
             { value: "event-category", displayName: "Event category" },
+            { value: "outcome", displayName: "Outcome (case ending)" },
             { value: "uniform", displayName: "Uniform" }
         ],
         value: { value: "event-type", displayName: "Event type" }

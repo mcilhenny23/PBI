@@ -23,6 +23,12 @@
             "name": "eventCategory",
             "kind": "Grouping",
             "description": "Optional — used when coloring by category"
+        },
+        {
+            "displayName": "Outcome",
+            "name": "outcome",
+            "kind": "Grouping",
+            "description": "Optional — per-case outcome (recovered / churned / readmitted). Bind if you want to colour bundles by how each journey ended. Defaults to the last event in the case if unbound."
         }
     ],
     "objects": {
@@ -53,6 +59,7 @@
                         "enumeration": [
                             { "value": "event-type", "displayName": "Event type" },
                             { "value": "event-category", "displayName": "Event category" },
+                            { "value": "outcome", "displayName": "Outcome (case ending)" },
                             { "value": "uniform", "displayName": "Uniform" }
                         ]
                     }
@@ -99,7 +106,8 @@
                         { "for": { "in": "caseId" } },
                         { "for": { "in": "event" } },
                         { "for": { "in": "timestamp" } },
-                        { "for": { "in": "eventCategory" } }
+                        { "for": { "in": "eventCategory" } },
+                        { "for": { "in": "outcome" } }
                     ],
                     "dataReductionAlgorithm": {
                         "window": { "count": 30000 }

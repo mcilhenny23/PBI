@@ -19,7 +19,7 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 import {
-    TrieNode, Anchor, buildTrie, pruneTrie, layoutTrie, alignSequences
+    TrieNode, Anchor, buildTrie, pruneTrie, layoutTrie, alignSequences, dominantOutcome
 } from "./prefixTree";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
@@ -127,6 +127,7 @@ export class Visual implements IVisual {
                 cols ? cols.findIndex(c => c.roles && c.roles[role]) : -1;
             const cCase = roleCol("caseId"), cEv = roleCol("event");
             const cTs = roleCol("timestamp"), cCat = roleCol("eventCategory");
+            const cOut = roleCol("outcome");
 
             if (!table?.rows?.length || cCase < 0 || cEv < 0) {
                 this.renderLandingPage(width, height, cCase >= 0, cEv >= 0);
@@ -136,7 +137,7 @@ export class Visual implements IVisual {
             this.landing.selectAll("*").remove();
 
             // Group events into ordered per-case sequences.
-            const byCase = new Map<string, { t: number; e: string }[]>();
+            const byCase = new Map<string, { t: number; e: string; o: string | null }[]>();
             this.eventCategory = new Map();
             for (let i = 0; i < table.rows.length; i++) {
                 const r = table.rows[i];
@@ -155,18 +156,28 @@ export class Visual implements IVisual {
                 const k = String(r[cCase]);
                 let arr = byCase.get(k);
                 if (!arr) { arr = []; byCase.set(k, arr); }
-                arr.push({ t, e: ev });
+                arr.push({ t, e: ev, o: cOut >= 0 && r[cOut] != null ? String(r[cOut]) : null });
             }
             const sequences: string[][] = [];
-            // Parallel per-case timestamp arrays; used only when time-scaled
-            // columns are on. Populated whenever a timestamp column was bound
-            // so the setting can be toggled without a re-parse.
             const seqTimes: number[][] = [];
+            // Per-case outcome. If Outcome is bound, use the last non-null
+            // value seen in the case (rare cases where different rows carry
+            // different outcomes fall back to the temporally last one). If
+            // not bound, use the case's last event — a decent default for
+            // logs where the terminal event names the outcome directly.
+            const seqOutcomes: (string | null)[] = [];
             const hasRealTime = cTs >= 0;
             for (const arr of byCase.values()) {
                 arr.sort((a, b) => (a.t - b.t) || a.e.localeCompare(b.e));
                 sequences.push(arr.map(x => x.e));
                 if (hasRealTime) seqTimes.push(arr.map(x => x.t));
+                if (cOut >= 0) {
+                    let outcome: string | null = null;
+                    for (const x of arr) if (x.o != null) outcome = x.o;
+                    seqOutcomes.push(outcome);
+                } else {
+                    seqOutcomes.push(arr[arr.length - 1]?.e ?? null);
+                }
             }
             if (!sequences.length) {
                 this.renderLandingPage(width, height, true, true);
@@ -177,7 +188,11 @@ export class Visual implements IVisual {
             // ── Align + build ──────────────────────────────────────
             const anchor = String(AG.alignmentAnchor.value?.value ?? "first-event") as Anchor;
             const anchorEvent = (AG.anchorEvent.value || "").trim();
-            const aligned = alignSequences(sequences, anchor, anchorEvent, hasRealTime ? seqTimes : undefined);
+            const aligned = alignSequences(
+                sequences, anchor, anchorEvent,
+                hasRealTime ? seqTimes : undefined,
+                seqOutcomes
+            );
 
             if (anchor === "selected" && !anchorEvent) {
                 this.renderMessage(width, height, "Pick an anchor event",
@@ -222,7 +237,8 @@ export class Visual implements IVisual {
                 const f = buildTrie(
                     aligned.forward, maxDepth,
                     aligned.forwardTimes.length ? aligned.forwardTimes : undefined,
-                    fwdSamples
+                    fwdSamples,
+                    aligned.forwardOutcomes.length ? aligned.forwardOutcomes : undefined
                 );
                 const pf = pruneTrie(f, minSupport);
                 let b: TrieNode | null = null;
@@ -231,7 +247,8 @@ export class Visual implements IVisual {
                     b = buildTrie(
                         aligned.backward, maxDepth,
                         aligned.backwardTimes.length ? aligned.backwardTimes : undefined,
-                        bwdSamples
+                        bwdSamples,
+                        aligned.backwardOutcomes.length ? aligned.backwardOutcomes : undefined
                     );
                     pb = pruneTrie(b, minSupport);
                 }
@@ -340,13 +357,25 @@ export class Visual implements IVisual {
             // so ribbons collapse to the foreground.
             const hc = this.colorPalette.isHighContrast === true;
             const hcFg = this.colorPalette.foreground?.value || "#000000";
-            const colorOf = (ev: string): string => {
+            /**
+             * Node colour. Outcome mode looks up the dominant outcome at the
+             * node and colours by that, so a bundle of cases ending in Admit
+             * reads as one colour all the way from anchor to its exit. Falls
+             * back to event colour when a node has no outcome data (which can
+             * happen at the root when outcomes aren't bound).
+             */
+            const colorOf = (node: TrieNode): string => {
                 if (hc) return hcFg;
                 if (colorBy === "uniform") return "#4682B4";
-                if (colorBy === "event-category") {
-                    return this.colorPalette.getColor(this.eventCategory.get(ev) || "—").value;
+                if (colorBy === "outcome") {
+                    const dom = dominantOutcome(node);
+                    if (dom) return this.colorPalette.getColor(dom.outcome).value;
+                    return this.colorPalette.getColor(node.event).value;
                 }
-                return this.colorPalette.getColor(ev).value;
+                if (colorBy === "event-category") {
+                    return this.colorPalette.getColor(this.eventCategory.get(node.event) || "—").value;
+                }
+                return this.colorPalette.getColor(node.event).value;
             };
 
             const toXY = (along: number, across: number): { x: number; y: number } =>
@@ -375,7 +404,7 @@ export class Visual implements IVisual {
                             const pTrail = pLead + tree.dir * eb;
                             ribbons.append("path")
                                 .attr("d", this.ribbonPath(pTrail, n.srcY0, n.srcY1, lead, n.y0, n.y1, toXY))
-                                .attr("fill", colorOf(n.event))
+                                .attr("fill", colorOf(n))
                                 .attr("fill-opacity", opacity * 0.55)
                                 .attr("stroke", "none");
                         }
@@ -391,7 +420,7 @@ export class Visual implements IVisual {
                             .attr("x", Math.min(p0.x, p1.x)).attr("y", Math.min(p0.y, p1.y))
                             .attr("width", Math.abs(p1.x - p0.x)).attr("height", Math.abs(p1.y - p0.y))
                             .attr("rx", 2)
-                            .attr("fill", colorOf(n.event))
+                            .attr("fill", colorOf(n))
                             .attr("fill-opacity", Math.min(1, opacity + 0.25))
                             .attr("stroke", "#fff").attr("stroke-width", 0.6);
 
@@ -521,6 +550,21 @@ export class Visual implements IVisual {
         ];
         const cat = this.eventCategory.get(n.event);
         if (cat) items.push({ displayName: "Category", value: cat });
+        // Outcomes tooltip: dominant + full distribution when small enough.
+        if (n.outcomes && n.outcomes.size) {
+            const dom = dominantOutcome(n);
+            if (dom) {
+                items.push({
+                    displayName: "Outcome",
+                    value: `${dom.outcome}  (${(dom.share * 100).toFixed(0)}%)`
+                });
+            }
+            if (n.outcomes.size > 1 && n.outcomes.size <= 6) {
+                const parts: string[] = [];
+                for (const [o, c] of n.outcomes) parts.push(`${o}: ${intFmt(c)}`);
+                items.push({ displayName: "Outcomes", value: parts.join(", ") });
+            }
+        }
         if (path.length <= 8) items.push({ displayName: "Path", value: path.join("  →  ") });
         if (n.children.length) {
             const cont = n.children.reduce((a, c) => a + c.count, 0);

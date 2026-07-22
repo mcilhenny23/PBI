@@ -93,7 +93,7 @@ Four themes recur:
 ## 10. Event Sequence Bundles — journey analysis
 
 - **✅ Time-scaled columns** *(A)* — **Layout → Time-scaled columns** positions each column by the median elapsed time from the anchor across every case that reached that depth. `alignSequences` now carries parallel per-case timestamp arrays; `buildTrie` accepts a per-depth samples collector; `layoutTrie` returns `depthMedianElapsed` (clamped monotone so columns never overtake). Silent fallback to equal-width when Timestamp isn't bound or samples are all zero. Optional time axis prints `anchor`, `+15m`, `+82m`, `+1.9h`, ... under each column. Verified on the ER-journeys sample: Registration → Triage 15 min, Triage → Doctor **82 min (5.4× wider)** — the equal-width chart flattens this into two identical columns, time-scaled makes the bottleneck the widest thing on screen.
-- **▶ Outcome colouring** *(C)* — colour bundles by final outcome (recovered / churned / readmitted).
+- **✅ Outcome colouring** *(C)* — new **Outcome** grouping role + **Colour by → Outcome**. Every `TrieNode` carries an optional `outcomes: Map<string, number>` populated during `buildTrie`; `dominantOutcome(node)` returns the mode + share and the colour helper looks that up in the palette. Silent fallback to the case's last event when no Outcome column is bound — a decent default for logs where the terminal event names the outcome directly. Tooltip picks up `Outcome: X (73%)` plus the full breakdown when the outcome space is small. Verified on ER-journeys: LWBS branch (50 cases) reads as 100% LWBS, main trunk (750 cases) reads as 65% Discharge / 35% Admit at the split node.
 - **○ Sequence search** — "show journeys containing X then Y".
 - **○ Cohort comparison** — two populations side by side.
 

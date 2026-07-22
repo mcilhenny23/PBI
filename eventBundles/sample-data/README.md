@@ -86,6 +86,26 @@ equal-width when the Timestamp field isn't bound.
 
 ---
 
+## Outcome colouring — which paths end where?
+
+Turn on **Appearance → Color by → Outcome (case ending)**. Each bundle is
+recoloured by the dominant outcome among cases traversing it (the last event
+in the case, unless an **Outcome** column is bound). Since this dataset
+tops out at three outcomes — **Discharge (61%)**, **Admit (33%)**, **LWBS
+(6%)** — the visual immediately shows which branches split by outcome:
+
+- The **LWBS branch** at depth 2 (50 cases) is **100% LWBS** — a clean
+  distinct colour marking every patient who left without being seen.
+- The main **Registration → Triage → Exam** trunk (750 cases) is
+  **65% Discharge / 35% Admit**. Further down each sub-branch splits
+  further; every leaf inherits the dominant outcome of the cases still
+  on it.
+
+Hover any block to read the outcome share (`Outcome: Discharge (72%)`)
+and, when the palette is small, the full breakdown.
+
+---
+
 ## Things to try
 
 - **Min bundle support** — the key control. At 5 you see the long tail; raise

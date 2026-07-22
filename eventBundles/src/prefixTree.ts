@@ -34,6 +34,13 @@ export interface TrieNode {
     /** Slice of the parent's trailing edge this node's ribbon leaves from. */
     srcY0: number;
     srcY1: number;
+
+    /**
+     * Optional per-outcome tally of cases passing through. Populated by
+     * buildTrie when the caller supplies outcomes; used at draw time to
+     * colour bundles by the outcome share.
+     */
+    outcomes?: Map<string, number>;
 }
 
 export interface LayoutOptions {
@@ -76,12 +83,17 @@ export function buildTrie(
     sequences: string[][],
     maxDepth: number,
     elapsedTimes?: number[][],
-    perDepthSamples?: number[][]
+    perDepthSamples?: number[][],
+    outcomes?: (string | null)[]
 ): TrieNode {
     const root = newNode("", 0, null);
+    const trackOutcomes = !!outcomes;
+    if (trackOutcomes) root.outcomes = new Map();
     for (let si = 0; si < sequences.length; si++) {
         const seq = sequences[si];
+        const outcome = trackOutcomes ? outcomes![si] : null;
         root.count++;
+        if (trackOutcomes && outcome) root.outcomes!.set(outcome, (root.outcomes!.get(outcome) || 0) + 1);
         let node = root;
         const limit = Math.min(seq.length, Math.max(1, maxDepth));
         for (let i = 0; i < limit; i++) {
@@ -89,14 +101,17 @@ export function buildTrie(
             let child = node.children.find(c => c.event === ev);
             if (!child) {
                 child = newNode(ev, node.depth + 1, node);
+                if (trackOutcomes) child.outcomes = new Map();
                 node.children.push(child);
             }
             child.count++;
+            if (trackOutcomes && outcome) {
+                child.outcomes!.set(outcome, (child.outcomes!.get(outcome) || 0) + 1);
+            }
             node = child;
             if (elapsedTimes && perDepthSamples) {
                 const t = elapsedTimes[si]?.[i];
                 if (Number.isFinite(t)) {
-                    // depth i+1 because i=0 is the first event AFTER the anchor.
                     const d = i + 1;
                     if (!perDepthSamples[d]) perDepthSamples[d] = [];
                     perDepthSamples[d].push(t);
@@ -105,6 +120,23 @@ export function buildTrie(
         }
     }
     return root;
+}
+
+/**
+ * Dominant outcome at a node = the outcome with the highest count.
+ * Returns null when outcomes aren't tracked or the node is empty.
+ * Also returns the share of cases in that outcome, which the caller uses
+ * to scale the fill so a 90%-Discharge bundle reads as more Discharge than
+ * a 51%-Discharge one.
+ */
+export function dominantOutcome(node: TrieNode): { outcome: string; share: number } | null {
+    if (!node.outcomes || node.count === 0) return null;
+    let best: string | null = null, bestN = 0;
+    for (const [o, n] of node.outcomes) {
+        if (n > bestN) { bestN = n; best = o; }
+    }
+    if (best == null) return null;
+    return { outcome: best, share: bestN / node.count };
 }
 
 /**
@@ -246,6 +278,13 @@ export interface AlignedSequences {
      */
     forwardTimes: number[][];
     backwardTimes: number[][];
+    /**
+     * Per-case outcome parallel to forward/backward (identical values in both;
+     * outcome is a whole-case attribute). Empty when the caller didn't supply
+     * outcomes. Elements may be null when the case had no outcome recorded.
+     */
+    forwardOutcomes: (string | null)[];
+    backwardOutcomes: (string | null)[];
     /** Cases that had no anchor event and were excluded. */
     excluded: number;
 }
@@ -261,7 +300,8 @@ export function alignSequences(
     sequences: string[][],
     anchor: Anchor,
     anchorEvent: string,
-    timestamps?: number[][]
+    timestamps?: number[][],
+    outcomes?: (string | null)[]
 ): AlignedSequences {
     // Elapsed-time arrays are populated in parallel to the string arrays when
     // timestamps are supplied. First element is 0 by construction (the anchor
@@ -279,25 +319,29 @@ export function alignSequences(
     if (anchor === "last-event") {
         const forward: string[][] = [];
         const forwardTimes: number[][] = [];
+        const forwardOutcomes: (string | null)[] = [];
         for (let i = 0; i < sequences.length; i++) {
             const s = sequences[i], t = timestamps?.[i];
             const n = s.length;
             const reversed = s.slice().reverse();
             forward.push(reversed);
             if (t) {
-                // Anchor is index n-1; reversed index k corresponds to original n-1-k.
                 const positions: number[] = [];
                 for (let k = 0; k < n; k++) positions.push(n - 1 - k);
                 forwardTimes.push(buildElapsed(n - 1, positions, t));
             }
+            if (outcomes) forwardOutcomes.push(outcomes[i] ?? null);
         }
-        return { forward, backward: [], forwardTimes, backwardTimes: [], excluded: 0 };
+        return { forward, backward: [], forwardTimes, backwardTimes: [],
+            forwardOutcomes, backwardOutcomes: [], excluded: 0 };
     }
     if (anchor === "selected" && anchorEvent) {
         const forward: string[][] = [];
         const backward: string[][] = [];
         const forwardTimes: number[][] = [];
         const backwardTimes: number[][] = [];
+        const forwardOutcomes: (string | null)[] = [];
+        const backwardOutcomes: (string | null)[] = [];
         let excluded = 0;
         for (let ci = 0; ci < sequences.length; ci++) {
             const s = sequences[ci];
@@ -314,11 +358,18 @@ export function alignSequences(
                 for (let k = i - 1; k >= 0; k--) bwdPos.push(k);
                 backwardTimes.push(buildElapsed(i, bwdPos, t));
             }
+            if (outcomes) {
+                const o = outcomes[ci] ?? null;
+                forwardOutcomes.push(o);
+                backwardOutcomes.push(o);
+            }
         }
-        return { forward, backward, forwardTimes, backwardTimes, excluded };
+        return { forward, backward, forwardTimes, backwardTimes,
+            forwardOutcomes, backwardOutcomes, excluded };
     }
     const forward: string[][] = [];
     const forwardTimes: number[][] = [];
+    const forwardOutcomes: (string | null)[] = [];
     for (let i = 0; i < sequences.length; i++) {
         const s = sequences[i], t = timestamps?.[i];
         forward.push(s.slice());
@@ -327,6 +378,8 @@ export function alignSequences(
             for (let k = 0; k < s.length; k++) pos.push(k);
             forwardTimes.push(buildElapsed(0, pos, t));
         }
+        if (outcomes) forwardOutcomes.push(outcomes[i] ?? null);
     }
-    return { forward, backward: [], forwardTimes, backwardTimes: [], excluded: 0 };
+    return { forward, backward: [], forwardTimes, backwardTimes: [],
+        forwardOutcomes, backwardOutcomes: [], excluded: 0 };
 }
