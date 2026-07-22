@@ -40,7 +40,11 @@ interface WaferLayout {
     originX: number;        // pixel of grid cell (0,0)
     originY: number;
     cell: number;
-    dieMap: Map<string, Die>;
+    // A single grid cell may hold more than one die when data has repeat rows
+    // for one location (e.g. rework tests with per-bin rows). Keep them all so
+    // a click aggregates their identities instead of dropping every die but the
+    // last-written.
+    dieMap: Map<string, Die[]>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -335,7 +339,7 @@ export class Visual implements IVisual {
                 const originX = ax + (areaW - gw) / 2;
                 const originY = ay + labelH + (availH - gh) / 2;
 
-                const dieMap = new Map<string, Die>();
+                const dieMap = new Map<string, Die[]>();
                 const waferDies = waferIdx >= 0 ? dies.filter(d => d.wafer === wname) : dies;
 
                 // Dies on canvas.
@@ -350,7 +354,9 @@ export class Visual implements IVisual {
                         if (gx < edgeExcl || gy < edgeExcl ||
                             gx >= gridCols - edgeExcl || gy >= gridRows - edgeExcl) continue;
                     }
-                    dieMap.set(`${gx},${gy}`, d);
+                    const cellKey = `${gx},${gy}`;
+                    const bucket = dieMap.get(cellKey);
+                    if (bucket) bucket.push(d); else dieMap.set(cellKey, [d]);
                     const px = originX + gx * cell + gap / 2;
                     const py = originY + gy * cell + gap / 2;
                     const sz = Math.max(0.5, cell - gap);
@@ -456,8 +462,9 @@ export class Visual implements IVisual {
                 for (const L of this.layouts) {
                     const gx = Math.floor((mx - L.originX) / L.cell);
                     const gy = Math.floor((my - L.originY) / L.cell);
-                    const d = L.dieMap.get(`${gx},${gy}`);
-                    if (!d) continue;
+                    const bucket = L.dieMap.get(`${gx},${gy}`);
+                    if (!bucket?.length) continue;
+                    const d = bucket[0];
                     const items: VisualTooltipDataItem[] = [];
                     if (hasWafer && d.wafer) items.push({ displayName: "Wafer", value: d.wafer });
                     items.push({ displayName: xTitle, value: String(d.x) });
@@ -478,6 +485,9 @@ export class Visual implements IVisual {
                         if (binTitle && d.bin != null) items.push({ displayName: binTitle, value: d.bin });
                         if (valTitle && d.value != null) items.push({ displayName: valTitle, value: numFmt(d.value) });
                     }
+                    if (bucket.length > 1) {
+                        items.push({ displayName: "Rows here", value: String(bucket.length) });
+                    }
                     this.tooltipService.show({
                         dataItems: items, identities: [],
                         coordinates: [mx, my], isTouchEvent: false
@@ -492,11 +502,16 @@ export class Visual implements IVisual {
                 for (const L of this.layouts) {
                     const gx = Math.floor((mx - L.originX) / L.cell);
                     const gy = Math.floor((my - L.originY) / L.cell);
-                    const d = L.dieMap.get(`${gx},${gy}`);
-                    if (!d?.selectionId) continue;
+                    const bucket = L.dieMap.get(`${gx},${gy}`);
+                    if (!bucket?.length) continue;
+                    // Multiple dies can share one grid cell (e.g. per-bin repeat
+                    // rows). Select every id at that cell so no die is unreachable.
+                    const ids: ISelectionId[] = [];
+                    for (const d of bucket) if (d.selectionId) ids.push(d.selectionId);
+                    if (!ids.length) continue;
                     event.stopPropagation();
                     const multi = event.ctrlKey || event.metaKey || event.shiftKey;
-                    this.selectionManager.select(d.selectionId, multi).then(() => this.applyExternalDim());
+                    this.selectionManager.select(ids, multi).then(() => this.applyExternalDim());
                     return;
                 }
                 // Empty area click → clear.
@@ -508,9 +523,10 @@ export class Visual implements IVisual {
                 for (const L of this.layouts) {
                     const gx = Math.floor((mx - L.originX) / L.cell);
                     const gy = Math.floor((my - L.originY) / L.cell);
-                    const d = L.dieMap.get(`${gx},${gy}`);
-                    if (!d?.selectionId) continue;
-                    this.selectionManager.showContextMenu(d.selectionId, { x: event.clientX, y: event.clientY });
+                    const bucket = L.dieMap.get(`${gx},${gy}`);
+                    const id = bucket?.find(d => !!d.selectionId)?.selectionId;
+                    if (!id) continue;
+                    this.selectionManager.showContextMenu(id, { x: event.clientX, y: event.clientY });
                     return;
                 }
             });
