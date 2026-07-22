@@ -100,8 +100,10 @@ export class Visual implements IVisual {
     private colorOf = new Map<string, string>();
 
     // Geometry + style resolved in update(), reused by draw()
-    private geom = { left: 0, right: 0, top: 0, bottom: 0, laneH: 24, barH: 18, radius: 3, alpha: 0.85 };
-    private opts = { showLabels: true, labelFs: 10, axisFs: 11, showAxis: true, pointR: 4, trackFs: 12, packing: "stack" };
+    private geom = { left: 0, right: 0, top: 0, bottom: 0, laneH: 24, barH: 18, radius: 3, alpha: 0.85,
+        densityX: 0, densityW: 0, concurTop: 0, concurH: 0 };
+    private opts = { showLabels: true, labelFs: 10, axisFs: 11, showAxis: true, pointR: 4, trackFs: 12, packing: "stack",
+        showDensity: false, showConcurrency: false, concurColor: "#4682B4" };
     private titles = { track: "Track", start: "Start", end: "End", label: "Label", category: "Category", value: "Value" };
 
     constructor(options: VisualConstructorOptions) {
@@ -137,6 +139,7 @@ export class Visual implements IVisual {
                 .populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews?.[0]);
             const tk = this.formattingSettings.tracksCard;
             const iv = this.formattingSettings.intervalsCard;
+            const den = this.formattingSettings.densityCard;
             const ax = this.formattingSettings.axisCard;
 
             const width = options.viewport.width;
@@ -255,7 +258,12 @@ export class Visual implements IVisual {
             // ── Vertical layout (shrink to fit if needed) ──────────
             const axisH = ax.showAxis.value ? (ax.axisFontSize.value + 18) : 6;
             const padTop = 8, padBottom = 6;
-            const availH = Math.max(10, height - axisH - padTop - padBottom);
+            // Concurrency ribbon eats vertical space above the tracks.
+            const concurH = den.showConcurrency.value
+                ? Math.max(16, Math.min(80, den.concurrencyHeight.value ?? 28))
+                : 0;
+            const concurGap = concurH > 0 ? 6 : 0;
+            const availH = Math.max(10, height - axisH - padTop - padBottom - concurH - concurGap);
 
             let laneH = Math.max(4, tk.trackHeight.value || 24);
             let barH = Math.max(2, iv.intervalHeight.value || 18);
@@ -270,7 +278,7 @@ export class Visual implements IVisual {
             }
 
             const tracks: TrackLayout[] = [];
-            let y = padTop;
+            let y = padTop + concurH + concurGap;   // leave room for the ribbon above
             for (const name of trackNames) {
                 const lc = laneCounts.get(name)!;
                 const h = lc * laneH;
@@ -281,17 +289,27 @@ export class Visual implements IVisual {
 
             // ── X scale + zoom ─────────────────────────────────────
             const labelW = Math.max(0, Math.min(width * 0.4, tk.trackLabelWidth.value || 100));
-            const left = labelW + 6, right = width - 10;
+            const densityW = den.showDensity.value
+                ? Math.max(60, Math.min(300, den.densityWidth.value ?? 120))
+                : 0;
+            const left = labelW + 6, right = width - 10 - densityW;
             this.geom = {
-                left, right, top: padTop, bottom: padTop + needed,
+                left, right,
+                top: padTop + concurH + concurGap,
+                bottom: padTop + concurH + concurGap + needed,
                 laneH, barH, radius: Math.max(0, iv.intervalRadius.value || 0),
-                alpha: Math.max(0, Math.min(1, (iv.intervalOpacity.value ?? 85) / 100))
+                alpha: Math.max(0, Math.min(1, (iv.intervalOpacity.value ?? 85) / 100)),
+                densityX: right + 6, densityW,
+                concurTop: padTop, concurH
             };
             this.opts = {
                 showLabels: iv.showLabels.value, labelFs: Math.max(6, iv.labelFontSize.value),
                 axisFs: Math.max(6, ax.axisFontSize.value), showAxis: ax.showAxis.value,
                 pointR: Math.max(1, iv.pointEventRadius.value || 4),
-                trackFs: Math.max(6, tk.trackLabelFontSize.value), packing
+                trackFs: Math.max(6, tk.trackLabelFontSize.value), packing,
+                showDensity: den.showDensity.value,
+                showConcurrency: den.showConcurrency.value,
+                concurColor: den.concurrencyColor.value.value
             };
 
             const minStart = d3.min(intervals, i => i.start)!;
@@ -426,6 +444,120 @@ export class Visual implements IVisual {
         }
         ctx.restore();
         ctx.globalAlpha = 1;
+
+        // ── Density stats column ───────────────────────────────
+        // Per-track: coverage (fraction of visible span occupied by
+        // intervals, capped at 100% by union), count and mean duration.
+        // Computed over the visible window only, so zooming re-runs it and
+        // makes the numbers reflect what's on screen.
+        if (o.showDensity && g.densityW > 0) {
+            const visSpan = Math.max(1e-9, visMax - visMin);
+            for (const t of this.tracks) {
+                let covered = 0, count = 0, sumDur = 0;
+                // Union of intervals — sort within the track, merge overlapping,
+                // sum the merged spans. Point events don't add to coverage but
+                // do add to count.
+                const list = this.intervals.filter(it => it.track === t.name);
+                const clipped = list.map(it => {
+                    const s = Math.max(it.start, visMin);
+                    const e = Math.min(it.end != null ? it.end : it.start, visMax);
+                    return { s, e, isPoint: it.end == null, start: it.start };
+                }).filter(it => it.e >= visMin && it.s <= visMax);
+                clipped.sort((a, b) => a.s - b.s);
+                // Merged-interval union — start with a sentinel that no interval
+                // extends. First finite interval initialises the accumulator;
+                // subsequent ones either extend it or flush and restart.
+                let cs = NaN, ce = NaN;
+                for (const it of clipped) {
+                    if (it.e < visMin || it.s > visMax) continue;
+                    count++;
+                    if (it.isPoint) continue;
+                    sumDur += Math.max(0, it.e - it.s);
+                    if (!Number.isFinite(cs)) { cs = it.s; ce = it.e; continue; }
+                    if (it.s <= ce) { ce = Math.max(ce, it.e); }
+                    else { covered += Math.max(0, ce - cs); cs = it.s; ce = it.e; }
+                }
+                if (Number.isFinite(cs) && ce > cs) covered += Math.max(0, ce - cs);
+                const covPct = Math.min(100, covered / visSpan * 100);
+                const meanDur = count > 0 ? sumDur / Math.max(1, clipped.filter(i => !i.isPoint).length) : 0;
+
+                // Bar showing coverage as a filled progress bar.
+                const yMid = t.y + t.height / 2;
+                const barY = yMid - 4;
+                const barW = Math.min(g.densityW - 8, 80);
+                this.overlay.append("rect")
+                    .attr("x", g.densityX).attr("y", barY)
+                    .attr("width", barW).attr("height", 8)
+                    .attr("fill", "#eee").attr("stroke", "none");
+                this.overlay.append("rect")
+                    .attr("x", g.densityX).attr("y", barY)
+                    .attr("width", barW * covPct / 100).attr("height", 8)
+                    .attr("fill", "#4682B4").attr("stroke", "none");
+
+                // Text: coverage %, count, mean duration.
+                this.overlay.append("text")
+                    .attr("x", g.densityX + barW + 6).attr("y", yMid)
+                    .attr("dominant-baseline", "middle")
+                    .attr("font-size", `${Math.max(9, o.trackFs - 2)}px`)
+                    .attr("fill", "#243b53").attr("font-weight", 600)
+                    .text(`${covPct.toFixed(0)}%`);
+                this.overlay.append("text")
+                    .attr("x", g.densityX).attr("y", barY - 3)
+                    .attr("font-size", `${Math.max(8, o.trackFs - 3)}px`)
+                    .attr("fill", "#666")
+                    .text(`${count} event${count === 1 ? "" : "s"}` + (meanDur > 0 ? `, mean ${this.fmtDuration(meanDur)}` : ""));
+            }
+        }
+
+        // ── Concurrency ribbon ────────────────────────────────
+        // A single strip above the tracks plotting how many intervals are
+        // active at each moment, across all tracks. Sweep-line over
+        // start/end events, sampled to the visible x pixels.
+        if (o.showConcurrency && g.concurH > 0) {
+            const pxN = Math.max(20, Math.round(g.right - g.left));
+            const counts = new Float64Array(pxN);
+            // Sample at each pixel: number of intervals whose window includes
+            // the domain value at that pixel. Cheap for a few thousand
+            // intervals; more than that would want a proper sweep.
+            for (const it of this.intervals) {
+                if (it.end == null) continue;   // point events skipped
+                const finish = it.end;
+                if (finish < visMin || it.start > visMax) continue;
+                const x0 = Math.max(0, Math.floor(((it.start - visMin) / (visMax - visMin)) * pxN));
+                const x1 = Math.min(pxN - 1, Math.floor(((finish - visMin) / (visMax - visMin)) * pxN));
+                for (let i = x0; i <= x1; i++) counts[i]++;
+            }
+            let maxC = 1;
+            for (let i = 0; i < pxN; i++) if (counts[i] > maxC) maxC = counts[i];
+            // Draw as a filled path so 1000 pixels are one DOM node.
+            const y0 = g.concurTop, y1 = g.concurTop + g.concurH;
+            let d = `M ${g.left},${y1}`;
+            for (let i = 0; i < pxN; i++) {
+                const px = g.left + (i / (pxN - 1 || 1)) * (g.right - g.left);
+                const yy = y1 - (counts[i] / maxC) * g.concurH;
+                d += ` L ${px.toFixed(1)},${yy.toFixed(1)}`;
+            }
+            d += ` L ${g.right},${y1} Z`;
+            this.overlay.append("rect")
+                .attr("x", g.left).attr("y", y0)
+                .attr("width", g.right - g.left).attr("height", g.concurH)
+                .attr("fill", "#fafafa").attr("stroke", "#eee").attr("stroke-width", 0.5);
+            this.overlay.append("path")
+                .attr("d", d)
+                .attr("fill", o.concurColor).attr("fill-opacity", 0.35)
+                .attr("stroke", o.concurColor).attr("stroke-width", 1);
+            this.overlay.append("text")
+                .attr("x", g.left + 4).attr("y", y0 + 10)
+                .attr("font-size", `${Math.max(8, o.axisFs - 2)}px`)
+                .attr("fill", "#555").attr("font-weight", 600)
+                .text(`concurrent · peak ${maxC}`);
+            this.overlay.append("text")
+                .attr("x", g.right - 4).attr("y", y0 + 10)
+                .attr("text-anchor", "end")
+                .attr("font-size", `${Math.max(8, o.axisFs - 2)}px`)
+                .attr("fill", "#888")
+                .text(`0-${maxC}`);
+        }
 
         // Axis.
         if (o.showAxis) {

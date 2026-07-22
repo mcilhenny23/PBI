@@ -61,6 +61,42 @@ same at 6,000 rows as at 200, because only the visible window is ever drawn.
 
 ---
 
+## Lane density — putting numbers on the picture
+
+**Density → Show per-lane density** adds a column on the right of the plot
+showing, per track, coverage % (fraction of the visible time span occupied
+by intervals), event count and mean duration. **Reactive to zoom** — scoping
+the window updates the stats live.
+
+Verified on `01-machine-states.csv` at full zoom:
+
+| Machine | Events | Coverage | Mean duration |
+|---|---:|---:|---:|
+| Press-01 | 54 | 100% | 218 min |
+| Press-02 | 54 | 100% | 209 min |
+| Lathe-07 | 57 | 100% | 205 min |
+| Mill-03  | 50 | 100% | 239 min |
+| Oven-12  | 54 | 100% | 205 min |
+
+All five machines tile the full window (state logs by construction), so the
+utility of coverage % shows when you **zoom to a subset** — restrict to
+Friday afternoon and coverage will still be 100% but the state mix changes,
+and Alarm point-event counts drop into single digits. Union coverage is
+computed with a merged-interval sweep so overlapping bars never double-count.
+
+**Density → Show concurrency ribbon** adds a strip along the top plotting
+the number of intervals active at each point in time, across all tracks.
+On the machine dataset it saturates at 5 (all machines always active), but
+on `02-service-log.csv` it spikes visibly during request bursts — a
+one-glance read on contention that beats counting bars by eye.
+
+Both features skip point events (Alarm rows with no End) for coverage /
+concurrency but still count them in the event count. That matches the
+intuition — an alarm is an instant, not a stretch of time — but the alarm
+still shows up as one of the day's things that happened.
+
+---
+
 ## Things to try
 
 - **Packing** — *Stack* packs overlapping intervals into collision-free lanes

@@ -144,6 +144,56 @@ class AxisCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Density — per-lane utilisation statistics computed over the visible window.
+ * Turns a picture into a set of numbers: how much of the time each track was
+ * covered by intervals, how many events landed, and how long they typically
+ * ran. Reactive to zoom, so scoping a window updates the stats live.
+ */
+class DensityCard extends FormattingSettingsCard {
+    showDensity = new formattingSettings.ToggleSwitch({
+        name: "showDensity",
+        displayName: "Show per-lane density",
+        description: "Adds a stats column on the right of each track showing coverage %, event count and mean duration for the visible time window.",
+        value: false
+    });
+
+    densityWidth = new formattingSettings.NumUpDown({
+        name: "densityWidth",
+        displayName: "Stats column width (px)",
+        value: 120
+    });
+
+    showConcurrency = new formattingSettings.ToggleSwitch({
+        name: "showConcurrency",
+        displayName: "Show concurrency ribbon",
+        description: "Adds a strip along the top plotting the number of overlapping intervals across all tracks at each point in time — a fast read on resource contention.",
+        value: false
+    });
+
+    concurrencyHeight = new formattingSettings.NumUpDown({
+        name: "concurrencyHeight",
+        displayName: "Concurrency ribbon height (px)",
+        value: 28
+    });
+
+    concurrencyColor = new formattingSettings.ColorPicker({
+        name: "concurrencyColor",
+        displayName: "Concurrency color",
+        value: { value: "#4682B4" }
+    });
+
+    name: string = "density";
+    displayName: string = "Density";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showDensity,
+        this.densityWidth,
+        this.showConcurrency,
+        this.concurrencyHeight,
+        this.concurrencyColor
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -159,7 +209,8 @@ class InteractionsCard extends FormattingSettingsCard {
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     tracksCard = new TracksCard();
     intervalsCard = new IntervalsCard();
+    densityCard = new DensityCard();
     axisCard = new AxisCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.tracksCard, this.intervalsCard, this.axisCard, this.interactionsCard];
+    cards = [this.tracksCard, this.intervalsCard, this.densityCard, this.axisCard, this.interactionsCard];
 }

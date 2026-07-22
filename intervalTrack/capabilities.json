@@ -72,6 +72,15 @@
                 "enableZoom": { "type": { "bool": true } }
             }
         },
+        "density": {
+            "properties": {
+                "showDensity": { "type": { "bool": true } },
+                "densityWidth": { "type": { "numeric": true } },
+                "showConcurrency": { "type": { "bool": true } },
+                "concurrencyHeight": { "type": { "numeric": true } },
+                "concurrencyColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
         "interactions": {
             "properties": {
                 "dimUnselectedOpacity": { "type": { "numeric": true } }

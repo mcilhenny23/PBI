@@ -84,7 +84,7 @@ Four themes recur:
 
 ## 9. Interval Track — timelines
 
-- **▶ Per-track utilisation statistics** *(C)* — uptime %, MTBF, count of state entries. Turns a picture into a metric.
+- **✅ Per-track density statistics + concurrency ribbon** *(C)* — new **Density** card. **Show per-lane density** reserves a stats column on the right of every track showing coverage % (union of intervals over visible span), event count and mean duration. Reactive to zoom, so scoping the window updates the stats live. **Show concurrency ribbon** adds a top strip plotting the number of intervals active at each point in time across all tracks — a fast read on contention. Union coverage uses a merged-interval sweep so overlapping bars never double-count, and point events are skipped from coverage but still counted as events. Verified on the machine-states sample: all 5 machines at 100% coverage with 50-57 events and ~200-240 min mean duration; peak concurrency 5 (all machines always active by construction).
 - **○ Rollup when zoomed out** — "% time in state" rather than density bands.
 - **○ Conflict / overlap detection** — double-booking, resource contention.
 - **○ Now-line and live window** for operational dashboards.
