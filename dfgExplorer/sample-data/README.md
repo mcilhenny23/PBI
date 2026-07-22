@@ -96,6 +96,36 @@ counted in the summary, so a typo doesn't fail silently.
 
 ---
 
+## Rework metrics — how much of the log is doing work twice?
+
+Turn on **Rework Metrics → Show rework summary**. Verified on this file:
+
+> **Rework · 25% of 400 cases have rework · 145 re-visits · 0 self-loops
+> · rework cost 14,761 · top: Approve (115)**
+
+100 of 400 cases visited at least one activity more than once. The sum of
+re-visits is 145 — the Approve→Reject→Revise→Approve loop hit 115 times
+across those cases, and 15 cases went round the loop *twice* (adding 15
+extra Reject visits and 15 extra Revise visits to the tally).
+
+**Rework cost** sums the bound Value measure on every re-visit event, so
+that's 14,761 in `Cost` charged to steps that only ran because a prior one
+failed — a hard number to take to the process owner.
+
+Turn on **Badge repeated activities** (default) and the top-N most-revisited
+activities get an ↺ badge on their node, pointing straight at where the
+loop lives. Approve carries the badge here even though **Reject** is what
+*triggered* the loop — that's deliberate: the badge marks the activity
+being re-visited, so the process owner knows which control needs
+tightening (an Approve that has to be re-issued after Reject/Revise).
+
+**Self-loops** count separately from rework — a self-loop is A→A (same
+activity twice in a row), whereas rework catches longer loops
+(A→B→A, A→B→C→A). The P2P sample has zero self-loops because Reject/Revise
+sit between the two Approve occurrences.
+
+---
+
 ## Things to try
 
 - **Click a variant** in the right panel. The map dims to just that path, so

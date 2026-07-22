@@ -96,6 +96,14 @@
                 "showMissing": { "type": { "bool": true } }
             }
         },
+        "rework": {
+            "properties": {
+                "showRework": { "type": { "bool": true } },
+                "showReworkBadges": { "type": { "bool": true } },
+                "reworkBadgeCount": { "type": { "numeric": true } },
+                "reworkBadgeColor": { "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
         "interactions": {
             "properties": {
                 "dimUnselectedOpacity": { "type": { "numeric": true } }

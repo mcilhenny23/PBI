@@ -234,6 +234,49 @@ class ConformanceCard extends FormattingSettingsCard {
     ];
 }
 
+/**
+ * Rework — how much of the log is doing work twice. Rework is any case that
+ * visits the same activity more than once, and it's the most operationally
+ * actionable thing a DFG surfaces: every re-visit is wasted time and often
+ * wasted money.
+ */
+class ReworkCard extends FormattingSettingsCard {
+    showRework = new formattingSettings.ToggleSwitch({
+        name: "showRework",
+        displayName: "Show rework summary",
+        description: "Prints a one-line summary at top-left with rework rate, total re-visits, total self-loops and (if a value is bound) rework cost.",
+        value: false
+    });
+
+    showReworkBadges = new formattingSettings.ToggleSwitch({
+        name: "showReworkBadges",
+        displayName: "Badge repeated activities",
+        description: "Marks the top-N activities most often re-visited with a ↺ badge on the node — points straight at where the loop lives.",
+        value: true
+    });
+
+    reworkBadgeCount = new formattingSettings.NumUpDown({
+        name: "reworkBadgeCount",
+        displayName: "Activities to badge",
+        value: 3
+    });
+
+    reworkBadgeColor = new formattingSettings.ColorPicker({
+        name: "reworkBadgeColor",
+        displayName: "Badge color",
+        value: { value: "#d97706" }
+    });
+
+    name: string = "rework";
+    displayName: string = "Rework Metrics";
+    slices: Array<FormattingSettingsSlice> = [
+        this.showRework,
+        this.showReworkBadges,
+        this.reworkBadgeCount,
+        this.reworkBadgeColor
+    ];
+}
+
 class InteractionsCard extends FormattingSettingsCard {
     dimUnselectedOpacity = new formattingSettings.NumUpDown({
         name: "dimUnselectedOpacity",
@@ -250,8 +293,9 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     dfgCard = new DfgCard();
     variantsCard = new VariantsCard();
     conformanceCard = new ConformanceCard();
+    reworkCard = new ReworkCard();
     nodesCard = new NodesCard();
     edgesCard = new EdgesCard();
     interactionsCard = new InteractionsCard();
-    cards = [this.dfgCard, this.variantsCard, this.conformanceCard, this.nodesCard, this.edgesCard, this.interactionsCard];
+    cards = [this.dfgCard, this.variantsCard, this.conformanceCard, this.reworkCard, this.nodesCard, this.edgesCard, this.interactionsCard];
 }

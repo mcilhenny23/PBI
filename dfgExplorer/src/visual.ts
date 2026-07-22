@@ -19,8 +19,9 @@ import DataView = powerbi.DataView;
 import { VisualFormattingSettingsModel } from "./settings";
 import {
     EventRow, CaseTrace, Variant, Dfg, DfgEdge, ReferenceModel, ConformanceReport,
+    ReworkReport,
     buildTraces, buildDfg, buildVariants, metricOf, edgeKey, variantEdgeKeys,
-    parseReference, referenceFromVariant, conformance
+    parseReference, referenceFromVariant, conformance, computeRework
 } from "./processMining";
 import { Fingerprint, ComputeCache } from "./computeCache";
 
@@ -254,6 +255,23 @@ export class Visual implements IVisual {
             report = conformance(this.dfg!, this.traces, reference);
         }
 
+        // ── Rework ────────────────────────────────────────────────
+        // Compute unconditionally when the summary or badges are on so both
+        // features share one pass over the traces. Cheap: O(cases × avg
+        // trace length), no cache needed.
+        const R = this.formattingSettings.reworkCard;
+        const reworkOn = (R.showRework.value || R.showReworkBadges.value) && this.dfg != null;
+        const rework: ReworkReport | null = reworkOn
+            ? computeRework(this.dfg!, this.traces)
+            : null;
+        const badgeActs = new Set<string>();
+        if (rework && R.showReworkBadges.value) {
+            const n = Math.max(0, Math.min(20, Math.round(R.reworkBadgeCount.value ?? 3)));
+            for (let i = 0; i < Math.min(n, rework.reworkPerActivity.length); i++) {
+                badgeActs.add(rework.reworkPerActivity[i].activity);
+            }
+        }
+
         // ── Prune ──────────────────────────────────────────────
         const kept: DfgEdge[] = [];
         for (const e of this.dfg.edges.values()) {
@@ -303,7 +321,11 @@ export class Visual implements IVisual {
 
         const gr = g.graph();
         const gw = Math.max(1, gr.width || 1), gh = Math.max(1, gr.height || 1);
-        const noteH = (this.truncated || this.ambiguous > 0 || (conformOn && report)) ? 20 : 0;
+        const reworkSummaryOn = R.showRework.value && rework != null;
+        const hasWarning = this.truncated || this.ambiguous > 0;
+        const twoLines = reworkSummaryOn && hasWarning;
+        const noteH = twoLines ? 32
+            : (hasWarning || (conformOn && report) || reworkSummaryOn ? 20 : 0);
         const availW = mapW - 12, availH = height - 12 - noteH;
         const scale = Math.min(availW / gw, availH / gh, 1.5);
         const tx = (mapW - gw * scale) / 2;
@@ -311,17 +333,43 @@ export class Visual implements IVisual {
         this.plot.attr("transform", `translate(${tx},${ty}) scale(${scale})`);
 
         // ── Warnings ───────────────────────────────────────────
+        this.svg.selectAll("text.dfg-note").remove();
+        this.svg.selectAll("text.dfg-rework-note").remove();
         if (noteH > 0) {
             const msgs: string[] = [];
             if (this.truncated) msgs.push(`Showing the first ${intFmt(ROW_LIMIT)} events — the log is truncated, so counts may be incomplete.`);
             if (this.ambiguous > 0) msgs.push(`${intFmt(this.ambiguous)} case(s) have tied timestamps; event order there is a guess.`);
-            this.svg.selectAll("text.dfg-note").remove();
-            this.svg.append("text").classed("dfg-note", true)
-                .attr("x", 8).attr("y", 14)
-                .attr("font-size", "11px").attr("fill", "#b26a00")
-                .text(msgs.join("  ·  "));
-        } else {
-            this.svg.selectAll("text.dfg-note").remove();
+            if (msgs.length) {
+                this.svg.append("text").classed("dfg-note", true)
+                    .attr("x", 8).attr("y", 14)
+                    .attr("font-size", "11px").attr("fill", "#b26a00")
+                    .text(msgs.join("  ·  "));
+            }
+        }
+
+        // ── Rework summary ────────────────────────────────────
+        // Left-aligned, same row as warnings when there are none; otherwise
+        // shares the row — both are short strings and the warning triggers
+        // are rare in practice.
+        if (reworkSummaryOn && rework) {
+            const pct = rework.totalCases > 0
+                ? Math.round(rework.reworkCases / rework.totalCases * 100)
+                : 0;
+            const parts: string[] = [
+                `${pct}% of ${intFmt(rework.totalCases)} cases have rework`,
+                `${intFmt(rework.reworkEvents)} re-visit${rework.reworkEvents === 1 ? "" : "s"}`,
+                `${intFmt(rework.selfLoopEvents)} self-loop${rework.selfLoopEvents === 1 ? "" : "s"}`
+            ];
+            if (rework.reworkValue !== 0) parts.push(`rework cost ${numFmt(rework.reworkValue)}`);
+            if (rework.reworkPerActivity.length) {
+                const top = rework.reworkPerActivity[0];
+                parts.push(`top: ${top.activity} (${intFmt(top.extraVisits)})`);
+            }
+            this.svg.append("text").classed("dfg-rework-note", true)
+                .attr("x", 8).attr("y", twoLines ? 28 : 14)
+                .attr("font-size", "11px").attr("fill", "#243b53")
+                .attr("font-weight", 600)
+                .text(`Rework · ${parts.join(" · ")}`);
         }
 
         // ── Conformance summary ───────────────────────────────
@@ -521,6 +569,33 @@ export class Visual implements IVisual {
                     .attr("font-size", `${Math.max(8, fs - 3)}px`)
                     .attr("fill", "#6b7c93")
                     .text(intFmt(freq));
+            }
+
+            // Rework badge — a small ↺ circle in the top-right corner of the
+            // node for activities that are frequent re-visits. Positioned
+            // outside the node so it doesn't collide with the activity name.
+            if (badgeActs.has(a) && rework) {
+                const stat = rework.reworkPerActivity.find(x => x.activity === a);
+                if (stat) {
+                    const r = Math.max(7, fs * 0.65);
+                    const bx = nd.width - r * 0.4;
+                    const by = -r * 0.4;
+                    const badgeColor = R.reworkBadgeColor.value.value;
+                    gNode.append("circle")
+                        .attr("cx", bx).attr("cy", by).attr("r", r)
+                        .attr("fill", badgeColor)
+                        .attr("stroke", "#fff").attr("stroke-width", 1.5);
+                    gNode.append("text")
+                        .attr("x", bx).attr("y", by + 1)
+                        .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+                        .attr("font-size", `${Math.max(9, fs - 1)}px`).attr("font-weight", 700)
+                        .attr("fill", "#fff")
+                        .style("pointer-events", "none")
+                        .text("↺");
+                    gNode.append("title").text(
+                        `Rework hotspot · ${a}: ${intFmt(stat.extraVisits)} re-visit(s) across ${intFmt(stat.casesAffected)} case(s)`
+                    );
+                }
             }
         }
 
