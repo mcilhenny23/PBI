@@ -73,6 +73,7 @@
         }
     },
     "supportsLandingPage": true,
+    "supportsKeyboardFocus": true,
     "supportsHighlight": true,
     "supportsMultiVisualSelection": true,
     "tooltips": {
