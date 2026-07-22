@@ -4,52 +4,91 @@
             "displayName": "Track / Lane",
             "name": "track",
             "kind": "Grouping",
-            "description": "Groups intervals into horizontal tracks (machine, resource, case…)"
+            "description": "Groups intervals into horizontal tracks (machine, resource, case\u2026)",
+            "displayNameKey": "Role_track_DisplayName",
+            "descriptionKey": "Role_track_Description"
         },
         {
             "displayName": "Start",
             "name": "start",
             "kind": "Grouping",
-            "description": "Interval start — date/time or numeric. Set to Don't summarize."
+            "description": "Interval start \u2014 date/time or numeric. Set to Don't summarize.",
+            "displayNameKey": "Role_start_DisplayName",
+            "descriptionKey": "Role_start_Description"
         },
         {
             "displayName": "End",
             "name": "end",
             "kind": "Grouping",
-            "description": "Interval end. Leave blank on a row to render it as a point event."
+            "description": "Interval end. Leave blank on a row to render it as a point event.",
+            "displayNameKey": "Role_end_DisplayName",
+            "descriptionKey": "Role_end_Description"
         },
         {
             "displayName": "Label",
             "name": "label",
             "kind": "Grouping",
-            "description": "Optional text drawn inside the interval bar"
+            "description": "Optional text drawn inside the interval bar",
+            "displayNameKey": "Role_label_DisplayName",
+            "descriptionKey": "Role_label_Description"
         },
         {
             "displayName": "Category",
             "name": "category",
             "kind": "Grouping",
-            "description": "Optional color category (state, status, severity…)"
+            "description": "Optional color category (state, status, severity\u2026)",
+            "displayNameKey": "Role_category_DisplayName",
+            "descriptionKey": "Role_category_Description"
         },
         {
             "displayName": "Value",
             "name": "value",
             "kind": "Measure",
-            "description": "Optional numeric — modulates bar intensity"
+            "description": "Optional numeric \u2014 modulates bar intensity",
+            "displayNameKey": "Role_value_DisplayName",
+            "descriptionKey": "Role_value_Description"
         }
     ],
     "objects": {
         "tracks": {
             "properties": {
-                "trackHeight": { "type": { "numeric": true } },
-                "trackGap": { "type": { "numeric": true } },
-                "trackLabelWidth": { "type": { "numeric": true } },
-                "trackLabelFontSize": { "type": { "formatting": { "fontSize": true } } },
+                "trackHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "trackGap": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "trackLabelWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "trackLabelFontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                },
                 "packingMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "stack", "displayName": "Stack (collision-free lanes)" },
-                            { "value": "overlap", "displayName": "Overlap (single row)" },
-                            { "value": "collapse", "displayName": "Collapse (single row, clipped)" }
+                            {
+                                "value": "stack",
+                                "displayName": "Stack (collision-free lanes)"
+                            },
+                            {
+                                "value": "overlap",
+                                "displayName": "Overlap (single row)"
+                            },
+                            {
+                                "value": "collapse",
+                                "displayName": "Collapse (single row, clipped)"
+                            }
                         ]
                     }
                 }
@@ -57,33 +96,101 @@
         },
         "intervals": {
             "properties": {
-                "intervalHeight": { "type": { "numeric": true } },
-                "intervalRadius": { "type": { "numeric": true } },
-                "intervalOpacity": { "type": { "numeric": true } },
-                "showLabels": { "type": { "bool": true } },
-                "labelFontSize": { "type": { "formatting": { "fontSize": true } } },
-                "pointEventRadius": { "type": { "numeric": true } }
+                "intervalHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "intervalRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "intervalOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showLabels": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "labelFontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                },
+                "pointEventRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "axis": {
             "properties": {
-                "showAxis": { "type": { "bool": true } },
-                "axisFontSize": { "type": { "formatting": { "fontSize": true } } },
-                "enableZoom": { "type": { "bool": true } }
+                "showAxis": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "axisFontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                },
+                "enableZoom": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "density": {
             "properties": {
-                "showDensity": { "type": { "bool": true } },
-                "densityWidth": { "type": { "numeric": true } },
-                "showConcurrency": { "type": { "bool": true } },
-                "concurrencyHeight": { "type": { "numeric": true } },
-                "concurrencyColor": { "type": { "fill": { "solid": { "color": true } } } }
+                "showDensity": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "densityWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showConcurrency": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "concurrencyHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "concurrencyColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -102,15 +209,41 @@
             "table": {
                 "rows": {
                     "select": [
-                        { "for": { "in": "track" } },
-                        { "for": { "in": "start" } },
-                        { "for": { "in": "end" } },
-                        { "for": { "in": "label" } },
-                        { "for": { "in": "category" } },
-                        { "for": { "in": "value" } }
+                        {
+                            "for": {
+                                "in": "track"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "start"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "end"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "label"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "category"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "value"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 }
             }

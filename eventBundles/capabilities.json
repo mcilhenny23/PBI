@@ -4,63 +4,122 @@
             "displayName": "Case ID",
             "name": "caseId",
             "kind": "Grouping",
-            "description": "The case / journey identifier"
+            "description": "The case / journey identifier",
+            "displayNameKey": "Role_caseId_DisplayName",
+            "descriptionKey": "Role_caseId_Description"
         },
         {
             "displayName": "Event",
             "name": "event",
             "kind": "Grouping",
-            "description": "Event type / name"
+            "description": "Event type / name",
+            "displayNameKey": "Role_event_DisplayName",
+            "descriptionKey": "Role_event_Description"
         },
         {
             "displayName": "Timestamp",
             "name": "timestamp",
             "kind": "Grouping",
-            "description": "Orders events within a case. Set to Don't summarize."
+            "description": "Orders events within a case. Set to Don't summarize.",
+            "displayNameKey": "Role_timestamp_DisplayName",
+            "descriptionKey": "Role_timestamp_Description"
         },
         {
             "displayName": "Event Category",
             "name": "eventCategory",
             "kind": "Grouping",
-            "description": "Optional — used when coloring by category"
+            "description": "Optional \u2014 used when coloring by category",
+            "displayNameKey": "Role_eventCategory_DisplayName",
+            "descriptionKey": "Role_eventCategory_Description"
         },
         {
             "displayName": "Outcome",
             "name": "outcome",
             "kind": "Grouping",
-            "description": "Optional — per-case outcome (recovered / churned / readmitted). Bind if you want to colour bundles by how each journey ended. Defaults to the last event in the case if unbound."
+            "description": "Optional \u2014 per-case outcome (recovered / churned / readmitted). Bind if you want to colour bundles by how each journey ended. Defaults to the last event in the case if unbound.",
+            "displayNameKey": "Role_outcome_DisplayName",
+            "descriptionKey": "Role_outcome_Description"
         }
     ],
     "objects": {
         "aggregation": {
             "properties": {
-                "minBundleSupport": { "type": { "numeric": true } },
-                "maxDepth": { "type": { "numeric": true } },
+                "minBundleSupport": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxDepth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "alignmentAnchor": {
                     "type": {
                         "enumeration": [
-                            { "value": "first-event", "displayName": "First event" },
-                            { "value": "last-event", "displayName": "Last event" },
-                            { "value": "selected", "displayName": "Selected event" }
+                            {
+                                "value": "first-event",
+                                "displayName": "First event"
+                            },
+                            {
+                                "value": "last-event",
+                                "displayName": "Last event"
+                            },
+                            {
+                                "value": "selected",
+                                "displayName": "Selected event"
+                            }
                         ]
                     }
                 },
-                "anchorEvent": { "type": { "text": true } }
+                "anchorEvent": {
+                    "type": {
+                        "text": true
+                    }
+                }
             }
         },
         "appearance": {
             "properties": {
-                "bundleOpacity": { "type": { "numeric": true } },
-                "minBandWidth": { "type": { "numeric": true } },
-                "maxBandWidth": { "type": { "numeric": true } },
-                "showCaseCounts": { "type": { "bool": true } },
+                "bundleOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "minBandWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxBandWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showCaseCounts": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "colorBy": {
                     "type": {
                         "enumeration": [
-                            { "value": "event-type", "displayName": "Event type" },
-                            { "value": "event-category", "displayName": "Event category" },
-                            { "value": "outcome", "displayName": "Outcome (case ending)" },
-                            { "value": "uniform", "displayName": "Uniform" }
+                            {
+                                "value": "event-type",
+                                "displayName": "Event type"
+                            },
+                            {
+                                "value": "event-category",
+                                "displayName": "Event category"
+                            },
+                            {
+                                "value": "outcome",
+                                "displayName": "Outcome (case ending)"
+                            },
+                            {
+                                "value": "uniform",
+                                "displayName": "Uniform"
+                            }
                         ]
                     }
                 }
@@ -71,20 +130,48 @@
                 "orientation": {
                     "type": {
                         "enumeration": [
-                            { "value": "horizontal", "displayName": "Horizontal" },
-                            { "value": "vertical", "displayName": "Vertical" }
+                            {
+                                "value": "horizontal",
+                                "displayName": "Horizontal"
+                            },
+                            {
+                                "value": "vertical",
+                                "displayName": "Vertical"
+                            }
                         ]
                     }
                 },
-                "gapBetweenSteps": { "type": { "numeric": true } },
-                "timeScaledColumns": { "type": { "bool": true } },
-                "showTimeAxis": { "type": { "bool": true } },
-                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+                "gapBetweenSteps": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "timeScaledColumns": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showTimeAxis": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -103,14 +190,36 @@
             "table": {
                 "rows": {
                     "select": [
-                        { "for": { "in": "caseId" } },
-                        { "for": { "in": "event" } },
-                        { "for": { "in": "timestamp" } },
-                        { "for": { "in": "eventCategory" } },
-                        { "for": { "in": "outcome" } }
+                        {
+                            "for": {
+                                "in": "caseId"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "event"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "timestamp"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "eventCategory"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "outcome"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 }
             }

@@ -1,0 +1,13 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Synoptic Mimic Diagram": "SCADA-Übersichtsschema",
+  "SCADA-style schematic bound to live measures — tank levels fill, valves change colour, pipes animate flow, readouts update. The template is parsed into an internal geometry model and re-drawn from validated primitives, so no third-party markup is ever injected into the page.": "SCADA-style schematic bound to live measures — tank levels fill, valves change colour, pipes animate flow, readouts update. The template is parsed into an internal geometry model and re-drawn from validated primitives, so no third-party markup is ever injected into the page.",
+  "Role_elementId_DisplayName": "Element-ID",
+  "Role_elementId_Description": "Matches an id or data-tag in the SVG template",
+  "Role_value_DisplayName": "Wert",
+  "Role_value_Description": "Drives fill level, color, opacity, rotation or text",
+  "Role_state_DisplayName": "Zustand",
+  "Role_state_Description": "Optional discrete state (open/closed, running/stopped) shown in the tooltip",
+  "Role_svgContent_DisplayName": "SVG-Vorlage",
+  "Role_svgContent_Description": "The schematic as SVG text. Put it in one row; the visual reads the first non-blank value."
+}

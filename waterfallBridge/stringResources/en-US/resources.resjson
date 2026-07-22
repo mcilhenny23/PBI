@@ -1,0 +1,12 @@
+{
+  "Waterfall Bridge": "Waterfall Bridge",
+  "Multi-measure waterfall / bridge chart. Decompose Actual → drivers → Budget across multiple measures or a Steps column. Anchors, deltas, subtotals, connectors, and an unexplained-variance chip when the bridge doesn't tie out.": "Multi-measure waterfall / bridge chart. Decompose Actual → drivers → Budget across multiple measures or a Steps column. Anchors, deltas, subtotals, connectors, and an unexplained-variance chip when the bridge doesn't tie out.",
+  "Role_steps_DisplayName": "Bridge Steps",
+  "Role_steps_Description": "Ordered step names (Actual, Price, Volume, Mix, Budget…). Omit if binding multiple Value measures — each measure becomes one step in field order.",
+  "Role_value_DisplayName": "Value",
+  "Role_value_Description": "Delta per step, or absolute for anchor / subtotal steps. Bind multiple to build a bridge from measures instead of a Steps column.",
+  "Role_stepType_DisplayName": "Step Type",
+  "Role_stepType_Description": "Optional: 'anchor' | 'delta' | 'subtotal'. Defaults are inferred (first & last = anchors).",
+  "Role_category_DisplayName": "Breakdown",
+  "Role_category_Description": "Optional sub-bars within each delta step (stacked)."
+}

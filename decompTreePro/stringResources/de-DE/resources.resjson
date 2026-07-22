@@ -1,0 +1,10 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Decomp Tree Pro": "Zerlegungsbaum Pro",
+  "Decomposition tree with the four features the native one lacks: conditional bar coloring against a threshold, a secondary measure beside the primary (or auto %-of-parent), custom per-level sort, and a pinnable analyst-defined expansion path that survives report reload.": "Decomposition tree with the four features the native one lacks: conditional bar coloring against a threshold, a secondary measure beside the primary (or auto %-of-parent), custom per-level sort, and a pinnable analyst-defined expansion path that survives report reload.",
+  "Role_value_DisplayName": "Analyze",
+  "Role_secondary_DisplayName": "Zweite Kennzahl",
+  "Role_secondary_Description": "Shown beside primary (defaults to % of parent when empty)",
+  "Role_levels_DisplayName": "Ebenen",
+  "Role_levels_Description": "Bind multiple grouping fields — expansion order = your clicks"
+}

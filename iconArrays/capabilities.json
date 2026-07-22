@@ -4,46 +4,77 @@
             "displayName": "Value",
             "name": "value",
             "kind": "Measure",
-            "description": "Count or proportion to highlight (e.g. 17, or 0.17). If a proportion (0–1) and no Total is bound, it is read as a share of the grid."
+            "description": "Count or proportion to highlight (e.g. 17, or 0.17). If a proportion (0\u20131) and no Total is bound, it is read as a share of the grid.",
+            "displayNameKey": "Role_value_DisplayName",
+            "descriptionKey": "Role_value_Description"
         },
         {
             "displayName": "Total",
             "name": "total",
             "kind": "Measure",
-            "description": "Denominator for the proportion (optional — defaults to the grid size, or 100)."
+            "description": "Denominator for the proportion (optional \u2014 defaults to the grid size, or 100).",
+            "displayNameKey": "Role_total_DisplayName",
+            "descriptionKey": "Role_total_Description"
         },
         {
             "displayName": "Category",
             "name": "category",
             "kind": "Grouping",
-            "description": "Optional — splits the highlighted icons into colored segments (each category gets its own color)."
+            "description": "Optional \u2014 splits the highlighted icons into colored segments (each category gets its own color).",
+            "displayNameKey": "Role_category_DisplayName",
+            "descriptionKey": "Role_category_Description"
         }
     ],
     "objects": {
         "layout": {
             "properties": {
                 "gridColumns": {
-                    "type": { "numeric": true }
+                    "type": {
+                        "numeric": true
+                    }
                 },
                 "gridRows": {
-                    "type": { "numeric": true }
+                    "type": {
+                        "numeric": true
+                    }
                 },
                 "fillOrder": {
                     "type": {
                         "enumeration": [
-                            { "value": "row", "displayName": "Row by row" },
-                            { "value": "column", "displayName": "Column by column" },
-                            { "value": "random", "displayName": "Random" }
+                            {
+                                "value": "row",
+                                "displayName": "Row by row"
+                            },
+                            {
+                                "value": "column",
+                                "displayName": "Column by column"
+                            },
+                            {
+                                "value": "random",
+                                "displayName": "Random"
+                            }
                         ]
                     }
                 },
                 "iconShape": {
                     "type": {
                         "enumeration": [
-                            { "value": "person", "displayName": "Person" },
-                            { "value": "circle", "displayName": "Circle" },
-                            { "value": "square", "displayName": "Square" },
-                            { "value": "heart", "displayName": "Heart" }
+                            {
+                                "value": "person",
+                                "displayName": "Person"
+                            },
+                            {
+                                "value": "circle",
+                                "displayName": "Circle"
+                            },
+                            {
+                                "value": "square",
+                                "displayName": "Square"
+                            },
+                            {
+                                "value": "heart",
+                                "displayName": "Heart"
+                            }
                         ]
                     }
                 }
@@ -52,28 +83,54 @@
         "appearance": {
             "properties": {
                 "highlightColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
                 },
                 "baseColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
                 },
                 "iconSize": {
-                    "type": { "numeric": true }
+                    "type": {
+                        "numeric": true
+                    }
                 },
                 "iconSpacing": {
-                    "type": { "numeric": true }
+                    "type": {
+                        "numeric": true
+                    }
                 },
                 "showLabel": {
-                    "type": { "bool": true }
+                    "type": {
+                        "bool": true
+                    }
                 },
                 "labelFontSize": {
-                    "type": { "formatting": { "fontSize": true } }
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
                 }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -91,15 +148,27 @@
         {
             "categorical": {
                 "categories": {
-                    "for": { "in": "category" },
+                    "for": {
+                        "in": "category"
+                    },
                     "dataReductionAlgorithm": {
-                        "top": { "count": 1000 }
+                        "top": {
+                            "count": 1000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "value" } },
-                        { "for": { "in": "total" } }
+                        {
+                            "for": {
+                                "in": "value"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "total"
+                            }
+                        }
                     ]
                 }
             }

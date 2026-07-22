@@ -4,19 +4,25 @@
             "displayName": "Source Node",
             "name": "source",
             "kind": "Grouping",
-            "description": "Edge source — becomes a matrix row/column"
+            "description": "Edge source \u2014 becomes a matrix row/column",
+            "displayNameKey": "Role_source_DisplayName",
+            "descriptionKey": "Role_source_Description"
         },
         {
             "displayName": "Target Node",
             "name": "target",
             "kind": "Grouping",
-            "description": "Edge target — becomes a matrix row/column"
+            "description": "Edge target \u2014 becomes a matrix row/column",
+            "displayNameKey": "Role_target_DisplayName",
+            "descriptionKey": "Role_target_Description"
         },
         {
             "displayName": "Weight",
             "name": "weight",
             "kind": "Measure",
-            "description": "Edge weight / intensity. Omit to treat every edge as weight 1."
+            "description": "Edge weight / intensity. Omit to treat every edge as weight 1.",
+            "displayNameKey": "Role_weight_DisplayName",
+            "descriptionKey": "Role_weight_Description"
         }
     ],
     "objects": {
@@ -25,43 +31,100 @@
                 "matrixMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "unipartite", "displayName": "Unipartite (one node set)" },
-                            { "value": "bipartite", "displayName": "Bipartite (rows ≠ columns)" }
+                            {
+                                "value": "unipartite",
+                                "displayName": "Unipartite (one node set)"
+                            },
+                            {
+                                "value": "bipartite",
+                                "displayName": "Bipartite (rows \u2260 columns)"
+                            }
                         ]
                     }
                 },
                 "seriation": {
                     "type": {
                         "enumeration": [
-                            { "value": "cluster", "displayName": "Cluster (hierarchical)" },
-                            { "value": "degree", "displayName": "Degree" },
-                            { "value": "alphabetical", "displayName": "Alphabetical" },
-                            { "value": "none", "displayName": "None (data order)" }
+                            {
+                                "value": "cluster",
+                                "displayName": "Cluster (hierarchical)"
+                            },
+                            {
+                                "value": "degree",
+                                "displayName": "Degree"
+                            },
+                            {
+                                "value": "alphabetical",
+                                "displayName": "Alphabetical"
+                            },
+                            {
+                                "value": "none",
+                                "displayName": "None (data order)"
+                            }
                         ]
                     }
                 },
-                "symmetric": { "type": { "bool": true } },
+                "symmetric": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "cellShape": {
                     "type": {
                         "enumeration": [
-                            { "value": "square", "displayName": "Square" },
-                            { "value": "circle", "displayName": "Circle" }
+                            {
+                                "value": "square",
+                                "displayName": "Square"
+                            },
+                            {
+                                "value": "circle",
+                                "displayName": "Circle"
+                            }
                         ]
                     }
                 },
-                "showDiagonal": { "type": { "bool": true } }
+                "showDiagonal": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "color": {
             "properties": {
-                "colorRampLow": { "type": { "fill": { "solid": { "color": true } } } },
-                "colorRampHigh": { "type": { "fill": { "solid": { "color": true } } } },
+                "colorRampLow": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "colorRampHigh": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
                 "colorScale": {
                     "type": {
                         "enumeration": [
-                            { "value": "linear", "displayName": "Linear" },
-                            { "value": "log", "displayName": "Log" },
-                            { "value": "sqrt", "displayName": "Square root" }
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            },
+                            {
+                                "value": "log",
+                                "displayName": "Log"
+                            },
+                            {
+                                "value": "sqrt",
+                                "displayName": "Square root"
+                            }
                         ]
                     }
                 }
@@ -69,14 +132,34 @@
         },
         "labels": {
             "properties": {
-                "showLabels": { "type": { "bool": true } },
-                "labelFontSize": { "type": { "formatting": { "fontSize": true } } },
-                "maxLabelLength": { "type": { "numeric": true } },
+                "showLabels": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "labelFontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                },
+                "maxLabelLength": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "labelPosition": {
                     "type": {
                         "enumeration": [
-                            { "value": "outside", "displayName": "Outside" },
-                            { "value": "inside", "displayName": "Inside" }
+                            {
+                                "value": "outside",
+                                "displayName": "Outside"
+                            },
+                            {
+                                "value": "inside",
+                                "displayName": "Inside"
+                            }
                         ]
                     }
                 }
@@ -84,13 +167,29 @@
         },
         "clusters": {
             "properties": {
-                "showClusterBoundaries": { "type": { "bool": true } },
-                "clusterBoundaryColor": { "type": { "fill": { "solid": { "color": true } } } }
+                "showClusterBoundaries": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "clusterBoundaryColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -109,16 +208,30 @@
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "source" } },
-                        { "for": { "in": "target" } }
+                        {
+                            "for": {
+                                "in": "source"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "target"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 30000 }
+                        "top": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "weight" } }
+                        {
+                            "for": {
+                                "in": "weight"
+                            }
+                        }
                     ]
                 }
             }

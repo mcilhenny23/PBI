@@ -1,0 +1,10 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Advanced Table": "Erweiterte Tabelle (Sparklines + Symbole)",
+  "DOM-based virtualized table with two features the native one can't do inline: sparkline cells (line/bar/area/win-loss) driven by a nested time series, and up to three icon-rule slots that prefix numeric cells with ▲▼●✓✗ per threshold.": "DOM-based virtualized table with two features the native one can't do inline: sparkline cells (line/bar/area/win-loss) driven by a nested time series, and up to three icon-rule slots that prefix numeric cells with ▲▼●✓✗ per threshold.",
+  "Role_rows_DisplayName": "Zeilen",
+  "Role_columns_DisplayName": "Werte",
+  "Role_sparkAxis_DisplayName": "Sparkline-Achse",
+  "Role_sparkAxis_Description": "Time / horizon field for sparkline cells",
+  "Role_sparkValue_DisplayName": "Sparkline-Wert"
+}

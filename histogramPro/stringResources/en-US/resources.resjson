@@ -1,0 +1,9 @@
+{
+  "Histogram Pro": "Histogram Pro",
+  "Histogram with automatic bin-width selection (Freedman-Diaconis / Sturges / Scott / manual), a drag-to-adjust bin-width slider under the axis, a Gaussian KDE density overlay, and group overlay / facet / stack modes.": "Histogram with automatic bin-width selection (Freedman-Diaconis / Sturges / Scott / manual), a drag-to-adjust bin-width slider under the axis, a Gaussian KDE density overlay, and group overlay / facet / stack modes.",
+  "Role_values_DisplayName": "Values",
+  "Role_groupBy_DisplayName": "Compare Groups",
+  "Role_groupBy_Description": "Optional: overlaid / faceted histograms per group",
+  "Role_obsKey_DisplayName": "Observation Key",
+  "Role_obsKey_Description": "Any per-row identity (needed so each raw value stays a separate row)"
+}

@@ -1,0 +1,9 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Word Cloud Modern": "Moderne Wortwolke",
+  "Word / phrase cloud with the features the incumbent lacks: n-gram support (1, 2, 1+2, 3), bundled stop-word lists, click-to-filter selection, chunked layout for large term counts, and rank-based color ramp options.": "Word / phrase cloud with the features the incumbent lacks: n-gram support (1, 2, 1+2, 3), bundled stop-word lists, click-to-filter selection, chunked layout for large term counts, and rank-based color ramp options.",
+  "Role_text_DisplayName": "Text / Token",
+  "Role_weight_DisplayName": "Gewicht",
+  "Role_weight_Description": "Optional; when absent, frequency is computed from the raw text",
+  "Role_colorBy_DisplayName": "Kategorie"
+}

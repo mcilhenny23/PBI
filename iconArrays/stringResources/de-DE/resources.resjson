@@ -1,0 +1,11 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Icon Array": "Piktogramm-Raster",
+  "Frequency-framing icon array (pictograph). Communicates risk and proportion as a grid of icons — '17 of 100 people' — proven to beat percentages for lay comprehension. Bind a Value (and optional Total or Category segments) to fill a grid of people, hearts, circles or squares.": "Frequency-framing icon array (pictograph). Communicates risk and proportion as a grid of icons — '17 of 100 people' — proven to beat percentages for lay comprehension. Bind a Value (and optional Total or Category segments) to fill a grid of people, hearts, circles or squares.",
+  "Role_value_DisplayName": "Wert",
+  "Role_value_Description": "Count or proportion to highlight (e.g. 17, or 0.17). If a proportion (0–1) and no Total is bound, it is read as a share of the grid.",
+  "Role_total_DisplayName": "Gesamt",
+  "Role_total_Description": "Denominator for the proportion (optional — defaults to the grid size, or 100).",
+  "Role_category_DisplayName": "Kategorie",
+  "Role_category_Description": "Optional — splits the highlighted icons into colored segments (each category gets its own color)."
+}

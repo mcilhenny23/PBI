@@ -4,31 +4,41 @@
             "displayName": "Die X",
             "name": "dieX",
             "kind": "Grouping",
-            "description": "Column index of the die on the wafer"
+            "description": "Column index of the die on the wafer",
+            "displayNameKey": "Role_dieX_DisplayName",
+            "descriptionKey": "Role_dieX_Description"
         },
         {
             "displayName": "Die Y",
             "name": "dieY",
             "kind": "Grouping",
-            "description": "Row index of the die on the wafer"
+            "description": "Row index of the die on the wafer",
+            "displayNameKey": "Role_dieY_DisplayName",
+            "descriptionKey": "Role_dieY_Description"
         },
         {
             "displayName": "Bin / Status",
             "name": "binCode",
             "kind": "Grouping",
-            "description": "Pass/fail, bin code or category — used in Categorical color mode"
+            "description": "Pass/fail, bin code or category \u2014 used in Categorical color mode",
+            "displayNameKey": "Role_binCode_DisplayName",
+            "descriptionKey": "Role_binCode_Description"
         },
         {
             "displayName": "Value",
             "name": "value",
             "kind": "Measure",
-            "description": "Optional continuous measure (yield, resistance…) — used in Continuous color mode"
+            "description": "Optional continuous measure (yield, resistance\u2026) \u2014 used in Continuous color mode",
+            "displayNameKey": "Role_value_DisplayName",
+            "descriptionKey": "Role_value_Description"
         },
         {
             "displayName": "Wafer ID",
             "name": "waferID",
             "kind": "Grouping",
-            "description": "Optional — renders small multiples, one mini wafer per ID"
+            "description": "Optional \u2014 renders small multiples, one mini wafer per ID",
+            "displayNameKey": "Role_waferID_DisplayName",
+            "descriptionKey": "Role_waferID_Description"
         }
     ],
     "objects": {
@@ -37,52 +47,116 @@
                 "waferShape": {
                     "type": {
                         "enumeration": [
-                            { "value": "circle", "displayName": "Circle" },
-                            { "value": "rectangle", "displayName": "Rectangle" }
+                            {
+                                "value": "circle",
+                                "displayName": "Circle"
+                            },
+                            {
+                                "value": "rectangle",
+                                "displayName": "Rectangle"
+                            }
                         ]
                     }
                 },
                 "notchPosition": {
                     "type": {
                         "enumeration": [
-                            { "value": "bottom", "displayName": "Bottom" },
-                            { "value": "top", "displayName": "Top" },
-                            { "value": "left", "displayName": "Left" },
-                            { "value": "right", "displayName": "Right" }
+                            {
+                                "value": "bottom",
+                                "displayName": "Bottom"
+                            },
+                            {
+                                "value": "top",
+                                "displayName": "Top"
+                            },
+                            {
+                                "value": "left",
+                                "displayName": "Left"
+                            },
+                            {
+                                "value": "right",
+                                "displayName": "Right"
+                            }
                         ]
                     }
                 },
-                "edgeExclusion": { "type": { "numeric": true } },
-                "showNotch": { "type": { "bool": true } },
+                "edgeExclusion": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showNotch": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "multiWaferMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "small-multiples", "displayName": "Small multiples" },
-                            { "value": "stacked", "displayName": "Stacked (composite)" }
+                            {
+                                "value": "small-multiples",
+                                "displayName": "Small multiples"
+                            },
+                            {
+                                "value": "stacked",
+                                "displayName": "Stacked (composite)"
+                            }
                         ]
                     }
                 },
                 "stackedMetric": {
                     "type": {
                         "enumeration": [
-                            { "value": "fail-rate", "displayName": "Fail rate (% of wafers failing here)" },
-                            { "value": "mean-value", "displayName": "Mean value" }
+                            {
+                                "value": "fail-rate",
+                                "displayName": "Fail rate (% of wafers failing here)"
+                            },
+                            {
+                                "value": "mean-value",
+                                "displayName": "Mean value"
+                            }
                         ]
                     }
                 },
-                "passBin": { "type": { "text": true } }
+                "passBin": {
+                    "type": {
+                        "text": true
+                    }
+                }
             }
         },
         "dieAppearance": {
             "properties": {
-                "dieGap": { "type": { "numeric": true } },
-                "dieBorderColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "dieBorderWidth": { "type": { "numeric": true } },
+                "dieGap": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "dieBorderColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "dieBorderWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "colorMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "categorical", "displayName": "Categorical (bin)" },
-                            { "value": "continuous", "displayName": "Continuous (value)" }
+                            {
+                                "value": "categorical",
+                                "displayName": "Categorical (bin)"
+                            },
+                            {
+                                "value": "continuous",
+                                "displayName": "Continuous (value)"
+                            }
                         ]
                     }
                 }
@@ -90,48 +164,165 @@
         },
         "colorScale": {
             "properties": {
-                "colorScaleLow": { "type": { "fill": { "solid": { "color": true } } } },
-                "colorScaleMid": { "type": { "fill": { "solid": { "color": true } } } },
-                "colorScaleHigh": { "type": { "fill": { "solid": { "color": true } } } }
+                "colorScaleLow": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "colorScaleMid": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "colorScaleHigh": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "zones": {
             "properties": {
-                "showZones": { "type": { "bool": true } },
-                "zoneCount": { "type": { "numeric": true } },
-                "zoneLineColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "zoneLineOpacity": { "type": { "numeric": true } },
-                "showZoneStats": { "type": { "bool": true } },
+                "showZones": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "zoneCount": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "zoneLineColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "zoneLineOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showZoneStats": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "zoneStatFormat": {
                     "type": {
                         "enumeration": [
-                            { "value": "yield", "displayName": "Yield % (pass rate)" },
-                            { "value": "fail", "displayName": "Fail % (defect rate)" },
-                            { "value": "count", "displayName": "Die counts (pass/total)" }
+                            {
+                                "value": "yield",
+                                "displayName": "Yield % (pass rate)"
+                            },
+                            {
+                                "value": "fail",
+                                "displayName": "Fail % (defect rate)"
+                            },
+                            {
+                                "value": "count",
+                                "displayName": "Die counts (pass/total)"
+                            }
                         ]
                     }
                 },
-                "zoneStatColor": { "type": { "fill": { "solid": { "color": true } } } }
+                "zoneStatColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "reticle": {
             "properties": {
-                "showReticle": { "type": { "bool": true } },
-                "reticleSizeX": { "type": { "numeric": true } },
-                "reticleSizeY": { "type": { "numeric": true } },
-                "reticleOffsetX": { "type": { "numeric": true } },
-                "reticleOffsetY": { "type": { "numeric": true } },
-                "reticleColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "reticleLineWidth": { "type": { "numeric": true } },
-                "reticleLineOpacity": { "type": { "numeric": true } },
-                "highlightBadReticles": { "type": { "bool": true } },
-                "reticleFailThreshold": { "type": { "numeric": true } },
-                "passBinReticle": { "type": { "text": true } }
+                "showReticle": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "reticleSizeX": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "reticleSizeY": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "reticleOffsetX": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "reticleOffsetY": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "reticleColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "reticleLineWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "reticleLineOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "highlightBadReticles": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "reticleFailThreshold": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "passBinReticle": {
+                    "type": {
+                        "text": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -150,18 +341,40 @@
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "dieX" } },
-                        { "for": { "in": "dieY" } },
-                        { "for": { "in": "binCode" } },
-                        { "for": { "in": "waferID" } }
+                        {
+                            "for": {
+                                "in": "dieX"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "dieY"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "binCode"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "waferID"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 30000 }
+                        "top": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "value" } }
+                        {
+                            "for": {
+                                "in": "value"
+                            }
+                        }
                     ]
                 }
             }

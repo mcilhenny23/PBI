@@ -4,19 +4,25 @@
             "displayName": "Entity",
             "name": "entity",
             "kind": "Grouping",
-            "description": "One line per entity (person, customer, account…)"
+            "description": "One line per entity (person, customer, account\u2026)",
+            "displayNameKey": "Role_entity_DisplayName",
+            "descriptionKey": "Role_entity_Description"
         },
         {
             "displayName": "Time Step",
             "name": "timeStep",
             "kind": "Grouping",
-            "description": "Discrete time points — one column per value"
+            "description": "Discrete time points \u2014 one column per value",
+            "displayNameKey": "Role_timeStep_DisplayName",
+            "descriptionKey": "Role_timeStep_Description"
         },
         {
             "displayName": "Group",
             "name": "group",
             "kind": "Grouping",
-            "description": "Which group the entity belongs to at that time step"
+            "description": "Which group the entity belongs to at that time step",
+            "displayNameKey": "Role_group_DisplayName",
+            "descriptionKey": "Role_group_Description"
         }
     ],
     "objects": {
@@ -25,21 +31,52 @@
                 "flowMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "entity", "displayName": "Entity (one line per person)" },
-                            { "value": "aggregate", "displayName": "Aggregate (Sankey ribbons)" }
+                            {
+                                "value": "entity",
+                                "displayName": "Entity (one line per person)"
+                            },
+                            {
+                                "value": "aggregate",
+                                "displayName": "Aggregate (Sankey ribbons)"
+                            }
                         ]
                     }
                 },
-                "unitHeight": { "type": { "numeric": true } },
-                "lineTension": { "type": { "numeric": true } },
-                "groupGap": { "type": { "numeric": true } },
-                "entityGap": { "type": { "numeric": true } },
+                "unitHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "lineTension": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "groupGap": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "entityGap": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "orderingStrategy": {
                     "type": {
                         "enumeration": [
-                            { "value": "minimize-crossings", "displayName": "Minimize crossings" },
-                            { "value": "alphabetical", "displayName": "Alphabetical" },
-                            { "value": "group-size", "displayName": "Group size" }
+                            {
+                                "value": "minimize-crossings",
+                                "displayName": "Minimize crossings"
+                            },
+                            {
+                                "value": "alphabetical",
+                                "displayName": "Alphabetical"
+                            },
+                            {
+                                "value": "group-size",
+                                "displayName": "Group size"
+                            }
                         ]
                     }
                 }
@@ -47,16 +84,42 @@
         },
         "appearance": {
             "properties": {
-                "lineWidth": { "type": { "numeric": true } },
-                "lineOpacity": { "type": { "numeric": true } },
-                "highlightOnHover": { "type": { "bool": true } },
-                "highlightOpacity": { "type": { "numeric": true } },
-                "dimOpacity": { "type": { "numeric": true } },
+                "lineWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "lineOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "highlightOnHover": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "highlightOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "dimOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "colorBy": {
                     "type": {
                         "enumeration": [
-                            { "value": "entity", "displayName": "Entity" },
-                            { "value": "group", "displayName": "Group" }
+                            {
+                                "value": "entity",
+                                "displayName": "Entity"
+                            },
+                            {
+                                "value": "group",
+                                "displayName": "Group"
+                            }
                         ]
                     }
                 }
@@ -64,14 +127,32 @@
         },
         "labels": {
             "properties": {
-                "showEntityLabels": { "type": { "bool": true } },
-                "showGroupLabels": { "type": { "bool": true } },
-                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+                "showEntityLabels": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showGroupLabels": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -90,12 +171,26 @@
             "table": {
                 "rows": {
                     "select": [
-                        { "for": { "in": "entity" } },
-                        { "for": { "in": "timeStep" } },
-                        { "for": { "in": "group" } }
+                        {
+                            "for": {
+                                "in": "entity"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "timeStep"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "group"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 }
             }

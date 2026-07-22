@@ -1,0 +1,8 @@
+{
+  "Trellis Container": "Trellis Container",
+  "Small-multiples trellis with the toggles the native version lacks: shared / free / shared-within-row Y-scale, per-panel sorting, and a benchmark-panel ghost overlaid on every panel. Line / bar / area / scatter panel types.": "Small-multiples trellis with the toggles the native version lacks: shared / free / shared-within-row Y-scale, per-panel sorting, and a benchmark-panel ghost overlaid on every panel. Line / bar / area / scatter panel types.",
+  "Role_panel_DisplayName": "Small Multiple By",
+  "Role_axis_DisplayName": "Axis",
+  "Role_series_DisplayName": "Series (optional)",
+  "Role_value_DisplayName": "Value"
+}

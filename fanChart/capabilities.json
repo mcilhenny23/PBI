@@ -4,49 +4,61 @@
             "displayName": "Axis",
             "name": "axis",
             "kind": "Grouping",
-            "description": "Time period or horizon (e.g. month, quarter, forecast step)"
+            "description": "Time period or horizon (e.g. month, quarter, forecast step)",
+            "displayNameKey": "Role_axis_DisplayName",
+            "descriptionKey": "Role_axis_Description"
         },
         {
             "displayName": "Central Estimate",
             "name": "central",
             "kind": "Measure",
-            "description": "The central forecast value (p50 / point estimate)"
+            "description": "The central forecast value (p50 / point estimate)",
+            "displayNameKey": "Role_central_DisplayName",
+            "descriptionKey": "Role_central_Description"
         },
         {
             "displayName": "Actuals",
             "name": "actuals",
             "kind": "Measure",
-            "description": "Historical actual values (optional — renders as a solid line before the fan)"
+            "description": "Historical actual values (optional \u2014 renders as a solid line before the fan)",
+            "displayNameKey": "Role_actuals_DisplayName",
+            "descriptionKey": "Role_actuals_Description"
         },
         {
             "displayName": "Band Upper 1 (e.g. p75)",
             "name": "upper1",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_upper1_DisplayName"
         },
         {
             "displayName": "Band Lower 1 (e.g. p25)",
             "name": "lower1",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_lower1_DisplayName"
         },
         {
             "displayName": "Band Upper 2 (e.g. p90)",
             "name": "upper2",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_upper2_DisplayName"
         },
         {
             "displayName": "Band Lower 2 (e.g. p10)",
             "name": "lower2",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_lower2_DisplayName"
         },
         {
             "displayName": "Band Upper 3 (e.g. p95)",
             "name": "upper3",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_upper3_DisplayName"
         },
         {
             "displayName": "Band Lower 3 (e.g. p5)",
             "name": "lower3",
-            "kind": "Measure"
+            "kind": "Measure",
+            "displayNameKey": "Role_lower3_DisplayName"
         }
     ],
     "objects": {
@@ -80,7 +92,9 @@
                     }
                 },
                 "showCentralLine": {
-                    "type": { "bool": true }
+                    "type": {
+                        "bool": true
+                    }
                 },
                 "bandOpacityOuter": {
                     "type": {
@@ -90,10 +104,22 @@
                 "curveType": {
                     "type": {
                         "enumeration": [
-                            { "value": "linear", "displayName": "Linear" },
-                            { "value": "monotone", "displayName": "Smooth (monotone)" },
-                            { "value": "basis", "displayName": "Smooth (basis)" },
-                            { "value": "step", "displayName": "Step" }
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            },
+                            {
+                                "value": "monotone",
+                                "displayName": "Smooth (monotone)"
+                            },
+                            {
+                                "value": "basis",
+                                "displayName": "Smooth (basis)"
+                            },
+                            {
+                                "value": "step",
+                                "displayName": "Step"
+                            }
                         ]
                     }
                 }
@@ -102,13 +128,19 @@
         "axisSettings": {
             "properties": {
                 "showXAxis": {
-                    "type": { "bool": true }
+                    "type": {
+                        "bool": true
+                    }
                 },
                 "showYAxis": {
-                    "type": { "bool": true }
+                    "type": {
+                        "bool": true
+                    }
                 },
                 "showGridlines": {
-                    "type": { "bool": true }
+                    "type": {
+                        "bool": true
+                    }
                 },
                 "fontSize": {
                     "type": {
@@ -121,7 +153,11 @@
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -139,21 +175,57 @@
         {
             "categorical": {
                 "categories": {
-                    "for": { "in": "axis" },
+                    "for": {
+                        "in": "axis"
+                    },
                     "dataReductionAlgorithm": {
-                        "top": { "count": 10000 }
+                        "top": {
+                            "count": 10000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "central" } },
-                        { "for": { "in": "actuals" } },
-                        { "for": { "in": "upper1" } },
-                        { "for": { "in": "lower1" } },
-                        { "for": { "in": "upper2" } },
-                        { "for": { "in": "lower2" } },
-                        { "for": { "in": "upper3" } },
-                        { "for": { "in": "lower3" } }
+                        {
+                            "for": {
+                                "in": "central"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "actuals"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "upper1"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "lower1"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "upper2"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "lower2"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "upper3"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "lower3"
+                            }
+                        }
                     ]
                 }
             }

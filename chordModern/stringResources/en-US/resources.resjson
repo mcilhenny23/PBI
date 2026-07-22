@@ -1,0 +1,7 @@
+{
+  "Chord Modern": "Chord Modern",
+  "Modern chord diagram. Undirected or directed (asymmetric ribbons with arrowhead taper), gradient-fill ribbons from source arc color to target arc color, hover isolation / highlight, and radial labels with min-angle auto-hide. Edge-list input, same as Adjacency Matrix.": "Modern chord diagram. Undirected or directed (asymmetric ribbons with arrowhead taper), gradient-fill ribbons from source arc color to target arc color, hover isolation / highlight, and radial labels with min-angle auto-hide. Edge-list input, same as Adjacency Matrix.",
+  "Role_source_DisplayName": "Source",
+  "Role_target_DisplayName": "Target",
+  "Role_weight_DisplayName": "Weight"
+}

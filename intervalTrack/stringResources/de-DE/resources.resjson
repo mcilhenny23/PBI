@@ -1,0 +1,17 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Interval Track Viewer": "Intervall-Zeitleiste",
+  "Stacked horizontal tracks of intervals and point events on a shared zoomable time axis — the genome-browser idiom generalized. Machine states, shift schedules, outage windows, order lifecycles and log events. Handles tens of thousands of intervals via Canvas rendering and viewport virtualization.": "Stacked horizontal tracks of intervals and point events on a shared zoomable time axis — the genome-browser idiom generalized. Machine states, shift schedules, outage windows, order lifecycles and log events. Handles tens of thousands of intervals via Canvas rendering and viewport virtualization.",
+  "Role_track_DisplayName": "Zeitleiste",
+  "Role_track_Description": "Groups intervals into horizontal tracks (machine, resource, case…)",
+  "Role_start_DisplayName": "Startzeit",
+  "Role_start_Description": "Interval start — date/time or numeric. Set to Don't summarize.",
+  "Role_end_DisplayName": "Endzeit",
+  "Role_end_Description": "Interval end. Leave blank on a row to render it as a point event.",
+  "Role_label_DisplayName": "Beschriftung",
+  "Role_label_Description": "Optional text drawn inside the interval bar",
+  "Role_category_DisplayName": "Kategorie",
+  "Role_category_Description": "Optional color category (state, status, severity…)",
+  "Role_value_DisplayName": "Value",
+  "Role_value_Description": "Optional numeric — modulates bar intensity"
+}

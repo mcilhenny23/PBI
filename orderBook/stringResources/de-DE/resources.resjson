@@ -1,0 +1,13 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Order Book Heatmap": "Auftragsbuch (Tiefendiagramm)",
+  "Bookmap-style market-depth heatmap: resting liquidity at every price level over time, with executed trades overlaid and best bid/ask tracking the spread. Market microstructure for desks that already run their portfolio analytics in Power BI.": "Bookmap-style market-depth heatmap: resting liquidity at every price level over time, with executed trades overlaid and best bid/ask tracking the spread. Market microstructure for desks that already run their portfolio analytics in Power BI.",
+  "Role_time_DisplayName": "Zeit",
+  "Role_time_Description": "Timestamp or time bucket — one heatmap column per distinct value. Set to Don't summarize.",
+  "Role_priceLevel_DisplayName": "Price Level",
+  "Role_priceLevel_Description": "Price or price bucket — one heatmap row per distinct value. Set to Don't summarize.",
+  "Role_size_DisplayName": "Größe",
+  "Role_size_Description": "Resting depth at this price and time. Sign convention: negative = bid side, positive = ask side (enables best bid/ask lines). Unsigned data still renders.",
+  "Role_trades_DisplayName": "Handelsgeschäfte",
+  "Role_trades_Description": "Optional — executed volume, drawn as overlaid circles sized by volume"
+}

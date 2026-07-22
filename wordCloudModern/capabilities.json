@@ -1,8 +1,25 @@
 {
     "dataRoles": [
-        { "displayName": "Text / Term", "name": "text",    "kind": "Grouping" },
-        { "displayName": "Weight",      "name": "weight",  "kind": "Measure",  "description": "Optional; when absent, frequency is computed from the raw text" },
-        { "displayName": "Category",    "name": "colorBy", "kind": "Grouping" }
+        {
+            "displayName": "Text / Term",
+            "name": "text",
+            "kind": "Grouping",
+            "displayNameKey": "Role_text_DisplayName"
+        },
+        {
+            "displayName": "Weight",
+            "name": "weight",
+            "kind": "Measure",
+            "description": "Optional; when absent, frequency is computed from the raw text",
+            "displayNameKey": "Role_weight_DisplayName",
+            "descriptionKey": "Role_weight_Description"
+        },
+        {
+            "displayName": "Category",
+            "name": "colorBy",
+            "kind": "Grouping",
+            "displayNameKey": "Role_colorBy_DisplayName"
+        }
     ],
     "objects": {
         "processing": {
@@ -10,30 +27,69 @@
                 "ngramSize": {
                     "type": {
                         "enumeration": [
-                            { "value": "1",   "displayName": "Unigrams (single words)" },
-                            { "value": "2",   "displayName": "Bigrams (two-word phrases)" },
-                            { "value": "1+2", "displayName": "Unigrams + Bigrams" },
-                            { "value": "3",   "displayName": "Trigrams" }
+                            {
+                                "value": "1",
+                                "displayName": "Unigrams (single words)"
+                            },
+                            {
+                                "value": "2",
+                                "displayName": "Bigrams (two-word phrases)"
+                            },
+                            {
+                                "value": "1+2",
+                                "displayName": "Unigrams + Bigrams"
+                            },
+                            {
+                                "value": "3",
+                                "displayName": "Trigrams"
+                            }
                         ]
                     }
                 },
                 "stopWords": {
                     "type": {
                         "enumeration": [
-                            { "value": "english", "displayName": "English" },
-                            { "value": "none",    "displayName": "None" },
-                            { "value": "custom",  "displayName": "Custom" }
+                            {
+                                "value": "english",
+                                "displayName": "English"
+                            },
+                            {
+                                "value": "none",
+                                "displayName": "None"
+                            },
+                            {
+                                "value": "custom",
+                                "displayName": "Custom"
+                            }
                         ]
                     }
                 },
-                "customStopWords": { "type": { "text": true } },
-                "minFrequency":    { "type": { "numeric": true } },
-                "maxTerms":        { "type": { "numeric": true } },
+                "customStopWords": {
+                    "type": {
+                        "text": true
+                    }
+                },
+                "minFrequency": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxTerms": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "caseMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "lower",    "displayName": "Lowercase" },
-                            { "value": "preserve", "displayName": "Preserve case" }
+                            {
+                                "value": "lower",
+                                "displayName": "Lowercase"
+                            },
+                            {
+                                "value": "preserve",
+                                "displayName": "Preserve case"
+                            }
                         ]
                     }
                 }
@@ -44,39 +100,87 @@
                 "spiral": {
                     "type": {
                         "enumeration": [
-                            { "value": "archimedean", "displayName": "Archimedean" },
-                            { "value": "rectangular", "displayName": "Rectangular" }
+                            {
+                                "value": "archimedean",
+                                "displayName": "Archimedean"
+                            },
+                            {
+                                "value": "rectangular",
+                                "displayName": "Rectangular"
+                            }
                         ]
                     }
                 },
                 "rotations": {
                     "type": {
                         "enumeration": [
-                            { "value": "none",     "displayName": "None" },
-                            { "value": "90",       "displayName": "±90°" },
-                            { "value": "45-90",    "displayName": "±45° and ±90°" }
+                            {
+                                "value": "none",
+                                "displayName": "None"
+                            },
+                            {
+                                "value": "90",
+                                "displayName": "\u00b190\u00b0"
+                            },
+                            {
+                                "value": "45-90",
+                                "displayName": "\u00b145\u00b0 and \u00b190\u00b0"
+                            }
                         ]
                     }
                 },
-                "padding":    { "type": { "numeric": true } },
-                "scaleMode":  {
+                "padding": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "scaleMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "sqrt",   "displayName": "Square root" },
-                            { "value": "log",    "displayName": "Logarithmic" },
-                            { "value": "linear", "displayName": "Linear" }
+                            {
+                                "value": "sqrt",
+                                "displayName": "Square root"
+                            },
+                            {
+                                "value": "log",
+                                "displayName": "Logarithmic"
+                            },
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            }
                         ]
                     }
                 },
-                "fontFamily": { "type": { "text": true } },
-                "minFontSize": { "type": { "numeric": true } },
-                "maxFontSize": { "type": { "numeric": true } }
+                "fontFamily": {
+                    "type": {
+                        "text": true
+                    }
+                },
+                "minFontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxFontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "interaction": {
             "properties": {
-                "clickToFilter": { "type": { "bool": true } },
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "clickToFilter": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -93,21 +197,48 @@
     "dataViewMappings": [
         {
             "conditions": [
-                { "text": { "min": 1, "max": 1 }, "weight": { "min": 0, "max": 1 }, "colorBy": { "min": 0, "max": 1 } }
+                {
+                    "text": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "weight": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "colorBy": {
+                        "min": 0,
+                        "max": 1
+                    }
+                }
             ],
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "text" } },
-                        { "for": { "in": "colorBy" } }
+                        {
+                            "for": {
+                                "in": "text"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "colorBy"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 10000 }
+                        "top": {
+                            "count": 10000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "weight" } }
+                        {
+                            "for": {
+                                "in": "weight"
+                            }
+                        }
                     ]
                 }
             }

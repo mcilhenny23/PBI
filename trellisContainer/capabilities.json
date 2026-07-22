@@ -1,26 +1,71 @@
 {
     "dataRoles": [
-        { "displayName": "Small Multiple By", "name": "panel",  "kind": "Grouping" },
-        { "displayName": "Axis",              "name": "axis",   "kind": "Grouping" },
-        { "displayName": "Series (optional)", "name": "series", "kind": "Grouping" },
-        { "displayName": "Value",             "name": "value",  "kind": "Measure" }
+        {
+            "displayName": "Small Multiple By",
+            "name": "panel",
+            "kind": "Grouping",
+            "displayNameKey": "Role_panel_DisplayName"
+        },
+        {
+            "displayName": "Axis",
+            "name": "axis",
+            "kind": "Grouping",
+            "displayNameKey": "Role_axis_DisplayName"
+        },
+        {
+            "displayName": "Series (optional)",
+            "name": "series",
+            "kind": "Grouping",
+            "displayNameKey": "Role_series_DisplayName"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "displayNameKey": "Role_value_DisplayName"
+        }
     ],
     "objects": {
         "grid": {
             "properties": {
-                "columns":         { "type": { "numeric": true } },
+                "columns": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "panelOrder": {
                     "type": {
                         "enumeration": [
-                            { "value": "value-desc",   "displayName": "By panel total desc" },
-                            { "value": "value-asc",    "displayName": "By panel total asc" },
-                            { "value": "alphabetical", "displayName": "Alphabetical" }
+                            {
+                                "value": "value-desc",
+                                "displayName": "By panel total desc"
+                            },
+                            {
+                                "value": "value-asc",
+                                "displayName": "By panel total asc"
+                            },
+                            {
+                                "value": "alphabetical",
+                                "displayName": "Alphabetical"
+                            }
                         ]
                     }
                 },
-                "panelPadding":    { "type": { "numeric": true } },
-                "showPanelTitles": { "type": { "bool": true } },
-                "titleFontSize":   { "type": { "numeric": true } }
+                "panelPadding": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showPanelTitles": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "titleFontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "scales": {
@@ -28,26 +73,50 @@
                 "yScaleMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "shared",             "displayName": "Shared" },
-                            { "value": "free",               "displayName": "Free" },
-                            { "value": "shared-within-row",  "displayName": "Shared within row" }
+                            {
+                                "value": "shared",
+                                "displayName": "Shared"
+                            },
+                            {
+                                "value": "free",
+                                "displayName": "Free"
+                            },
+                            {
+                                "value": "shared-within-row",
+                                "displayName": "Shared within row"
+                            }
                         ]
                     }
                 },
                 "xScaleMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "shared", "displayName": "Shared" },
-                            { "value": "free",   "displayName": "Free" }
+                            {
+                                "value": "shared",
+                                "displayName": "Shared"
+                            },
+                            {
+                                "value": "free",
+                                "displayName": "Free"
+                            }
                         ]
                     }
                 },
                 "showYAxisEvery": {
                     "type": {
                         "enumeration": [
-                            { "value": "all-panels",   "displayName": "Every panel" },
-                            { "value": "first-column", "displayName": "First column only" },
-                            { "value": "none",         "displayName": "None" }
+                            {
+                                "value": "all-panels",
+                                "displayName": "Every panel"
+                            },
+                            {
+                                "value": "first-column",
+                                "displayName": "First column only"
+                            },
+                            {
+                                "value": "none",
+                                "displayName": "None"
+                            }
                         ]
                     }
                 }
@@ -58,34 +127,71 @@
                 "chartType": {
                     "type": {
                         "enumeration": [
-                            { "value": "line",    "displayName": "Line" },
-                            { "value": "bar",     "displayName": "Bar" },
-                            { "value": "area",    "displayName": "Area" },
-                            { "value": "scatter", "displayName": "Scatter" }
+                            {
+                                "value": "line",
+                                "displayName": "Line"
+                            },
+                            {
+                                "value": "bar",
+                                "displayName": "Bar"
+                            },
+                            {
+                                "value": "area",
+                                "displayName": "Area"
+                            },
+                            {
+                                "value": "scatter",
+                                "displayName": "Scatter"
+                            }
                         ]
                     }
                 },
                 "curveType": {
                     "type": {
                         "enumeration": [
-                            { "value": "linear",   "displayName": "Linear" },
-                            { "value": "monotone", "displayName": "Smooth (monotone)" },
-                            { "value": "step",     "displayName": "Step" }
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            },
+                            {
+                                "value": "monotone",
+                                "displayName": "Smooth (monotone)"
+                            },
+                            {
+                                "value": "step",
+                                "displayName": "Step"
+                            }
                         ]
                     }
                 },
-                "pointSize":   { "type": { "numeric": true } },
-                "barPadding":  { "type": { "numeric": true } }
+                "pointSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "barPadding": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "highlights": {
             "properties": {
-                "benchmarkPanel": { "type": { "text": true } }
+                "benchmarkPanel": {
+                    "type": {
+                        "text": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -102,22 +208,57 @@
     "dataViewMappings": [
         {
             "conditions": [
-                { "panel": { "min": 1, "max": 1 }, "axis": { "min": 1, "max": 1 }, "series": { "min": 0, "max": 1 }, "value": { "min": 1, "max": 1 } }
+                {
+                    "panel": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "axis": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "series": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "value": {
+                        "min": 1,
+                        "max": 1
+                    }
+                }
             ],
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "panel" } },
-                        { "for": { "in": "axis" } },
-                        { "for": { "in": "series" } }
+                        {
+                            "for": {
+                                "in": "panel"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "axis"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "series"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 50000 }
+                        "top": {
+                            "count": 50000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "value" } }
+                        {
+                            "for": {
+                                "in": "value"
+                            }
+                        }
                     ]
                 }
             }

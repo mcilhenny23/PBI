@@ -1,0 +1,10 @@
+{
+  "Adjacency Matrix": "Adjacency Matrix",
+  "The network view that actually scales. Rows and columns are nodes, cell intensity is edge weight, and hierarchical-clustering seriation reorders them to expose block-diagonal community structure that node-link diagrams bury in hairballs.": "The network view that actually scales. Rows and columns are nodes, cell intensity is edge weight, and hierarchical-clustering seriation reorders them to expose block-diagonal community structure that node-link diagrams bury in hairballs.",
+  "Role_source_DisplayName": "Source Node",
+  "Role_source_Description": "Edge source — becomes a matrix row/column",
+  "Role_target_DisplayName": "Target Node",
+  "Role_target_Description": "Edge target — becomes a matrix row/column",
+  "Role_weight_DisplayName": "Weight",
+  "Role_weight_Description": "Edge weight / intensity. Omit to treat every edge as weight 1."
+}

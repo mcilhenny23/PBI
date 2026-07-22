@@ -1,0 +1,8 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Chord Modern": "Modernes Sehnendiagramm",
+  "Modern chord diagram. Undirected or directed (asymmetric ribbons with arrowhead taper), gradient-fill ribbons from source arc color to target arc color, hover isolation / highlight, and radial labels with min-angle auto-hide. Edge-list input, same as Adjacency Matrix.": "Modern chord diagram. Undirected or directed (asymmetric ribbons with arrowhead taper), gradient-fill ribbons from source arc color to target arc color, hover isolation / highlight, and radial labels with min-angle auto-hide. Edge-list input, same as Adjacency Matrix.",
+  "Role_source_DisplayName": "Quelle",
+  "Role_target_DisplayName": "Ziel",
+  "Role_weight_DisplayName": "Weight"
+}

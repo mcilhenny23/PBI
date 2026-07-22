@@ -1,13 +1,63 @@
 {
     "dataRoles": [
-        { "displayName": "Task",         "name": "task",         "kind": "Grouping" },
-        { "displayName": "Parent Task",  "name": "parent",       "kind": "Grouping", "description": "Optional — builds the WBS hierarchy" },
-        { "displayName": "Start Date",   "name": "start",        "kind": "Grouping" },
-        { "displayName": "End Date",     "name": "end",          "kind": "Grouping" },
-        { "displayName": "% Complete",   "name": "progress",     "kind": "Measure",  "description": "0–1 or 0–100 (auto-detected)" },
-        { "displayName": "Predecessors", "name": "predecessors", "kind": "Grouping", "description": "Comma-separated task names or IDs (FS assumed; 'X:SS', 'X:FF', 'X:SF' supported)" },
-        { "displayName": "Is Milestone", "name": "milestone",    "kind": "Grouping", "description": "Optional boolean" },
-        { "displayName": "Category",     "name": "category",     "kind": "Grouping", "description": "Bar color grouping (workstream / owner)" }
+        {
+            "displayName": "Task",
+            "name": "task",
+            "kind": "Grouping",
+            "displayNameKey": "Role_task_DisplayName"
+        },
+        {
+            "displayName": "Parent Task",
+            "name": "parent",
+            "kind": "Grouping",
+            "description": "Optional \u2014 builds the WBS hierarchy",
+            "displayNameKey": "Role_parent_DisplayName",
+            "descriptionKey": "Role_parent_Description"
+        },
+        {
+            "displayName": "Start Date",
+            "name": "start",
+            "kind": "Grouping",
+            "displayNameKey": "Role_start_DisplayName"
+        },
+        {
+            "displayName": "End Date",
+            "name": "end",
+            "kind": "Grouping",
+            "displayNameKey": "Role_end_DisplayName"
+        },
+        {
+            "displayName": "% Complete",
+            "name": "progress",
+            "kind": "Measure",
+            "description": "0\u20131 or 0\u2013100 (auto-detected)",
+            "displayNameKey": "Role_progress_DisplayName",
+            "descriptionKey": "Role_progress_Description"
+        },
+        {
+            "displayName": "Predecessors",
+            "name": "predecessors",
+            "kind": "Grouping",
+            "description": "Comma-separated task names or IDs (FS assumed; 'X:SS', 'X:FF', 'X:SF' supported)",
+            "displayNameKey": "Role_predecessors_DisplayName",
+            "descriptionKey": "Role_predecessors_Description"
+        },
+        {
+            "displayName": "Is Milestone",
+            "name": "milestone",
+            "kind": "Grouping",
+            "description": "Optional boolean",
+            "displayNameKey": "Role_milestone_DisplayName",
+            "descriptionKey": "Role_milestone_Description"
+        },
+        {
+            "displayName": "Category",
+            "name": "category",
+            "kind": "Grouping",
+            "description": "Bar color grouping (workstream / owner)",
+            "displayNameKey": "Role_category_DisplayName",
+            "descriptionKey": "Role_category_Description"
+        }
     ],
     "objects": {
         "timeline": {
@@ -15,30 +65,82 @@
                 "timeGranularity": {
                     "type": {
                         "enumeration": [
-                            { "value": "auto",    "displayName": "Auto" },
-                            { "value": "day",     "displayName": "Day" },
-                            { "value": "week",    "displayName": "Week" },
-                            { "value": "month",   "displayName": "Month" },
-                            { "value": "quarter", "displayName": "Quarter" }
+                            {
+                                "value": "auto",
+                                "displayName": "Auto"
+                            },
+                            {
+                                "value": "day",
+                                "displayName": "Day"
+                            },
+                            {
+                                "value": "week",
+                                "displayName": "Week"
+                            },
+                            {
+                                "value": "month",
+                                "displayName": "Month"
+                            },
+                            {
+                                "value": "quarter",
+                                "displayName": "Quarter"
+                            }
                         ]
                     }
                 },
-                "showTodayLine": { "type": { "bool": true } },
-                "todayLineColor": { "type": { "fill": { "solid": { "color": true } } } }
+                "showTodayLine": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "todayLineColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "bars": {
             "properties": {
-                "barHeight":     { "type": { "numeric": true } },
-                "rowPadding":    { "type": { "numeric": true } },
-                "cornerRadius":  { "type": { "numeric": true } },
-                "showProgress":  { "type": { "bool": true } },
+                "barHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "rowPadding": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "cornerRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showProgress": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "milestoneShape": {
                     "type": {
                         "enumeration": [
-                            { "value": "diamond", "displayName": "Diamond" },
-                            { "value": "circle",  "displayName": "Circle" },
-                            { "value": "flag",    "displayName": "Flag" }
+                            {
+                                "value": "diamond",
+                                "displayName": "Diamond"
+                            },
+                            {
+                                "value": "circle",
+                                "displayName": "Circle"
+                            },
+                            {
+                                "value": "flag",
+                                "displayName": "Flag"
+                            }
                         ]
                     }
                 }
@@ -46,14 +148,36 @@
         },
         "dependencies": {
             "properties": {
-                "showDependencies": { "type": { "bool": true } },
-                "arrowColor":       { "type": { "fill": { "solid": { "color": true } } } },
-                "arrowWidth":       { "type": { "numeric": true } },
+                "showDependencies": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "arrowColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "arrowWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "routingStyle": {
                     "type": {
                         "enumeration": [
-                            { "value": "orthogonal", "displayName": "Orthogonal" },
-                            { "value": "curved",     "displayName": "Curved" }
+                            {
+                                "value": "orthogonal",
+                                "displayName": "Orthogonal"
+                            },
+                            {
+                                "value": "curved",
+                                "displayName": "Curved"
+                            }
                         ]
                     }
                 }
@@ -61,21 +185,53 @@
         },
         "critical": {
             "properties": {
-                "showCriticalPath": { "type": { "bool": true } },
-                "criticalColor":    { "type": { "fill": { "solid": { "color": true } } } },
-                "slackThreshold":   { "type": { "numeric": true } }
+                "showCriticalPath": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "criticalColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "slackThreshold": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "hierarchy": {
             "properties": {
-                "showHierarchy":    { "type": { "bool": true } },
-                "taskLabelWidth":   { "type": { "numeric": true } },
-                "fontSize":         { "type": { "numeric": true } }
+                "showHierarchy": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "taskLabelWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -93,28 +249,88 @@
         {
             "conditions": [
                 {
-                    "task": { "min": 1, "max": 1 }, "parent": { "min": 0, "max": 1 },
-                    "start": { "min": 1, "max": 1 }, "end": { "min": 0, "max": 1 },
-                    "progress": { "min": 0, "max": 1 },
-                    "predecessors": { "min": 0, "max": 1 },
-                    "milestone": { "min": 0, "max": 1 },
-                    "category": { "min": 0, "max": 1 }
+                    "task": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "parent": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "start": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "end": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "progress": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "predecessors": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "milestone": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "category": {
+                        "min": 0,
+                        "max": 1
+                    }
                 }
             ],
             "table": {
                 "rows": {
                     "select": [
-                        { "for": { "in": "task" } },
-                        { "for": { "in": "parent" } },
-                        { "for": { "in": "start" } },
-                        { "for": { "in": "end" } },
-                        { "for": { "in": "progress" } },
-                        { "for": { "in": "predecessors" } },
-                        { "for": { "in": "milestone" } },
-                        { "for": { "in": "category" } }
+                        {
+                            "for": {
+                                "in": "task"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "parent"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "start"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "end"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "progress"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "predecessors"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "milestone"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "category"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 }
             }

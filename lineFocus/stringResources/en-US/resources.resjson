@@ -1,0 +1,9 @@
+{
+  "Line Focus": "Line Focus",
+  "Many-series line chart with all-gray context and hover/click-pin/top-N/DAX-flag focus. Direct end-of-line labeling on the focused set, quadtree hover for reliable nearest-point detection, and a small-multiples fallback when the series count would otherwise be spaghetti.": "Many-series line chart with all-gray context and hover/click-pin/top-N/DAX-flag focus. Direct end-of-line labeling on the focused set, quadtree hover for reliable nearest-point detection, and a small-multiples fallback when the series count would otherwise be spaghetti.",
+  "Role_axis_DisplayName": "Axis",
+  "Role_series_DisplayName": "Series",
+  "Role_value_DisplayName": "Value",
+  "Role_focusFlag_DisplayName": "Focus (0/1)",
+  "Role_focusFlag_Description": "Optional DAX-driven flag; series with 1 stay focused."
+}

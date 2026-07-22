@@ -1,0 +1,16 @@
+{
+  "Fan Chart": "Fan Chart",
+  "Forecast uncertainty fan chart with nested prediction bands. Drag quantile pairs (e.g. p10/p90) to visualize prediction intervals as gradient bands around a central estimate.": "Forecast uncertainty fan chart with nested prediction bands. Drag quantile pairs (e.g. p10/p90) to visualize prediction intervals as gradient bands around a central estimate.",
+  "Role_axis_DisplayName": "Axis",
+  "Role_axis_Description": "Time period or horizon (e.g. month, quarter, forecast step)",
+  "Role_central_DisplayName": "Central Estimate",
+  "Role_central_Description": "The central forecast value (p50 / point estimate)",
+  "Role_actuals_DisplayName": "Actuals",
+  "Role_actuals_Description": "Historical actual values (optional — renders as a solid line before the fan)",
+  "Role_upper1_DisplayName": "Band Upper 1 (e.g. p75)",
+  "Role_lower1_DisplayName": "Band Lower 1 (e.g. p25)",
+  "Role_upper2_DisplayName": "Band Upper 2 (e.g. p90)",
+  "Role_lower2_DisplayName": "Band Lower 2 (e.g. p10)",
+  "Role_upper3_DisplayName": "Band Upper 3 (e.g. p95)",
+  "Role_lower3_DisplayName": "Band Lower 3 (e.g. p5)"
+}

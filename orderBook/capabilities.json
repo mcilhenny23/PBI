@@ -4,25 +4,33 @@
             "displayName": "Time",
             "name": "time",
             "kind": "Grouping",
-            "description": "Timestamp or time bucket — one heatmap column per distinct value. Set to Don't summarize."
+            "description": "Timestamp or time bucket \u2014 one heatmap column per distinct value. Set to Don't summarize.",
+            "displayNameKey": "Role_time_DisplayName",
+            "descriptionKey": "Role_time_Description"
         },
         {
             "displayName": "Price Level",
             "name": "priceLevel",
             "kind": "Grouping",
-            "description": "Price or price bucket — one heatmap row per distinct value. Set to Don't summarize."
+            "description": "Price or price bucket \u2014 one heatmap row per distinct value. Set to Don't summarize.",
+            "displayNameKey": "Role_priceLevel_DisplayName",
+            "descriptionKey": "Role_priceLevel_Description"
         },
         {
             "displayName": "Size / Liquidity",
             "name": "size",
             "kind": "Measure",
-            "description": "Resting depth at this price and time. Sign convention: negative = bid side, positive = ask side (enables best bid/ask lines). Unsigned data still renders."
+            "description": "Resting depth at this price and time. Sign convention: negative = bid side, positive = ask side (enables best bid/ask lines). Unsigned data still renders.",
+            "displayNameKey": "Role_size_DisplayName",
+            "descriptionKey": "Role_size_Description"
         },
         {
             "displayName": "Trade Volume",
             "name": "trades",
             "kind": "Measure",
-            "description": "Optional — executed volume, drawn as overlaid circles sized by volume"
+            "description": "Optional \u2014 executed volume, drawn as overlaid circles sized by volume",
+            "displayNameKey": "Role_trades_DisplayName",
+            "descriptionKey": "Role_trades_Description"
         }
     ],
     "objects": {
@@ -31,28 +39,58 @@
                 "colorRamp": {
                     "type": {
                         "enumeration": [
-                            { "value": "blues", "displayName": "Blues" },
-                            { "value": "viridis", "displayName": "Viridis" },
-                            { "value": "inferno", "displayName": "Inferno" },
-                            { "value": "greens", "displayName": "Greens" },
-                            { "value": "oranges", "displayName": "Oranges" }
+                            {
+                                "value": "blues",
+                                "displayName": "Blues"
+                            },
+                            {
+                                "value": "viridis",
+                                "displayName": "Viridis"
+                            },
+                            {
+                                "value": "inferno",
+                                "displayName": "Inferno"
+                            },
+                            {
+                                "value": "greens",
+                                "displayName": "Greens"
+                            },
+                            {
+                                "value": "oranges",
+                                "displayName": "Oranges"
+                            }
                         ]
                     }
                 },
                 "intensityScale": {
                     "type": {
                         "enumeration": [
-                            { "value": "log", "displayName": "Log" },
-                            { "value": "sqrt", "displayName": "Square root" },
-                            { "value": "linear", "displayName": "Linear" }
+                            {
+                                "value": "log",
+                                "displayName": "Log"
+                            },
+                            {
+                                "value": "sqrt",
+                                "displayName": "Square root"
+                            },
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            }
                         ]
                     }
                 },
                 "cellInterpolation": {
                     "type": {
                         "enumeration": [
-                            { "value": "nearest", "displayName": "Nearest" },
-                            { "value": "bilinear", "displayName": "Bilinear" }
+                            {
+                                "value": "nearest",
+                                "displayName": "Nearest"
+                            },
+                            {
+                                "value": "bilinear",
+                                "displayName": "Bilinear"
+                            }
                         ]
                     }
                 }
@@ -60,30 +98,92 @@
         },
         "tradeOverlay": {
             "properties": {
-                "showTrades": { "type": { "bool": true } },
-                "tradeColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "tradeMinRadius": { "type": { "numeric": true } },
-                "tradeMaxRadius": { "type": { "numeric": true } }
+                "showTrades": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "tradeColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "tradeMinRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "tradeMaxRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "referenceLines": {
             "properties": {
-                "showBestBid": { "type": { "bool": true } },
-                "bestBidColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "showBestAsk": { "type": { "bool": true } },
-                "bestAskColor": { "type": { "fill": { "solid": { "color": true } } } }
+                "showBestBid": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "bestBidColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "showBestAsk": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "bestAskColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "axes": {
             "properties": {
-                "showTimeAxis": { "type": { "bool": true } },
-                "showPriceAxis": { "type": { "bool": true } },
-                "fontSize": { "type": { "formatting": { "fontSize": true } } }
+                "showTimeAxis": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showPriceAxis": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -102,17 +202,35 @@
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "time" } },
-                        { "for": { "in": "priceLevel" } }
+                        {
+                            "for": {
+                                "in": "time"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "priceLevel"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 30000 }
+                        "top": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "size" } },
-                        { "for": { "in": "trades" } }
+                        {
+                            "for": {
+                                "in": "size"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "trades"
+                            }
+                        }
                     ]
                 }
             }

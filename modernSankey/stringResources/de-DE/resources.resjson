@@ -1,0 +1,13 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Modern Sankey": "Modernes Sankey-Diagramm",
+  "Modern Sankey diagram: cycle-aware layout, drag-to-reorder nodes with persistent state, gradient links from source→target, and a highlight-connected hover. Multi-level flows come from chained source→target rows — no level column required.": "Modern Sankey diagram: cycle-aware layout, drag-to-reorder nodes with persistent state, gradient links from source→target, and a highlight-connected hover. Multi-level flows come from chained source→target rows — no level column required.",
+  "Role_source_DisplayName": "Quelle",
+  "Role_source_Description": "Source node of each flow (one row per link)",
+  "Role_target_DisplayName": "Ziel",
+  "Role_target_Description": "Target node of each flow",
+  "Role_weight_DisplayName": "Weight",
+  "Role_weight_Description": "Link magnitude (bar width)",
+  "Role_linkColorBy_DisplayName": "Link Category",
+  "Role_linkColorBy_Description": "Optional: color links by this category (overrides node-color modes)"
+}

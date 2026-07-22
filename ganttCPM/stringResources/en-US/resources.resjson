@@ -1,0 +1,17 @@
+{
+  "Gantt CPM": "Gantt CPM",
+  "Project Gantt chart with dependency arrows and critical-path highlighting. Orthogonal FS/SS/FF arrows between tasks, CPM forward/backward pass surfaces the zero-float chain in red, WBS hierarchy with collapsible summary bars, and milestones as diamonds/circles/flags.": "Project Gantt chart with dependency arrows and critical-path highlighting. Orthogonal FS/SS/FF arrows between tasks, CPM forward/backward pass surfaces the zero-float chain in red, WBS hierarchy with collapsible summary bars, and milestones as diamonds/circles/flags.",
+  "Role_task_DisplayName": "Task",
+  "Role_parent_DisplayName": "Parent Task",
+  "Role_parent_Description": "Optional — builds the WBS hierarchy",
+  "Role_start_DisplayName": "Start Date",
+  "Role_end_DisplayName": "End Date",
+  "Role_progress_DisplayName": "% Complete",
+  "Role_progress_Description": "0–1 or 0–100 (auto-detected)",
+  "Role_predecessors_DisplayName": "Predecessors",
+  "Role_predecessors_Description": "Comma-separated task names or IDs (FS assumed; 'X:SS', 'X:FF', 'X:SF' supported)",
+  "Role_milestone_DisplayName": "Is Milestone",
+  "Role_milestone_Description": "Optional boolean",
+  "Role_category_DisplayName": "Category",
+  "Role_category_Description": "Bar color grouping (workstream / owner)"
+}

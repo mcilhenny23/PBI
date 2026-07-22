@@ -1,0 +1,16 @@
+{
+  "Ternary Plot": "Ternary Plot",
+  "Plots three-component composition data (A+B+C) inside an equilateral triangle. Standard in geology, materials science, soil science and chemistry. Bind three measures for the components, an optional label, and optional color/size encodings.": "Plots three-component composition data (A+B+C) inside an equilateral triangle. Standard in geology, materials science, soil science and chemistry. Bind three measures for the components, an optional label, and optional color/size encodings.",
+  "Role_componentA_DisplayName": "Component A (top)",
+  "Role_componentA_Description": "First component — mapped to the top vertex",
+  "Role_componentB_DisplayName": "Component B (bottom-left)",
+  "Role_componentB_Description": "Second component — mapped to the bottom-left vertex",
+  "Role_componentC_DisplayName": "Component C (bottom-right)",
+  "Role_componentC_Description": "Third component — mapped to the bottom-right vertex (optional; derived as 1 − A − B when Normalize is on)",
+  "Role_pointLabel_DisplayName": "Point Label",
+  "Role_pointLabel_Description": "One point per label. Without a label, the components aggregate to a single point.",
+  "Role_colorBy_DisplayName": "Color Value",
+  "Role_colorBy_Description": "Optional — continuous value mapped to point color",
+  "Role_sizeBy_DisplayName": "Size Value",
+  "Role_sizeBy_Description": "Optional — continuous value mapped to point radius"
+}

@@ -1,9 +1,31 @@
 {
     "dataRoles": [
-        { "displayName": "Rows",             "name": "rows",       "kind": "Grouping" },
-        { "displayName": "Values",           "name": "columns",    "kind": "Measure" },
-        { "displayName": "Sparkline Axis",   "name": "sparkAxis",  "kind": "Grouping", "description": "Time / horizon field for sparkline cells" },
-        { "displayName": "Sparkline Value",  "name": "sparkValue", "kind": "Measure" }
+        {
+            "displayName": "Rows",
+            "name": "rows",
+            "kind": "Grouping",
+            "displayNameKey": "Role_rows_DisplayName"
+        },
+        {
+            "displayName": "Values",
+            "name": "columns",
+            "kind": "Measure",
+            "displayNameKey": "Role_columns_DisplayName"
+        },
+        {
+            "displayName": "Sparkline Axis",
+            "name": "sparkAxis",
+            "kind": "Grouping",
+            "description": "Time / horizon field for sparkline cells",
+            "displayNameKey": "Role_sparkAxis_DisplayName",
+            "descriptionKey": "Role_sparkAxis_Description"
+        },
+        {
+            "displayName": "Sparkline Value",
+            "name": "sparkValue",
+            "kind": "Measure",
+            "displayNameKey": "Role_sparkValue_DisplayName"
+        }
     ],
     "objects": {
         "sparklines": {
@@ -11,96 +33,264 @@
                 "sparkType": {
                     "type": {
                         "enumeration": [
-                            { "value": "line",     "displayName": "Line" },
-                            { "value": "bar",      "displayName": "Bar" },
-                            { "value": "area",     "displayName": "Area" },
-                            { "value": "win-loss", "displayName": "Win / Loss" }
+                            {
+                                "value": "line",
+                                "displayName": "Line"
+                            },
+                            {
+                                "value": "bar",
+                                "displayName": "Bar"
+                            },
+                            {
+                                "value": "area",
+                                "displayName": "Area"
+                            },
+                            {
+                                "value": "win-loss",
+                                "displayName": "Win / Loss"
+                            }
                         ]
                     }
                 },
-                "sparkWidth":     { "type": { "numeric": true } },
-                "sparkHeight":    { "type": { "numeric": true } },
-                "sparkColor":     { "type": { "fill": { "solid": { "color": true } } } },
-                "highlightLast":  { "type": { "bool": true } },
-                "showMinMaxDots": { "type": { "bool": true } }
+                "sparkWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "sparkHeight": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "sparkColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "highlightLast": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showMinMaxDots": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "rules": {
             "properties": {
-                "rule1Column":   { "type": { "text": true } },
+                "rule1Column": {
+                    "type": {
+                        "text": true
+                    }
+                },
                 "rule1Operator": {
                     "type": {
                         "enumeration": [
-                            { "value": ">",  "displayName": ">" },
-                            { "value": "<",  "displayName": "<" },
-                            { "value": ">=", "displayName": "≥" },
-                            { "value": "<=", "displayName": "≤" },
-                            { "value": "=",  "displayName": "=" }
+                            {
+                                "value": ">",
+                                "displayName": ">"
+                            },
+                            {
+                                "value": "<",
+                                "displayName": "<"
+                            },
+                            {
+                                "value": ">=",
+                                "displayName": "\u2265"
+                            },
+                            {
+                                "value": "<=",
+                                "displayName": "\u2264"
+                            },
+                            {
+                                "value": "=",
+                                "displayName": "="
+                            }
                         ]
                     }
                 },
-                "rule1Value":    { "type": { "numeric": true } },
-                "rule1Icon":     {
+                "rule1Value": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "rule1Icon": {
                     "type": {
                         "enumeration": [
-                            { "value": "▲", "displayName": "Up ▲" },
-                            { "value": "▼", "displayName": "Down ▼" },
-                            { "value": "●", "displayName": "Dot ●" },
-                            { "value": "■", "displayName": "Square ■" },
-                            { "value": "✓", "displayName": "Check ✓" },
-                            { "value": "✗", "displayName": "Cross ✗" }
+                            {
+                                "value": "\u25b2",
+                                "displayName": "Up \u25b2"
+                            },
+                            {
+                                "value": "\u25bc",
+                                "displayName": "Down \u25bc"
+                            },
+                            {
+                                "value": "\u25cf",
+                                "displayName": "Dot \u25cf"
+                            },
+                            {
+                                "value": "\u25a0",
+                                "displayName": "Square \u25a0"
+                            },
+                            {
+                                "value": "\u2713",
+                                "displayName": "Check \u2713"
+                            },
+                            {
+                                "value": "\u2717",
+                                "displayName": "Cross \u2717"
+                            }
                         ]
                     }
                 },
-                "rule1Color":    { "type": { "fill": { "solid": { "color": true } } } },
-                "rule2Column":   { "type": { "text": true } },
+                "rule1Color": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "rule2Column": {
+                    "type": {
+                        "text": true
+                    }
+                },
                 "rule2Operator": {
                     "type": {
                         "enumeration": [
-                            { "value": ">",  "displayName": ">" },
-                            { "value": "<",  "displayName": "<" },
-                            { "value": ">=", "displayName": "≥" },
-                            { "value": "<=", "displayName": "≤" },
-                            { "value": "=",  "displayName": "=" }
+                            {
+                                "value": ">",
+                                "displayName": ">"
+                            },
+                            {
+                                "value": "<",
+                                "displayName": "<"
+                            },
+                            {
+                                "value": ">=",
+                                "displayName": "\u2265"
+                            },
+                            {
+                                "value": "<=",
+                                "displayName": "\u2264"
+                            },
+                            {
+                                "value": "=",
+                                "displayName": "="
+                            }
                         ]
                     }
                 },
-                "rule2Value":    { "type": { "numeric": true } },
-                "rule2Icon":     {
+                "rule2Value": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "rule2Icon": {
                     "type": {
                         "enumeration": [
-                            { "value": "▲", "displayName": "Up ▲" },
-                            { "value": "▼", "displayName": "Down ▼" },
-                            { "value": "●", "displayName": "Dot ●" },
-                            { "value": "■", "displayName": "Square ■" },
-                            { "value": "✓", "displayName": "Check ✓" },
-                            { "value": "✗", "displayName": "Cross ✗" }
+                            {
+                                "value": "\u25b2",
+                                "displayName": "Up \u25b2"
+                            },
+                            {
+                                "value": "\u25bc",
+                                "displayName": "Down \u25bc"
+                            },
+                            {
+                                "value": "\u25cf",
+                                "displayName": "Dot \u25cf"
+                            },
+                            {
+                                "value": "\u25a0",
+                                "displayName": "Square \u25a0"
+                            },
+                            {
+                                "value": "\u2713",
+                                "displayName": "Check \u2713"
+                            },
+                            {
+                                "value": "\u2717",
+                                "displayName": "Cross \u2717"
+                            }
                         ]
                     }
                 },
-                "rule2Color":    { "type": { "fill": { "solid": { "color": true } } } }
+                "rule2Color": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "table": {
             "properties": {
-                "showTotals":     { "type": { "bool": true } },
+                "showTotals": {
+                    "type": {
+                        "bool": true
+                    }
+                },
                 "totalsPosition": {
                     "type": {
                         "enumeration": [
-                            { "value": "top",    "displayName": "Top" },
-                            { "value": "bottom", "displayName": "Bottom" }
+                            {
+                                "value": "top",
+                                "displayName": "Top"
+                            },
+                            {
+                                "value": "bottom",
+                                "displayName": "Bottom"
+                            }
                         ]
                     }
                 },
-                "fontSize":       { "type": { "numeric": true } },
-                "rowBanding":     { "type": { "bool": true } },
-                "bandingColor":   { "type": { "fill": { "solid": { "color": true } } } },
-                "stickyHeader":   { "type": { "bool": true } }
+                "fontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "rowBanding": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "bandingColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "stickyHeader": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -108,8 +298,12 @@
     "supportsKeyboardFocus": true,
     "subtotals": {
         "matrix": {
-            "rowSubtotals": { "defaultValue": true },
-            "columnSubtotals": { "defaultValue": true }
+            "rowSubtotals": {
+                "defaultValue": true
+            },
+            "columnSubtotals": {
+                "defaultValue": true
+            }
         }
     },
     "supportsHighlight": true,
@@ -124,26 +318,55 @@
         {
             "conditions": [
                 {
-                    "rows": { "min": 1, "max": 1 },
-                    "columns": { "min": 1 },
-                    "sparkAxis": { "min": 0, "max": 1 },
-                    "sparkValue": { "min": 0, "max": 1 }
+                    "rows": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "columns": {
+                        "min": 1
+                    },
+                    "sparkAxis": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "sparkValue": {
+                        "min": 0,
+                        "max": 1
+                    }
                 }
             ],
             "matrix": {
                 "rows": {
                     "select": [
-                        { "for": { "in": "rows" } },
-                        { "for": { "in": "sparkAxis" } }
+                        {
+                            "for": {
+                                "in": "rows"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "sparkAxis"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "columns" } },
-                        { "for": { "in": "sparkValue" } }
+                        {
+                            "for": {
+                                "in": "columns"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "sparkValue"
+                            }
+                        }
                     ]
                 }
             }

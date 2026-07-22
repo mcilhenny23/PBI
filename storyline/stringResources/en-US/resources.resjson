@@ -1,0 +1,10 @@
+{
+  "Storyline Chart": "Storyline Chart",
+  "The xkcd movie-narrative idiom as an analytical chart. Every entity is a line that weaves between groups over time, so joins, departures and migrations read as movement. Org changes, team composition, customer-segment migration, coalition shifts. Crossings are minimized with a barycentre sweep.": "The xkcd movie-narrative idiom as an analytical chart. Every entity is a line that weaves between groups over time, so joins, departures and migrations read as movement. Org changes, team composition, customer-segment migration, coalition shifts. Crossings are minimized with a barycentre sweep.",
+  "Role_entity_DisplayName": "Entity",
+  "Role_entity_Description": "One line per entity (person, customer, account…)",
+  "Role_timeStep_DisplayName": "Time Step",
+  "Role_timeStep_Description": "Discrete time points — one column per value",
+  "Role_group_DisplayName": "Group",
+  "Role_group_Description": "Which group the entity belongs to at that time step"
+}

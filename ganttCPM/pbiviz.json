@@ -21,6 +21,9 @@
     "style": "style/visual.less",
     "capabilities": "capabilities.json",
     "dependencies": null,
-    "stringResources": [],
+    "stringResources": [
+        "stringResources/en-US/resources.resjson",
+        "stringResources/de-DE/resources.resjson"
+    ],
     "version": "1.0.0.0"
 }

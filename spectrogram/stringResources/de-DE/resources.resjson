@@ -1,0 +1,13 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Spectrogram": "Spektrogramm",
+  "Turns a vibration or acoustic signal into a time × frequency × magnitude heatmap via sliding-window FFT. Built for predictive maintenance and condition monitoring — spot harmonics, sidebands and developing faults without leaving Power BI. Pure TypeScript radix-2 FFT, no external libraries.": "Turns a vibration or acoustic signal into a time × frequency × magnitude heatmap via sliding-window FFT. Built for predictive maintenance and condition monitoring — spot harmonics, sidebands and developing faults without leaving Power BI. Pure TypeScript radix-2 FFT, no external libraries.",
+  "Role_timeIndex_DisplayName": "Zeit / Sample-Index",
+  "Role_timeIndex_Description": "Ordered sample position — set to Don't summarize so every sample arrives as its own row",
+  "Role_amplitude_DisplayName": "Amplitude",
+  "Role_amplitude_Description": "Signal amplitude at each sample",
+  "Role_sensor_DisplayName": "Sensor",
+  "Role_sensor_Description": "Optional — renders one stacked spectrogram per sensor",
+  "Role_rpm_DisplayName": "Drehzahl",
+  "Role_rpm_Description": "Optional — shaft speed at each sample, enables order tracking so machinery components stay at a fixed order regardless of speed changes"
+}

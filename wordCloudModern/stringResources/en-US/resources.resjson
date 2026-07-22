@@ -1,0 +1,8 @@
+{
+  "Word Cloud Modern": "Word Cloud Modern",
+  "Word / phrase cloud with the features the incumbent lacks: n-gram support (1, 2, 1+2, 3), bundled stop-word lists, click-to-filter selection, chunked layout for large term counts, and rank-based color ramp options.": "Word / phrase cloud with the features the incumbent lacks: n-gram support (1, 2, 1+2, 3), bundled stop-word lists, click-to-filter selection, chunked layout for large term counts, and rank-based color ramp options.",
+  "Role_text_DisplayName": "Text / Term",
+  "Role_weight_DisplayName": "Weight",
+  "Role_weight_Description": "Optional; when absent, frequency is computed from the raw text",
+  "Role_colorBy_DisplayName": "Category"
+}

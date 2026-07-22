@@ -1,0 +1,15 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Wafer Map": "Wafer-Karte",
+  "Semiconductor yield map — die-level pass/fail, bin code or continuous value across a circular wafer, with edge exclusion, concentric zone overlays and small-multiples across wafers. Canvas-rendered for thousands of dies.": "Semiconductor yield map — die-level pass/fail, bin code or continuous value across a circular wafer, with edge exclusion, concentric zone overlays and small-multiples across wafers. Canvas-rendered for thousands of dies.",
+  "Role_dieX_DisplayName": "Die X",
+  "Role_dieX_Description": "Column index of the die on the wafer",
+  "Role_dieY_DisplayName": "Die Y",
+  "Role_dieY_Description": "Row index of the die on the wafer",
+  "Role_binCode_DisplayName": "Bin-Code",
+  "Role_binCode_Description": "Pass/fail, bin code or category — used in Categorical color mode",
+  "Role_value_DisplayName": "Wert",
+  "Role_value_Description": "Optional continuous measure (yield, resistance…) — used in Continuous color mode",
+  "Role_waferID_DisplayName": "Wafer-ID",
+  "Role_waferID_Description": "Optional — renders small multiples, one mini wafer per ID"
+}

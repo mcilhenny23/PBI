@@ -1,9 +1,31 @@
 {
     "dataRoles": [
-        { "displayName": "Axis",       "name": "axis",      "kind": "Grouping" },
-        { "displayName": "Series",     "name": "series",    "kind": "Grouping" },
-        { "displayName": "Value",      "name": "value",     "kind": "Measure" },
-        { "displayName": "Focus (0/1)","name": "focusFlag", "kind": "Measure",  "description": "Optional DAX-driven flag; series with 1 stay focused." }
+        {
+            "displayName": "Axis",
+            "name": "axis",
+            "kind": "Grouping",
+            "displayNameKey": "Role_axis_DisplayName"
+        },
+        {
+            "displayName": "Series",
+            "name": "series",
+            "kind": "Grouping",
+            "displayNameKey": "Role_series_DisplayName"
+        },
+        {
+            "displayName": "Value",
+            "name": "value",
+            "kind": "Measure",
+            "displayNameKey": "Role_value_DisplayName"
+        },
+        {
+            "displayName": "Focus (0/1)",
+            "name": "focusFlag",
+            "kind": "Measure",
+            "description": "Optional DAX-driven flag; series with 1 stay focused.",
+            "displayNameKey": "Role_focusFlag_DisplayName",
+            "descriptionKey": "Role_focusFlag_Description"
+        }
     ],
     "objects": {
         "focus": {
@@ -11,46 +33,124 @@
                 "focusMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "hover",        "displayName": "Hover" },
-                            { "value": "click-pin",    "displayName": "Click to pin" },
-                            { "value": "top-n",        "displayName": "Top-N final value" },
-                            { "value": "flag-measure", "displayName": "Focus (0/1) measure" }
+                            {
+                                "value": "hover",
+                                "displayName": "Hover"
+                            },
+                            {
+                                "value": "click-pin",
+                                "displayName": "Click to pin"
+                            },
+                            {
+                                "value": "top-n",
+                                "displayName": "Top-N final value"
+                            },
+                            {
+                                "value": "flag-measure",
+                                "displayName": "Focus (0/1) measure"
+                            }
                         ]
                     }
                 },
-                "topN":            { "type": { "numeric": true } },
-                "contextColor":    { "type": { "fill": { "solid": { "color": true } } } },
-                "contextOpacity":  { "type": { "numeric": true } },
-                "contextWidth":    { "type": { "numeric": true } },
-                "focusWidth":      { "type": { "numeric": true } },
+                "topN": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "contextColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "contextOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "contextWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "focusWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "focusColorMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "palette", "displayName": "Palette" },
-                            { "value": "single",  "displayName": "Single color" }
+                            {
+                                "value": "palette",
+                                "displayName": "Palette"
+                            },
+                            {
+                                "value": "single",
+                                "displayName": "Single color"
+                            }
                         ]
                     }
                 },
-                "focusColor":      { "type": { "fill": { "solid": { "color": true } } } }
+                "focusColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
             }
         },
         "labels": {
             "properties": {
-                "showEndLabels": { "type": { "bool": true } },
-                "fontSize":      { "type": { "numeric": true } },
-                "labelValue":    { "type": { "bool": true } }
+                "showEndLabels": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "labelValue": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "fallback": {
             "properties": {
-                "smallMultiplesThreshold": { "type": { "numeric": true } },
+                "smallMultiplesThreshold": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "curveType": {
                     "type": {
                         "enumeration": [
-                            { "value": "linear",   "displayName": "Linear" },
-                            { "value": "monotone", "displayName": "Smooth (monotone)" },
-                            { "value": "basis",    "displayName": "Smooth (basis)" },
-                            { "value": "step",     "displayName": "Step" }
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            },
+                            {
+                                "value": "monotone",
+                                "displayName": "Smooth (monotone)"
+                            },
+                            {
+                                "value": "basis",
+                                "displayName": "Smooth (basis)"
+                            },
+                            {
+                                "value": "step",
+                                "displayName": "Step"
+                            }
                         ]
                     }
                 }
@@ -58,19 +158,39 @@
         },
         "axes": {
             "properties": {
-                "showAxes":     { "type": { "bool": true } },
-                "showGridlines": { "type": { "bool": true } },
-                "fontSize":     { "type": { "numeric": true } }
+                "showAxes": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showGridlines": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "pinnedSeries": {
             "properties": {
-                "pinned": { "type": { "text": true } }
+                "pinned": {
+                    "type": {
+                        "text": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -87,21 +207,55 @@
     "dataViewMappings": [
         {
             "conditions": [
-                { "axis": { "min": 1, "max": 1 }, "series": { "min": 0, "max": 1 }, "value": { "min": 1 }, "focusFlag": { "min": 0, "max": 1 } }
+                {
+                    "axis": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "series": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "value": {
+                        "min": 1
+                    },
+                    "focusFlag": {
+                        "min": 0,
+                        "max": 1
+                    }
+                }
             ],
             "categorical": {
                 "categories": {
-                    "for": { "in": "axis" },
-                    "dataReductionAlgorithm": { "top": { "count": 10000 } }
+                    "for": {
+                        "in": "axis"
+                    },
+                    "dataReductionAlgorithm": {
+                        "top": {
+                            "count": 10000
+                        }
+                    }
                 },
                 "values": {
                     "group": {
                         "by": "series",
                         "select": [
-                            { "for": { "in": "value" } },
-                            { "for": { "in": "focusFlag" } }
+                            {
+                                "for": {
+                                    "in": "value"
+                                }
+                            },
+                            {
+                                "for": {
+                                    "in": "focusFlag"
+                                }
+                            }
                         ],
-                        "dataReductionAlgorithm": { "top": { "count": 500 } }
+                        "dataReductionAlgorithm": {
+                            "top": {
+                                "count": 500
+                            }
+                        }
                     }
                 }
             }

@@ -1,0 +1,17 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Fan Chart": "Fächerdiagramm",
+  "Forecast uncertainty fan chart with nested prediction bands. Drag quantile pairs (e.g. p10/p90) to visualize prediction intervals as gradient bands around a central estimate.": "Forecast uncertainty fan chart with nested prediction bands. Drag quantile pairs (e.g. p10/p90) to visualize prediction intervals as gradient bands around a central estimate.",
+  "Role_axis_DisplayName": "Achse",
+  "Role_axis_Description": "Time period or horizon (e.g. month, quarter, forecast step)",
+  "Role_central_DisplayName": "Zentralschätzung",
+  "Role_central_Description": "The central forecast value (p50 / point estimate)",
+  "Role_actuals_DisplayName": "Ist-Werte",
+  "Role_actuals_Description": "Historical actual values (optional — renders as a solid line before the fan)",
+  "Role_upper1_DisplayName": "Oberes Band 1 (z. B. p75)",
+  "Role_lower1_DisplayName": "Unteres Band 1 (z. B. p25)",
+  "Role_upper2_DisplayName": "Oberes Band 2 (z. B. p90)",
+  "Role_lower2_DisplayName": "Unteres Band 2 (z. B. p10)",
+  "Role_upper3_DisplayName": "Oberes Band 3 (z. B. p95)",
+  "Role_lower3_DisplayName": "Unteres Band 3 (z. B. p5)"
+}

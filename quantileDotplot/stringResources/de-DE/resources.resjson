@@ -1,0 +1,9 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Quantile Dotplot": "Quantil-Punktediagramm",
+  "Represents a distribution as 20–100 countable dots (a quantile dotplot) so readers can literally count risk — proven better than error bars for lay decision-making. Bind a sample value and an observation key; add a threshold to read 'X of 20 below the line'.": "Represents a distribution as 20–100 countable dots (a quantile dotplot) so readers can literally count risk — proven better than error bars for lay decision-making. Bind a sample value and an observation key; add a threshold to read 'X of 20 below the line'.",
+  "Role_samples_DisplayName": "Stichprobenwerte",
+  "Role_samples_Description": "The value to build the distribution from. Bind one measure for a single dotplot, or several measures for side-by-side dotplots (one per measure).",
+  "Role_category_DisplayName": "Beobachtungsschlüssel",
+  "Role_category_Description": "One row per observation (e.g. simulation run, sample ID, date). The visual pools these rows into a distribution, then draws its quantiles as dots."
+}

@@ -1,8 +1,27 @@
 {
     "dataRoles": [
-        { "displayName": "Values",         "name": "values",  "kind": "Measure" },
-        { "displayName": "Compare Groups", "name": "groupBy", "kind": "Grouping", "description": "Optional: overlaid / faceted histograms per group" },
-        { "displayName": "Observation Key","name": "obsKey",  "kind": "Grouping", "description": "Any per-row identity (needed so each raw value stays a separate row)" }
+        {
+            "displayName": "Values",
+            "name": "values",
+            "kind": "Measure",
+            "displayNameKey": "Role_values_DisplayName"
+        },
+        {
+            "displayName": "Compare Groups",
+            "name": "groupBy",
+            "kind": "Grouping",
+            "description": "Optional: overlaid / faceted histograms per group",
+            "displayNameKey": "Role_groupBy_DisplayName",
+            "descriptionKey": "Role_groupBy_Description"
+        },
+        {
+            "displayName": "Observation Key",
+            "name": "obsKey",
+            "kind": "Grouping",
+            "description": "Any per-row identity (needed so each raw value stays a separate row)",
+            "displayNameKey": "Role_obsKey_DisplayName",
+            "descriptionKey": "Role_obsKey_Description"
+        }
     ],
     "objects": {
         "binning": {
@@ -10,45 +29,119 @@
                 "binMethod": {
                     "type": {
                         "enumeration": [
-                            { "value": "fd",      "displayName": "Freedman-Diaconis" },
-                            { "value": "sturges", "displayName": "Sturges" },
-                            { "value": "scott",   "displayName": "Scott" },
-                            { "value": "manual",  "displayName": "Manual" }
+                            {
+                                "value": "fd",
+                                "displayName": "Freedman-Diaconis"
+                            },
+                            {
+                                "value": "sturges",
+                                "displayName": "Sturges"
+                            },
+                            {
+                                "value": "scott",
+                                "displayName": "Scott"
+                            },
+                            {
+                                "value": "manual",
+                                "displayName": "Manual"
+                            }
                         ]
                     }
                 },
-                "manualBinWidth": { "type": { "numeric": true } },
-                "showBinSlider":  { "type": { "bool": true } },
-                "niceBoundaries": { "type": { "bool": true } }
+                "manualBinWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showBinSlider": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "niceBoundaries": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "density": {
             "properties": {
-                "showDensity":     { "type": { "bool": true } },
-                "densityColor":    { "type": { "fill": { "solid": { "color": true } } } },
-                "densityWidth":    { "type": { "numeric": true } },
-                "bandwidthScale":  { "type": { "numeric": true } }
+                "showDensity": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "densityColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "densityWidth": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "bandwidthScale": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "bars": {
             "properties": {
-                "barColor":   { "type": { "fill": { "solid": { "color": true } } } },
-                "barOpacity": { "type": { "numeric": true } },
+                "barColor": {
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "barOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "groupMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "overlay", "displayName": "Overlay (transparent)" },
-                            { "value": "facet",   "displayName": "Facet (mini-multiples)" },
-                            { "value": "stack",   "displayName": "Stack" }
+                            {
+                                "value": "overlay",
+                                "displayName": "Overlay (transparent)"
+                            },
+                            {
+                                "value": "facet",
+                                "displayName": "Facet (mini-multiples)"
+                            },
+                            {
+                                "value": "stack",
+                                "displayName": "Stack"
+                            }
                         ]
                     }
                 },
                 "yMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "count",     "displayName": "Count" },
-                            { "value": "frequency", "displayName": "Relative frequency" },
-                            { "value": "density",   "displayName": "Density (normalized)" }
+                            {
+                                "value": "count",
+                                "displayName": "Count"
+                            },
+                            {
+                                "value": "frequency",
+                                "displayName": "Relative frequency"
+                            },
+                            {
+                                "value": "density",
+                                "displayName": "Density (normalized)"
+                            }
                         ]
                     }
                 }
@@ -56,19 +149,39 @@
         },
         "annotations": {
             "properties": {
-                "showMeanLine":     { "type": { "bool": true } },
-                "showMedianLine":   { "type": { "bool": true } },
-                "showNormalOverlay":{ "type": { "bool": true } }
+                "showMeanLine": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showMedianLine": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "showNormalOverlay": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "manualBin": {
             "properties": {
-                "width": { "type": { "numeric": true } }
+                "width": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "interactions": {
             "properties": {
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -85,21 +198,48 @@
     "dataViewMappings": [
         {
             "conditions": [
-                { "values": { "min": 1, "max": 1 }, "groupBy": { "min": 0, "max": 1 }, "obsKey": { "min": 0, "max": 1 } }
+                {
+                    "values": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "groupBy": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "obsKey": {
+                        "min": 0,
+                        "max": 1
+                    }
+                }
             ],
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "obsKey" } },
-                        { "for": { "in": "groupBy" } }
+                        {
+                            "for": {
+                                "in": "obsKey"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "groupBy"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "top": { "count": 30000 }
+                        "top": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "values" } }
+                        {
+                            "for": {
+                                "in": "values"
+                            }
+                        }
                     ]
                 }
             }

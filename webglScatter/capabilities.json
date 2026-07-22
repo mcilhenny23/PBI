@@ -1,10 +1,41 @@
 {
     "dataRoles": [
-        { "displayName": "X",       "name": "x",        "kind": "Measure" },
-        { "displayName": "Y",       "name": "y",        "kind": "Measure" },
-        { "displayName": "Legend",  "name": "colorBy",  "kind": "Grouping", "description": "Categorical color (≤12 classes)" },
-        { "displayName": "Size",    "name": "sizeBy",   "kind": "Measure",  "description": "Optional size mapping" },
-        { "displayName": "Details", "name": "detail",   "kind": "Grouping", "description": "Row identity — required to keep every row (bind a unique id or row index)" }
+        {
+            "displayName": "X",
+            "name": "x",
+            "kind": "Measure",
+            "displayNameKey": "Role_x_DisplayName"
+        },
+        {
+            "displayName": "Y",
+            "name": "y",
+            "kind": "Measure",
+            "displayNameKey": "Role_y_DisplayName"
+        },
+        {
+            "displayName": "Legend",
+            "name": "colorBy",
+            "kind": "Grouping",
+            "description": "Categorical color (\u226412 classes)",
+            "displayNameKey": "Role_colorBy_DisplayName",
+            "descriptionKey": "Role_colorBy_Description"
+        },
+        {
+            "displayName": "Size",
+            "name": "sizeBy",
+            "kind": "Measure",
+            "description": "Optional size mapping",
+            "displayNameKey": "Role_sizeBy_DisplayName",
+            "descriptionKey": "Role_sizeBy_Description"
+        },
+        {
+            "displayName": "Details",
+            "name": "detail",
+            "kind": "Grouping",
+            "description": "Row identity \u2014 required to keep every row (bind a unique id or row index)",
+            "displayNameKey": "Role_detail_DisplayName",
+            "descriptionKey": "Role_detail_Description"
+        }
     ],
     "objects": {
         "mode": {
@@ -12,20 +43,44 @@
                 "renderMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "auto",    "displayName": "Auto" },
-                            { "value": "points",  "displayName": "Points" },
-                            { "value": "density", "displayName": "Density" },
-                            { "value": "hexbin",  "displayName": "Hexbin" }
+                            {
+                                "value": "auto",
+                                "displayName": "Auto"
+                            },
+                            {
+                                "value": "points",
+                                "displayName": "Points"
+                            },
+                            {
+                                "value": "density",
+                                "displayName": "Density"
+                            },
+                            {
+                                "value": "hexbin",
+                                "displayName": "Hexbin"
+                            }
                         ]
                     }
                 },
-                "autoThreshold": { "type": { "numeric": true } }
+                "autoThreshold": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "points": {
             "properties": {
-                "pointSize":    { "type": { "numeric": true } },
-                "pointOpacity": { "type": { "numeric": true } }
+                "pointSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "pointOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "densityCard": {
@@ -33,30 +88,67 @@
                 "colorRamp": {
                     "type": {
                         "enumeration": [
-                            { "value": "viridis", "displayName": "Viridis" },
-                            { "value": "inferno", "displayName": "Inferno" },
-                            { "value": "blues",   "displayName": "Blues" },
-                            { "value": "turbo",   "displayName": "Turbo" }
+                            {
+                                "value": "viridis",
+                                "displayName": "Viridis"
+                            },
+                            {
+                                "value": "inferno",
+                                "displayName": "Inferno"
+                            },
+                            {
+                                "value": "blues",
+                                "displayName": "Blues"
+                            },
+                            {
+                                "value": "turbo",
+                                "displayName": "Turbo"
+                            }
                         ]
                     }
                 },
                 "intensityScale": {
                     "type": {
                         "enumeration": [
-                            { "value": "linear", "displayName": "Linear" },
-                            { "value": "log",    "displayName": "Log" },
-                            { "value": "sqrt",   "displayName": "Sqrt" }
+                            {
+                                "value": "linear",
+                                "displayName": "Linear"
+                            },
+                            {
+                                "value": "log",
+                                "displayName": "Log"
+                            },
+                            {
+                                "value": "sqrt",
+                                "displayName": "Sqrt"
+                            }
                         ]
                     }
                 },
-                "hexRadius": { "type": { "numeric": true } }
+                "hexRadius": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         },
         "axes": {
             "properties": {
-                "showAxes":   { "type": { "bool": true } },
-                "fontSize":   { "type": { "numeric": true } },
-                "showSampleWarningBadge": { "type": { "bool": true } }
+                "showAxes": {
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fontSize": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showSampleWarningBadge": {
+                    "type": {
+                        "bool": true
+                    }
+                }
             }
         },
         "interactions": {
@@ -64,13 +156,26 @@
                 "selectionMode": {
                     "type": {
                         "enumeration": [
-                            { "value": "off",   "displayName": "Off" },
-                            { "value": "brush", "displayName": "Brush (drag a rectangle)" },
-                            { "value": "click", "displayName": "Click nearest point" }
+                            {
+                                "value": "off",
+                                "displayName": "Off"
+                            },
+                            {
+                                "value": "brush",
+                                "displayName": "Brush (drag a rectangle)"
+                            },
+                            {
+                                "value": "click",
+                                "displayName": "Click nearest point"
+                            }
                         ]
                     }
                 },
-                "dimUnselectedOpacity": { "type": { "numeric": true } }
+                "dimUnselectedOpacity": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
             }
         }
     },
@@ -88,27 +193,65 @@
         {
             "conditions": [
                 {
-                    "x": { "min": 1, "max": 1 }, "y": { "min": 1, "max": 1 },
-                    "colorBy": { "min": 0, "max": 1 },
-                    "sizeBy":  { "min": 0, "max": 1 },
-                    "detail":  { "min": 0, "max": 1 }
+                    "x": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "y": {
+                        "min": 1,
+                        "max": 1
+                    },
+                    "colorBy": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "sizeBy": {
+                        "min": 0,
+                        "max": 1
+                    },
+                    "detail": {
+                        "min": 0,
+                        "max": 1
+                    }
                 }
             ],
             "categorical": {
                 "categories": {
                     "select": [
-                        { "for": { "in": "detail" } },
-                        { "for": { "in": "colorBy" } }
+                        {
+                            "for": {
+                                "in": "detail"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "colorBy"
+                            }
+                        }
                     ],
                     "dataReductionAlgorithm": {
-                        "window": { "count": 30000 }
+                        "window": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
-                        { "for": { "in": "x" } },
-                        { "for": { "in": "y" } },
-                        { "for": { "in": "sizeBy" } }
+                        {
+                            "for": {
+                                "in": "x"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "y"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "sizeBy"
+                            }
+                        }
                     ]
                 }
             }

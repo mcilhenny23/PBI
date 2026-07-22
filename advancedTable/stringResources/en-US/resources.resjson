@@ -1,0 +1,9 @@
+{
+  "Advanced Table": "Advanced Table",
+  "DOM-based virtualized table with two features the native one can't do inline: sparkline cells (line/bar/area/win-loss) driven by a nested time series, and up to three icon-rule slots that prefix numeric cells with ▲▼●✓✗ per threshold.": "DOM-based virtualized table with two features the native one can't do inline: sparkline cells (line/bar/area/win-loss) driven by a nested time series, and up to three icon-rule slots that prefix numeric cells with ▲▼●✓✗ per threshold.",
+  "Role_rows_DisplayName": "Rows",
+  "Role_columns_DisplayName": "Values",
+  "Role_sparkAxis_DisplayName": "Sparkline Axis",
+  "Role_sparkAxis_Description": "Time / horizon field for sparkline cells",
+  "Role_sparkValue_DisplayName": "Sparkline Value"
+}

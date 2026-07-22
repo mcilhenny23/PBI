@@ -1,0 +1,15 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "Event Sequence Bundles": "Ereignisbündel",
+  "EventFlow-style sequence bundling. Thousands of event timelines are aligned on an anchor and merged into a prefix tree, so cases that behave alike share a thick trunk and only split where their paths genuinely diverge. Where a process map abstracts time away, this keeps the ordering.": "EventFlow-style sequence bundling. Thousands of event timelines are aligned on an anchor and merged into a prefix tree, so cases that behave alike share a thick trunk and only split where their paths genuinely diverge. Where a process map abstracts time away, this keeps the ordering.",
+  "Role_caseId_DisplayName": "Fall-ID",
+  "Role_caseId_Description": "The case / journey identifier",
+  "Role_event_DisplayName": "Ereignis",
+  "Role_event_Description": "Event type / name",
+  "Role_timestamp_DisplayName": "Zeitstempel",
+  "Role_timestamp_Description": "Orders events within a case. Set to Don't summarize.",
+  "Role_eventCategory_DisplayName": "Ereigniskategorie",
+  "Role_eventCategory_Description": "Optional — used when coloring by category",
+  "Role_outcome_DisplayName": "Outcome",
+  "Role_outcome_Description": "Optional — per-case outcome (recovered / churned / readmitted). Bind if you want to colour bundles by how each journey ended. Defaults to the last event in the case if unbound."
+}

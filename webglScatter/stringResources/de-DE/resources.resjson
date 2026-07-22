@@ -1,0 +1,13 @@
+{
+  "_TODO_NATIVE_REVIEW": "Machine-translated. Every entry below needs review by a native German speaker before public release. Descriptions still in English pending native review.",
+  "WebGL Scatter Density": "WebGL-Streudiagramm",
+  "Honest scatter for large N. Renders every point via WebGL point sprites (500k+ without downsampling), auto-switches to a Canvas density heatmap or hexbin summary when zoomed out, and requests additional data segments via fetchMoreData so nothing is silently dropped.": "Honest scatter for large N. Renders every point via WebGL point sprites (500k+ without downsampling), auto-switches to a Canvas density heatmap or hexbin summary when zoomed out, and requests additional data segments via fetchMoreData so nothing is silently dropped.",
+  "Role_x_DisplayName": "X",
+  "Role_y_DisplayName": "Y",
+  "Role_colorBy_DisplayName": "Legend",
+  "Role_colorBy_Description": "Categorical color (≤12 classes)",
+  "Role_sizeBy_DisplayName": "Size",
+  "Role_sizeBy_Description": "Optional size mapping",
+  "Role_detail_DisplayName": "Details",
+  "Role_detail_Description": "Row identity — required to keep every row (bind a unique id or row index)"
+}
