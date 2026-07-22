@@ -764,7 +764,11 @@ export class Visual implements IVisual {
                     const u = 1 - (py - p.y) / p.h;              // 0 at bottom, 1 at top
                     const binMax = spec.numBins - 1;
 
-                    let bin: number;
+                    // Default to bin 0 so the ordersMode + invalid-RPM branch below,
+                    // which sets only magKnown=false, can't leave `bin` undefined
+                    // and propagate NaN through spec.data / log10 if a future edit
+                    // reads b without checking magKnown.
+                    let bin = 0;
                     let orderAt: number | null = null;
                     let rpmAt: number | null = null;
                     // magKnown gates the Magnitude readout: in orders mode without a
